@@ -135,14 +135,12 @@ int main() {
     std::string output_filename("mphf.bin");
     essentials::save(f, output_filename.c_str());
 
-    {
-        /* Now reload from disk and query. */
-        pthash_type other;
-        essentials::load(other, output_filename.c_str());
-        for (uint64_t i = 0; i != 10; ++i) {
-            std::cout << "f(" << keys[i] << ") = " << other(keys[i]) << '\n';
-            assert(f(keys[i]) == other(keys[i]));
-        }
+    /* Now reload from disk and query. */
+    pthash_type other;
+    essentials::load(other, output_filename.c_str());
+    for (uint64_t i = 0; i != 10; ++i) {
+        std::cout << "f(" << keys[i] << ") = " << other(keys[i]) << '\n';
+        assert(f(keys[i]) == other(keys[i]));
     }
 
     return 0;
