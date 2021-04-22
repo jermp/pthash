@@ -2,7 +2,7 @@ PTHash
 ------
 
 PTHash is a C++ library implementing fast and compact minimal perfect hash functions as described in the paper
-[*PTHash: Revisiting FCH Minimal Perfect Hashing*]() [1].
+[*PTHash: Revisiting FCH Minimal Perfect Hashing*](https://arxiv.org/abs/2104.10402) [1].
 
 Given a set *S* of *n* distinct keys, a function *f* that bijectively maps the keys of *S* into the first *n* natural numbers
 is called a *minimal perfect hash function* (MPHF) for *S*.
@@ -23,6 +23,7 @@ are also provided.
 * [Quick Start](#quick-start)
 * [Build Examples](#build-examples)
 * [An Example Benchmark](#an-example-benchmark)
+* [Other Resources](#other-resources)
 * [Authors](#authors)
 * [References](#references)
 
@@ -299,6 +300,15 @@ The code is compiled with `-O3` and `-march=native` in all cases.
 | (3) EF, alpha = 0.99, c = 6.0 | 81 | 2.26 | 69 | 1921 | 2.17 | 147 |
 | (4) D-D, alpha = 0.94, c = 7.0 | 42 | 3.23 | 47 | 812 | 2.99 | 60 |
 
+Other Resources
+-----
+
+We maintain a benchmark to evaluate MPHF algorithms available at
+
+[https://github.com/roberto-trani/mphf_benchmark](https://github.com/roberto-trani/mphf_benchmark).
+
+This benchmark was also used for the experiments in the SIGIR 2021 paper [1].
+
 Authors
 -----
 * [Giulio Ermanno Pibiri](http://pages.di.unipi.it/pibiri/), <giulio.ermanno.pibiri@isti.cnr.it>
@@ -306,5 +316,5 @@ Authors
 
 References
 -----
-* [1] Giulio Ermanno Pibiri and Roberto Trani. *"PTHash: Revisiting FCH Minimal Perfect Hashing"*. In Proceedings of the 44th International
+* [1] Giulio Ermanno Pibiri and Roberto Trani. [*"PTHash: Revisiting FCH Minimal Perfect Hashing"*](https://arxiv.org/abs/2104.10402). In Proceedings of the 44th International
 Conference on Research and Development in Information Retrieval (SIGIR). 2021.
