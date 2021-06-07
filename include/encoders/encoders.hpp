@@ -13,9 +13,9 @@
 namespace pthash {
 
 struct compact {
-    template <typename T>
-    void encode(std::vector<T> const& values) {
-        m_values.build(values.begin(), values.size());
+    template <typename Iterator>
+    void encode(Iterator begin, uint64_t n) {
+        m_values.build(begin, n);
     }
 
     static std::string name() {
@@ -47,34 +47,32 @@ struct partitioned_compact {
     static const uint64_t partition_size = 256;
     static_assert(partition_size > 0);
 
-    template <typename T>
-    void encode(std::vector<T> const& values) {
-        uint64_t num_values = values.size();
-        uint64_t num_partitions = (num_values + partition_size - 1) / partition_size;
+    template <typename Iterator>
+    void encode(Iterator begin, uint64_t n) {
+        uint64_t num_partitions = (n + partition_size - 1) / partition_size;
         bit_vector_builder bvb;
-        bvb.reserve(32 * num_values);
+        bvb.reserve(32 * n);
         m_bits_per_value.reserve(num_partitions + 1);
         m_bits_per_value.push_back(0);
-        for (uint64_t i = 0, begin = 0; i != num_partitions; ++i) {
-            uint64_t end = begin + partition_size;
-            if (end > num_values) end = num_values;
-            uint64_t max_value = 0;
-            for (uint64_t k = begin; k != end; ++k) {
-                if (values[k] > max_value) max_value = values[k];
-            }
+        for (uint64_t i = 0, begin_partition = 0; i != num_partitions; ++i) {
+            uint64_t end_partition = begin_partition + partition_size;
+            if (end_partition > n) end_partition = n;
+            uint64_t max_value = *std::max_element(begin + begin_partition, begin + end_partition);
             uint64_t num_bits = (max_value == 0) ? 1 : std::ceil(std::log2(max_value + 1));
             assert(num_bits > 0);
 
             // std::cout << i << ": " << num_bits << '\n';
-            // for (uint64_t k = begin; k != end; ++k) {
-            //     uint64_t num_bits_val = (values[k] == 0) ? 1 : std::ceil(std::log2(values[k] +
+            // for (uint64_t k = begin_partition; k != end_partition; ++k) {
+            //     uint64_t num_bits_val = (begin[k] == 0) ? 1 : std::ceil(std::log2(begin[k] +
             //     1)); std::cout << "  " << num_bits_val << '/' << num_bits << '\n';
             // }
 
-            for (uint64_t k = begin; k != end; ++k) bvb.append_bits(values[k], num_bits);
+            for (uint64_t k = begin_partition; k != end_partition; ++k) {
+                bvb.append_bits(*(begin + k), num_bits);
+            }
             assert(m_bits_per_value.back() + num_bits < (1ULL << 32));
             m_bits_per_value.push_back(m_bits_per_value.back() + num_bits);
-            begin = end;
+            begin_partition = end_partition;
         }
         m_values.build(&bvb);
     }
@@ -114,16 +112,17 @@ private:
     bit_vector m_values;
 };
 
-std::pair<std::vector<uint64_t>, std::vector<uint64_t>> compute_ranks_and_dictionary(
-    std::vector<uint64_t> const& values) {
+template <typename Iterator>
+std::pair<std::vector<uint64_t>, std::vector<uint64_t>> compute_ranks_and_dictionary(Iterator begin,
+                                                                                     uint64_t n) {
     // accumulate frequencies
     std::unordered_map<uint64_t, uint64_t> distinct;
-    for (auto v : values) {
-        auto it = distinct.find(v);
-        if (it != distinct.end()) {  // found
-            (*it).second += 1;
+    for (auto it = begin, end = begin + n; it != end; ++it) {
+        auto find_it = distinct.find(*it);
+        if (find_it != distinct.end()) {  // found
+            (*find_it).second += 1;
         } else {
-            distinct[v] = 1;
+            distinct[*it] = 1;
         }
     }
     std::vector<std::pair<uint64_t, uint64_t>> vec;
@@ -142,14 +141,15 @@ std::pair<std::vector<uint64_t>, std::vector<uint64_t>> compute_ranks_and_dictio
     }
 
     std::vector<uint64_t> ranks;
-    ranks.reserve(values.size());
-    for (auto v : values) ranks.push_back(distinct[v]);
+    ranks.reserve(n);
+    for (auto it = begin, end = begin + n; it != end; ++it) ranks.push_back(distinct[*it]);
     return {ranks, dict};
 }
 
 struct dictionary {
-    void encode(std::vector<uint64_t> const& values) {
-        auto [ranks, dict] = compute_ranks_and_dictionary(values);
+    template <typename Iterator>
+    void encode(Iterator begin, uint64_t n) {
+        auto [ranks, dict] = compute_ranks_and_dictionary(begin, n);
         m_ranks.build(ranks.begin(), ranks.size());
         m_dict.build(dict.begin(), dict.size());
     }
@@ -183,14 +183,9 @@ private:
 };
 
 struct elias_fano {
-    template <typename T>
-    void encode(std::vector<T> const& values) {
-        // take prefix sums and encode
-        std::vector<uint64_t> tmp;
-        tmp.reserve(1 + values.size());
-        tmp.push_back(0);
-        for (auto val : values) tmp.push_back(tmp.back() + val);
-        m_values.encode(tmp);
+    template <typename Iterator>
+    void encode(Iterator begin, uint64_t n) {
+        m_values.encode(begin, n);
     }
 
     static std::string name() {
@@ -216,12 +211,13 @@ struct elias_fano {
     }
 
 private:
-    ef_sequence m_values;
+    ef_sequence<true> m_values;
 };
 
 struct sdc {
-    void encode(std::vector<uint64_t> const& values) {
-        auto [ranks, dict] = compute_ranks_and_dictionary(values);
+    template <typename Iterator>
+    void encode(Iterator begin, uint64_t n) {
+        auto [ranks, dict] = compute_ranks_and_dictionary(begin, n);
         m_ranks.build(ranks.begin(), ranks.size());
         m_dict.build(dict.begin(), dict.size());
     }
@@ -256,16 +252,11 @@ private:
 
 template <typename Front, typename Back>
 struct dual {
-    void encode(std::vector<uint64_t> const& values) {
-        std::vector<uint64_t> front;
-        std::vector<uint64_t> back;
-        size_t front_size = values.size() * 0.3;
-        front.reserve(front_size);
-        back.reserve(values.size() - front_size);
-        for (uint64_t i = 0; i != front_size; ++i) front.push_back(values[i]);
-        for (uint64_t i = front_size; i != values.size(); ++i) back.push_back(values[i]);
-        m_front.encode(front);
-        m_back.encode(back);
+    template <typename Iterator>
+    void encode(Iterator begin, uint64_t n) {
+        size_t front_size = n * 0.3;
+        m_front.encode(begin, front_size);
+        m_back.encode(begin + front_size, n - front_size);
     }
 
     static std::string name() {

@@ -1,9 +1,9 @@
 #pragma once
 
 #include "util.hpp"
+#include "search.hpp"
 #include "../utils/bucketers.hpp"
 #include "../utils/logger.hpp"
-#include "../utils/fill_free_slots.hpp"
 #include "../utils/hasher.hpp"
 
 namespace pthash {
@@ -12,45 +12,15 @@ template <typename Hasher>
 struct internal_memory_builder_single_mphf {
     typedef Hasher hasher_type;
 
-    struct bucket {
-        typedef std::vector<uint64_t>::const_iterator const_iterator;
-
-        bucket() {}
-
-        bucket(uint64_t id, const_iterator begin, uint64_t size)
-            : m_id(id), m_begin(begin), m_end(begin + size) {}
-
-        inline uint64_t id() const {
-            return m_id;
-        }
-
-        inline const_iterator begin() const {
-            return m_begin;
-        }
-
-        inline const_iterator end() const {
-            return m_end;
-        }
-
-        inline uint64_t size() const {
-            return std::distance(m_begin, m_end);
-        }
-
-    private:
-        uint64_t m_id;
-        const_iterator m_begin;
-        const_iterator m_end;
-    };
-
-    template <typename Iterator>
-    build_timings build_from_keys(Iterator keys, uint64_t num_keys,
+    template <typename RandomAccessIterator>
+    build_timings build_from_keys(RandomAccessIterator keys, uint64_t num_keys,
                                   build_configuration const& config) {
         if (config.seed == constants::invalid_seed) {
             for (auto attempt = 0; attempt < 10; ++attempt) {
                 m_seed = random_value();
                 try {
-                    return build_from_hashes(hash_iterator<Iterator>(keys, m_seed), num_keys,
-                                             config);
+                    return build_from_hashes(hash_generator<RandomAccessIterator>(keys, m_seed),
+                                             num_keys, config);
                 } catch (seed_runtime_error const& error) {
                     std::cout << "attempt " << attempt + 1 << " failed" << std::endl;
                 }
@@ -58,17 +28,19 @@ struct internal_memory_builder_single_mphf {
             throw seed_runtime_error();
         }
         m_seed = config.seed;
-        return build_from_hashes(hash_iterator<Iterator>(keys, m_seed), num_keys, config);
+        return build_from_hashes(hash_generator<RandomAccessIterator>(keys, m_seed), num_keys,
+                                 config);
     }
 
-    template <typename Iterator>
-    build_timings build_from_hashes(Iterator hashes, uint64_t num_keys,
+    template <typename RandomAccessIterator>
+    build_timings build_from_hashes(RandomAccessIterator hashes, uint64_t num_keys,
                                     build_configuration const& config) {
+        assert(num_keys > 1);
         if (config.alpha == 0 or config.alpha > 1.0) {
             throw std::invalid_argument("load factor must be > 0 and <= 1.0");
         }
 
-        clock_type::time_point start, stop;
+        clock_type::time_point start;
 
         start = clock_type::now();
 
@@ -82,6 +54,8 @@ struct internal_memory_builder_single_mphf {
 
         m_num_keys = num_keys;
         m_table_size = table_size;
+        m_num_buckets = num_buckets;
+        m_bucketer.init(m_num_buckets);
 
         if (config.verbose_output) {
             std::cout << "c = " << config.c << std::endl;
@@ -91,82 +65,45 @@ struct internal_memory_builder_single_mphf {
             std::cout << "num_buckets = " << num_buckets << std::endl;
         }
 
-        std::vector<bucket> buckets;
-        buckets.reserve(num_buckets);
-        uint64_t max_bucket_size = 0;
-        std::vector<uint64_t> sorted_hashes(num_keys + 1);
+        buckets_t buckets;
         {
-            typedef std::pair<uint64_t, uint64_t> record;  // (bucket_id, hash)
-
-            auto tmp = clock_type::now();
-            std::vector<record> records(num_keys + 1);
-            m_bucketer.init(num_buckets);
-            Iterator begin = hashes;
-            for (uint64_t i = 0; i != num_keys; ++i, ++begin) {
-                auto hash = *begin;
-                auto bucket_id = m_bucketer.bucket(hash.first());
-                records[i] = {bucket_id, hash.second()};
-            }
-            records[num_keys] = {uint64_t(-1), uint64_t(-1)};  // dummy record
-            std::sort(records.begin(), records.end(), [](record const& a, record const& b) {
-                return (a.first < b.first) or (a.first == b.first and a.second < b.second);
-            });
+            auto start = clock_type::now();
+            std::vector<pairs_t> pairs_blocks;
+            map(hashes, num_keys, pairs_blocks, config);
+            auto elapsed = seconds(clock_type::now() - start);
             if (config.verbose_output) {
-                std::cout << " == mapping took: " << seconds(clock_type::now() - tmp) << " seconds"
-                          << std::endl;
+                std::cout << " == map+sort took: " << elapsed << " seconds" << std::endl;
             }
 
-            tmp = clock_type::now();
-            bool collision_found = false;
-            sorted_hashes[0] = records[0].second;
-            uint64_t prev_size = 1;
-            for (uint64_t i = 1; i != records.size(); ++i) {
-                sorted_hashes[i] = records[i].second;
-                if (records[i].first == records[i - 1].first) {
-                    if (records[i].second != records[i - 1].second) {
-                        ++prev_size;
-                    } else {
-                        collision_found = true;
-                        break;
-                    }
-                } else {
-                    buckets.emplace_back(records[i - 1].first,
-                                         sorted_hashes.cbegin() + i - prev_size, prev_size);
-                    if (prev_size > max_bucket_size) max_bucket_size = prev_size;
-                    prev_size = 1;
-                }
-            }
-
+            start = clock_type::now();
+            merge(pairs_blocks, buckets, config.verbose_output);
+            elapsed = seconds(clock_type::now() - start);
             if (config.verbose_output) {
-                std::cout << " == check took: " << seconds(clock_type::now() - tmp) << " seconds"
-                          << std::endl;
+                std::cout << " == merge+check took: " << elapsed << " seconds" << std::endl;
             }
-            if (collision_found) throw seed_runtime_error();
         }
-
-        {
-            std::vector<bucket> buckets_ordered(buckets.size());
-            std::vector<uint64_t> offsets(max_bucket_size + 1, 0);
-            for (auto const& bucket : buckets) ++offsets[bucket.size() - 1];
-            for (uint64_t i = max_bucket_size; i > 0; --i) offsets[i - 1] += offsets[i];
-            for (auto const& bucket : buckets) buckets_ordered[offsets[bucket.size()]++] = bucket;
-            buckets = std::move(buckets_ordered);
-        }
-
-        stop = clock_type::now();
-        time.mapping_ordering_seconds = seconds(stop - start);
+        auto buckets_iterator = buckets.begin();
+        time.mapping_ordering_seconds = seconds(clock_type::now() - start);
         if (config.verbose_output) {
-            std::cout << " == map+sort took " << time.mapping_ordering_seconds << " seconds "
-                      << std::endl;
-            std::cout << " == max bucket size = " << max_bucket_size << std::endl;
+            std::cout << " == mapping+ordering took " << time.mapping_ordering_seconds
+                      << " seconds " << std::endl;
+            std::cout << " == max bucket size = " << int((*buckets_iterator).size()) << std::endl;
         }
 
         start = clock_type::now();
-        bit_vector_builder taken(table_size);
-        search(taken, num_buckets, buckets, config);
-        fill_free_slots(taken, num_keys, m_free_slots);
-        stop = clock_type::now();
-        time.searching_seconds = seconds(stop - start);
+        {
+            m_pilots.resize(num_buckets);
+            std::fill(m_pilots.begin(), m_pilots.end(), 0);
+            bit_vector_builder taken(m_table_size);
+            uint64_t num_non_empty_buckets = buckets.num_buckets();
+            pilots_wrapper_t pilots_wrapper(m_pilots);
+            search(m_num_keys, m_num_buckets, num_non_empty_buckets, m_seed, config,
+                   buckets_iterator, taken, pilots_wrapper);
+            m_free_slots.clear();
+            m_free_slots.reserve(taken.size() - num_keys);
+            fill_free_slots(taken, num_keys, m_free_slots);
+        }
+        time.searching_seconds = seconds(clock_type::now() - start);
         if (config.verbose_output) {
             std::cout << " == search took " << time.searching_seconds << " seconds" << std::endl;
         }
@@ -198,17 +135,58 @@ struct internal_memory_builder_single_mphf {
         return m_free_slots;
     }
 
+    void swap(internal_memory_builder_single_mphf& other) {
+        std::swap(m_seed, other.m_seed);
+        std::swap(m_num_keys, other.m_num_keys);
+        std::swap(m_num_buckets, other.m_num_buckets);
+        std::swap(m_table_size, other.m_table_size);
+        std::swap(m_bucketer, other.m_bucketer);
+        m_pilots.swap(other.m_pilots);
+        m_free_slots.swap(other.m_free_slots);
+    }
+
+    template <typename Visitor>
+    void visit(Visitor& visitor) {
+        visitor.visit(m_seed);
+        visitor.visit(m_num_keys);
+        visitor.visit(m_num_buckets);
+        visitor.visit(m_table_size);
+        visitor.visit(m_bucketer);
+        visitor.visit(m_pilots);
+        visitor.visit(m_free_slots);
+    }
+
+    static size_t estimate_num_bytes_for_construction(uint64_t num_keys,
+                                                      build_configuration const& config) {
+        uint64_t table_size = static_cast<double>(num_keys) / config.alpha;
+        if ((table_size & (table_size - 1)) == 0) table_size += 1;
+        uint64_t num_buckets = (config.num_buckets == constants::invalid_num_buckets)
+                                   ? (std::ceil((config.c * num_keys) / std::log2(num_keys)))
+                                   : config.num_buckets;
+
+        size_t mapping_bytes = num_keys * sizeof(bucket_payload_pair)          // pairs
+                               + (num_keys + num_buckets) * sizeof(uint64_t);  // buckets
+
+        size_t search_bytes = num_buckets * sizeof(uint64_t)                    // pilots
+                              + num_buckets * sizeof(uint64_t)                  // buckets
+                              + 2 * (table_size - num_keys) * sizeof(uint64_t)  // free_slots
+                              + num_keys * sizeof(uint64_t)                     // hashes
+                              + table_size / 8;                                 // bitmap taken
+        return std::max<size_t>(mapping_bytes, search_bytes);
+    }
+
 private:
     uint64_t m_seed;
     uint64_t m_num_keys;
+    uint64_t m_num_buckets;
     uint64_t m_table_size;
     skew_bucketer m_bucketer;
     std::vector<uint64_t> m_pilots;
     std::vector<uint64_t> m_free_slots;
 
-    template <typename Iterator>
-    struct hash_iterator {
-        hash_iterator(Iterator keys, uint64_t seed) : m_iterator(keys), m_seed(seed) {}
+    template <typename RandomAccessIterator>
+    struct hash_generator {
+        hash_generator(RandomAccessIterator keys, uint64_t seed) : m_iterator(keys), m_seed(seed) {}
 
         inline auto operator*() {
             return hasher_type::hash(*m_iterator, m_seed);
@@ -218,74 +196,141 @@ private:
             ++m_iterator;
         }
 
+        inline hash_generator operator+(uint64_t offset) const {
+            return hash_generator(m_iterator + offset, m_seed);
+        }
+
     private:
-        Iterator m_iterator;
+        RandomAccessIterator m_iterator;
         uint64_t m_seed;
     };
 
-    void search(bit_vector_builder& taken, uint64_t num_buckets, std::vector<bucket> const& buckets,
-                build_configuration const& config) {
-        uint64_t max_bucket_size = buckets.front().size();
-        uint64_t table_size = taken.size();
-        std::vector<uint64_t> local;
-        local.reserve(max_bucket_size);
-        m_pilots.resize(num_buckets, 0);
-        __uint128_t M = fastmod::computeM_u64(table_size);
+    typedef std::vector<bucket_payload_pair> pairs_t;
 
-        constexpr uint64_t cache_size = 1000;
-        std::vector<uint64_t> hashed_pilots_cache(cache_size);
-        for (uint64_t pilot = 0; pilot != cache_size; ++pilot) {
-            hashed_pilots_cache[pilot] = default_hash64(pilot, m_seed);
+    struct buckets_iterator_t {
+        buckets_iterator_t(std::vector<std::vector<uint64_t>> const& buffers)
+            : m_buffers_it(buffers.end() - 1), m_bucket_size(buffers.size()) {
+            m_bucket.init(m_buffers_it->data(), m_bucket_size);
+            skip_empty_buckets();
         }
 
-        logger log(m_num_keys, table_size, num_buckets);
-
-        for (uint64_t i = 0; i != buckets.size(); ++i) {
-            auto const& bucket = buckets[i];
-            assert(bucket.size() > 0);
-
-            uint64_t pilot = 0;
-            for (; true; ++pilot) {
-                uint64_t hashed_pilot = PTH_LIKELY(pilot < cache_size)
-                                            ? hashed_pilots_cache[pilot]
-                                            : default_hash64(pilot, m_seed);
-
-                auto bucket_it = bucket.begin(), bucket_end = bucket.end();
-                for (; bucket_it != bucket_end; ++bucket_it) {
-                    uint64_t hash = *bucket_it;
-                    uint64_t p = fastmod::fastmod_u64(hash ^ hashed_pilot, M, table_size);
-                    if (taken.get(p)) {
-                        local.clear();
-                        break;
-                    }
-                    local.push_back(p);
-                }
-
-                if (bucket_it == bucket_end) {  // all keys do not have collisions with taken
-
-                    // check for in-bucket collisions
-                    std::sort(local.begin(), local.end());
-                    auto it = std::adjacent_find(local.begin(), local.end());
-                    if (it != local.end()) {  // in-bucket collision detected
-                        local.clear();
-                        continue;  // try the next pilot
-                    }
-
-                    m_pilots[bucket.id()] = pilot;
-
-                    for (auto p : local) {
-                        assert(taken.get(p) == false);
-                        taken.set(p, true);
-                    }
-                    local.clear();
-                    break;
-                }
+        inline void operator++() {
+            uint64_t const* begin = m_bucket.begin() + m_bucket_size;
+            uint64_t const* end = m_buffers_it->data() + m_buffers_it->size();
+            m_bucket.init(begin, m_bucket_size);
+            if ((m_bucket.begin() - 1) == end and m_bucket_size != 0) {
+                --m_bucket_size;
+                --m_buffers_it;
+                skip_empty_buckets();
             }
-
-            if (config.verbose_output) log.update(i, bucket.size(), pilot);
         }
 
-        if (config.verbose_output) log.finalize(buckets.size());
+        inline bucket_t operator*() const {
+            return m_bucket;
+        }
+
+    private:
+        std::vector<std::vector<uint64_t>>::const_iterator m_buffers_it;
+        bucket_size_type m_bucket_size;
+        bucket_t m_bucket;
+
+        void skip_empty_buckets() {
+            while (m_bucket_size != 0 and m_buffers_it->empty()) {
+                --m_bucket_size;
+                --m_buffers_it;
+            }
+            if (m_bucket_size != 0) m_bucket.init(m_buffers_it->data(), m_bucket_size);
+        }
+    };
+
+    struct buckets_t {
+        buckets_t() : m_buffers(MAX_BUCKET_SIZE), m_num_buckets(0) {}
+
+        template <typename HashIterator>
+        void add(bucket_id_type bucket_id, bucket_size_type bucket_size, HashIterator hashes) {
+            assert(bucket_size > 0);
+            uint64_t i = bucket_size - 1;
+            m_buffers[i].push_back(bucket_id);
+            for (uint64_t k = 0; k != bucket_size; ++k, ++hashes) m_buffers[i].push_back(*hashes);
+            ++m_num_buckets;
+        }
+
+        uint64_t num_buckets() const {
+            return m_num_buckets;
+        };
+
+        buckets_iterator_t begin() const {
+            return buckets_iterator_t(m_buffers);
+        }
+
+    private:
+        std::vector<std::vector<uint64_t>> m_buffers;
+        uint64_t m_num_buckets;
+    };
+
+    struct pilots_wrapper_t {
+        pilots_wrapper_t(std::vector<uint64_t>& pilots) : m_pilots(pilots) {}
+
+        inline void emplace_back(bucket_id_type bucket_id, uint64_t pilot) {
+            m_pilots[bucket_id] = pilot;
+        }
+
+    private:
+        std::vector<uint64_t>& m_pilots;
+    };
+
+    template <typename RandomAccessIterator>
+    void map_sequential(RandomAccessIterator hashes, uint64_t num_keys,
+                        std::vector<pairs_t>& pairs_blocks, build_configuration const&) const {
+        pairs_t pairs(num_keys);
+        RandomAccessIterator begin = hashes;
+        for (uint64_t i = 0; i != num_keys; ++i, ++begin) {
+            auto hash = *begin;
+            auto bucket_id = m_bucketer.bucket(hash.first());
+            pairs[i] = {static_cast<bucket_id_type>(bucket_id), hash.second()};
+        }
+        std::sort(pairs.begin(), pairs.end());
+        pairs_blocks.resize(1);
+        pairs_blocks.front().swap(pairs);
+    }
+
+    template <typename RandomAccessIterator>
+    void map_parallel(RandomAccessIterator hashes, uint64_t num_keys,
+                      std::vector<pairs_t>& pairs_blocks, build_configuration const& config) const {
+        pairs_blocks.resize(config.num_threads);
+        uint64_t num_keys_per_thread = (num_keys + config.num_threads - 1) / config.num_threads;
+
+        auto exe = [&](uint64_t tid) {
+            auto& local_pairs = pairs_blocks[tid];
+            RandomAccessIterator begin = hashes + tid * num_keys_per_thread;
+            uint64_t local_num_keys = (tid != config.num_threads - 1)
+                                          ? num_keys_per_thread
+                                          : (num_keys - tid * num_keys_per_thread);
+            local_pairs.resize(local_num_keys);
+
+            for (uint64_t local_i = 0; local_i != local_num_keys; ++local_i, ++begin) {
+                auto hash = *begin;
+                auto bucket_id = m_bucketer.bucket(hash.first());
+                local_pairs[local_i] = {static_cast<bucket_id_type>(bucket_id), hash.second()};
+            }
+            std::sort(local_pairs.begin(), local_pairs.end());
+        };
+
+        std::vector<std::thread> threads(config.num_threads);
+        for (uint64_t i = 0; i != config.num_threads; ++i) threads[i] = std::thread(exe, i);
+        for (auto& t : threads) {
+            if (t.joinable()) t.join();
+        }
+    }
+
+    template <typename RandomAccessIterator>
+    void map(RandomAccessIterator hashes, uint64_t num_keys, std::vector<pairs_t>& pairs_blocks,
+             build_configuration const& config) const {
+        if (config.num_threads > 1) {
+            map_parallel(hashes, num_keys, pairs_blocks, config);
+        } else {
+            map_sequential(hashes, num_keys, pairs_blocks, config);
+        }
     }
 };
 

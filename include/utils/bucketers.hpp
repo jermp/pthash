@@ -21,9 +21,20 @@ struct skew_bucketer {
                                                                        m_num_sparse_buckets);
     }
 
+    uint64_t num_buckets() const {
+        return m_num_dense_buckets + m_num_sparse_buckets;
+    }
+
     size_t num_bits() const {
         return 8 * (sizeof(m_num_dense_buckets) + sizeof(m_num_sparse_buckets) +
                     sizeof(m_M_num_dense_buckets) + sizeof(m_M_num_sparse_buckets));
+    }
+
+    void swap(skew_bucketer& other) {
+        std::swap(m_num_dense_buckets, other.m_num_dense_buckets);
+        std::swap(m_num_sparse_buckets, other.m_num_sparse_buckets);
+        std::swap(m_M_num_dense_buckets, other.m_M_num_dense_buckets);
+        std::swap(m_M_num_sparse_buckets, other.m_M_num_sparse_buckets);
     }
 
     template <typename Visitor>
@@ -49,6 +60,10 @@ struct uniform_bucketer {
 
     inline uint64_t bucket(uint64_t hash) const {
         return fastmod::fastmod_u64(hash, m_M_num_buckets, m_num_buckets);
+    }
+
+    uint64_t num_buckets() const {
+        return m_num_buckets;
     }
 
     size_t num_bits() const {

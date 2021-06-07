@@ -1,10 +1,7 @@
 #pragma once
 
-#include <thread>
-
-#include "../../external/mm_file/include/mm_file/mm_file.hpp"
-#include "internal_memory_builder_single_mphf.hpp"
 #include "util.hpp"
+#include "internal_memory_builder_single_mphf.hpp"
 
 namespace pthash {
 
@@ -15,6 +12,7 @@ struct internal_memory_builder_partitioned_mphf {
     template <typename Iterator>
     build_timings build_from_keys(Iterator keys, uint64_t num_keys,
                                   build_configuration const& config) {
+        assert(num_keys > 1);
         if (config.num_partitions == 0) {
             throw std::invalid_argument("number of partitions must be > 0");
         }
@@ -33,20 +31,28 @@ struct internal_memory_builder_partitioned_mphf {
         m_builders.resize(num_partitions);
 
         double average_partition_size = static_cast<double>(num_keys) / num_partitions;
+        if (average_partition_size < 10000) {
+            throw std::runtime_error("average partition size is too small: use less partitions");
+        }
         std::vector<std::vector<typename hasher_type::hash_type>> partitions(num_partitions);
         for (auto& partition : partitions) partition.reserve(1.5 * average_partition_size);
 
+        progress_logger logger(num_keys, " == partitioned ", " keys", config.verbose_output);
         for (uint64_t i = 0; i != num_keys; ++i, ++keys) {
             auto const& key = *keys;
             auto hash = hasher_type::hash(key, m_seed);
             auto b = m_bucketer.bucket(hash.mix());
             partitions[b].push_back(hash);
+            logger.log();
         }
-
-        timings.partitioning_seconds = seconds(clock_type::now() - start);
+        logger.finalize();
 
         for (uint64_t i = 0, cumulative_size = 0; i != num_partitions; ++i) {
             auto const& partition = partitions[i];
+            if (partition.size() <= 1) {
+                throw std::runtime_error(
+                    "each partition must contain more than one key: use less partitions");
+            }
             m_offsets[i] = cumulative_size;
             cumulative_size += partition.size();
         }
@@ -57,8 +63,12 @@ struct internal_memory_builder_partitioned_mphf {
         partition_config.num_buckets =
             static_cast<double>(num_buckets_single_mphf) / num_partitions;
         partition_config.verbose_output = false;
+        partition_config.num_threads = 1;
 
-        auto t = build_partitions(partitions.begin(), m_builders.begin(), partition_config);
+        timings.partitioning_seconds = seconds(clock_type::now() - start);
+
+        auto t = build_partitions(partitions.begin(), m_builders.begin(), partition_config,
+                                  config.num_threads);
         timings.mapping_ordering_seconds = t.mapping_ordering_seconds;
         timings.searching_seconds = t.searching_seconds;
 
@@ -67,10 +77,10 @@ struct internal_memory_builder_partitioned_mphf {
 
     template <typename PartitionsIterator, typename BuildersIterator>
     static build_timings build_partitions(PartitionsIterator partitions, BuildersIterator builders,
-                                          build_configuration const& config) {
+                                          build_configuration const& config, uint64_t num_threads) {
         build_timings timings;
-        uint64_t num_threads = config.num_threads;
         uint64_t num_partitions = config.num_partitions;
+        assert(config.num_threads == 1);
 
         if (num_threads > 1) {  // parallel
             std::vector<std::thread> threads(num_threads);
@@ -144,7 +154,6 @@ private:
     uint64_t m_num_keys;
     uint64_t m_num_partitions;
     uniform_bucketer m_bucketer;
-
     std::vector<uint64_t> m_offsets;
     std::vector<internal_memory_builder_single_mphf<hasher_type>> m_builders;
 };

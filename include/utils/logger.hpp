@@ -1,80 +1,66 @@
 #pragma once
 
-#include <math.h>  // for pow
-
-#include "../../external/essentials/include/essentials.hpp"
+#include <ostream>
+#include <string>
 
 namespace pthash {
 
-struct logger {
-    logger(uint64_t num_keys, uint64_t table_size, uint64_t num_buckets)
-        : m_num_keys(num_keys)
-        , m_table_size(table_size)
-        , m_num_buckets(num_buckets)
-        , m_step(m_num_buckets > 20 ? m_num_buckets / 20 : 1)
-        , m_bucket(0)
-        , m_placed_keys(0)
-        , m_trials(0)
-        , m_total_trials(0)
-        , m_expected_trials(0.0)
-        , m_total_expected_trials(0.0) {
-        m_timer.start();
-    }
-
-    void update(uint64_t bucket, uint64_t bucket_size, uint64_t pilot) {
-        if (bucket > 0) {
-            double base = static_cast<double>(m_table_size - m_placed_keys) / m_table_size;
-            double p = pow(base, bucket_size);
-            double e = 1.0 / p;
-            m_expected_trials += e;
-            m_total_expected_trials += e;
+struct progress_logger {
+    progress_logger(uint64_t total_events, std::string const& prefix = "",
+                    std::string const& suffix = "", bool enable = true)
+        : m_total_events(total_events), m_prefix(prefix), m_suffix(suffix), m_logged_events(0) {
+        // TODO: improve the computation of log_step using timings !
+        uint64_t perc_fraction = (total_events >= 100000000) ? 100 : 20;
+        m_log_step = (total_events + perc_fraction - 1) / perc_fraction;
+        m_next_event_to_log = static_cast<uint64_t>(-1);
+        if (enable) {
+            m_next_event_to_log = m_log_step;
+            update(false);
         }
-
-        m_placed_keys += bucket_size;
-        m_trials += pilot + 1;
-        m_total_trials += pilot + 1;
-
-        if (bucket > 0 and bucket % m_step == 0) print(bucket);
     }
 
-    void finalize(uint64_t bucket) {
-        m_step = bucket - m_bucket;
-        print(bucket);
-        std::cout << " == " << m_num_buckets - bucket << " empty buckets ("
-                  << ((m_num_buckets - bucket) * 100.0) / m_num_buckets << "%)" << std::endl;
-        std::cout << " == total trials = " << m_total_trials << std::endl;
-        std::cout << " == total expected trials = " << uint64_t(m_total_expected_trials)
-                  << std::endl;
+    inline void log() {
+        if (++m_logged_events >= m_next_event_to_log) {
+            update(false);
+            m_next_event_to_log += m_log_step;
+            // the following ensures the last update on 100%
+            if (m_next_event_to_log > m_total_events) m_next_event_to_log = m_total_events;
+        }
     }
 
-    void print(uint64_t bucket) {
-        m_timer.stop();
-        std::cout << "  == " << m_step << " buckets done in " << m_timer.elapsed() << " seconds ("
-                  << (m_placed_keys * 100.0) / m_num_keys << "% of keys, "
-                  << (bucket * 100.0) / m_num_buckets << "% of buckets, "
-                  << static_cast<double>(m_trials) / m_step << " trials per bucket, "
-                  << m_expected_trials / m_step << " expected trials per bucket)\n";
-        m_bucket = bucket;
-        m_trials = 0;
-        m_expected_trials = 0.0;
-        m_timer.reset();
-        m_timer.start();
+    void finalize() {
+        if (m_next_event_to_log != static_cast<uint64_t>(-1)) {
+            assert(m_next_event_to_log == m_total_events);
+            assert(m_logged_events == m_total_events);
+            update(true);
+        }
+    }
+
+    uint64_t total_events() const {
+        return m_total_events;
+    }
+
+    uint64_t logged_events() const {
+        return m_logged_events;
     }
 
 private:
-    uint64_t m_num_keys;
-    uint64_t m_table_size;
-    uint64_t m_num_buckets;
-    uint64_t m_step;
-    uint64_t m_bucket;
-    uint64_t m_placed_keys;
+    inline void update(bool final) const {
+        uint64_t perc = (100 * m_logged_events / m_total_events);
+        std::cout << "\r" << m_prefix << perc << "%" << m_suffix;
+        if (final) {
+            std::cout << std::endl;
+        } else {
+            std::cout << std::flush;
+        }
+    }
 
-    uint64_t m_trials;
-    uint64_t m_total_trials;
-    double m_expected_trials;
-    double m_total_expected_trials;
-
-    essentials::timer<std::chrono::high_resolution_clock, std::chrono::seconds> m_timer;
+    const uint64_t m_total_events;
+    const std::string m_prefix = "";
+    const std::string m_suffix = "";
+    uint64_t m_logged_events;
+    uint64_t m_log_step;
+    uint64_t m_next_event_to_log;
 };
 
 }  // namespace pthash

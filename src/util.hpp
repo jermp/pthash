@@ -1,18 +1,61 @@
 #pragma once
 
+#include <chrono>
+#include <fstream>
 #include <iostream>
 #include <iomanip>
-#include <vector>
+#include <iterator>
+#include <sstream>  // for stringbuf
 #include <string>
-#include <fstream>
-#include <chrono>
+#include <vector>
 
 #include "../include/utils/util.hpp"
 #include "../external/essentials/include/essentials.hpp"
 
 namespace pthash {
 
-std::vector<std::string> read_string_collection(uint64_t n, char const* filename) {
+struct lines_iterator : std::forward_iterator_tag {
+    typedef std::string value_type;
+
+    lines_iterator(uint8_t const* begin, uint8_t const* end)
+        : m_begin(begin), m_end(end), m_num_nonempty_lines(0) {}
+
+    std::string operator*() {
+        uint8_t const* begin = m_begin;
+        while (m_begin != m_end and *m_begin++ != '\n')
+            ;
+
+        if (m_begin <= begin + 1) {
+            std::stringbuf buffer;
+            std::ostream os(&buffer);
+            if (m_begin == m_end) {
+                os << "reached end of file";
+            } else {
+                os << "blank line detected";
+            }
+            os << " after reading " << m_num_nonempty_lines << " non-empty lines";
+            throw std::runtime_error(buffer.str());
+        }
+
+        ++m_num_nonempty_lines;
+        return std::string(reinterpret_cast<const char*>(begin), m_begin - begin - 1);
+    }
+
+    void operator++(int) const {}
+    void operator++() const {}
+
+    lines_iterator operator+(uint64_t) const {
+        throw std::runtime_error("lines_iterator::operator+(uint64_t) has not been implemented");
+    }
+
+private:
+    uint8_t const* m_begin;
+    uint8_t const* m_end;
+    uint64_t m_num_nonempty_lines;
+};
+
+std::vector<std::string> read_string_collection(uint64_t n, char const* filename, bool verbose) {
+    progress_logger logger(n, "read ", " keys from file", verbose);
     std::ifstream input(filename);
     if (!input.good()) throw std::runtime_error("error in opening file.");
     std::string s;
@@ -24,18 +67,19 @@ std::vector<std::string> read_string_collection(uint64_t n, char const* filename
         if (s.size() > max_string_length) max_string_length = s.size();
         sum_of_lengths += s.size();
         strings.push_back(s);
-        if (strings.size() % 1000000 == 0) {
-            std::cout << "read " << strings.size() << " strings" << std::endl;
-        }
+        logger.log();
         if (strings.size() == n) break;
     }
     input.close();
     strings.shrink_to_fit();
-    std::cout << "num_strings " << strings.size() << std::endl;
-    std::cout << "max_string_length " << max_string_length << std::endl;
-    std::cout << "total_length " << sum_of_lengths << std::endl;
-    std::cout << "avg_string_length " << std::fixed << std::setprecision(2)
-              << static_cast<double>(sum_of_lengths) / strings.size() << std::endl;
+    logger.finalize();
+    if (verbose) {
+        std::cout << "num_strings " << strings.size() << std::endl;
+        std::cout << "max_string_length " << max_string_length << std::endl;
+        std::cout << "total_length " << sum_of_lengths << std::endl;
+        std::cout << "avg_string_length " << std::fixed << std::setprecision(2)
+                  << static_cast<double>(sum_of_lengths) / strings.size() << std::endl;
+    }
     return strings;
 }
 

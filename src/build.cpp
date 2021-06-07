@@ -20,7 +20,7 @@ struct build_parameters {
 };
 
 template <typename MPHF, typename Builder, typename Iterator>
-void build_benchmark(Builder const& builder, build_timings const& timings,
+void build_benchmark(Builder& builder, build_timings const& timings,
                      build_parameters<Iterator> const& params, build_configuration const& config) {
     MPHF f;
     double encoding_seconds = f.build(builder, config);
@@ -49,13 +49,17 @@ void build_benchmark(Builder const& builder, build_timings const& timings,
 
     // correctness check
     if (params.check) {
-        essentials::logger("checking data strcture for correctness...");
-        if (check(params.keys, params.num_keys, f)) std::cout << "EVERYTHING OK!" << std::endl;
+        if (config.verbose_output) {
+            essentials::logger("checking data structure for correctness...");
+        }
+        if (check(params.keys, params.num_keys, f) and config.verbose_output) {
+            std::cout << "EVERYTHING OK!" << std::endl;
+        }
     }
 
     double nanosec_per_key = 0;
     if (params.lookup) {
-        essentials::logger("measuring lookup time...");
+        if (config.verbose_output) essentials::logger("measuring lookup time...");
         if (params.external_memory) {
             std::vector<typename Iterator::value_type> queries;
             uint64_t remaining = params.num_keys, batch_size = 100 * 1000000;
@@ -72,7 +76,7 @@ void build_benchmark(Builder const& builder, build_timings const& timings,
         } else {
             nanosec_per_key = perf(params.keys, params.num_keys, f);
         }
-        std::cout << nanosec_per_key << " [nanosec/key]" << std::endl;
+        if (config.verbose_output) std::cout << nanosec_per_key << " [nanosec/key]" << std::endl;
     }
 
     essentials::json_lines result;
@@ -80,7 +84,7 @@ void build_benchmark(Builder const& builder, build_timings const& timings,
     result.add("n", params.num_keys);
     result.add("c", config.c);
     result.add("alpha", config.alpha);
-    result.add("encoder_type", MPHF::encoder_type::name());
+    result.add("encoder_type", MPHF::encoder_type::name().c_str());
     result.add("num_partitions", config.num_partitions);
     if (config.seed != constants::invalid_seed) result.add("seed", config.seed);
     result.add("num_threads", config.num_threads);
@@ -105,7 +109,7 @@ void build_benchmark(Builder const& builder, build_timings const& timings,
 }
 
 template <bool partitioned, typename Encoder, typename Builder, typename Iterator>
-void choose_mphf(Builder const& builder, build_timings const& timings,
+void choose_mphf(Builder& builder, build_timings const& timings,
                  build_parameters<Iterator> const& params, build_configuration const& config) {
     if constexpr (partitioned) {
         build_benchmark<partitioned_mphf<typename Builder::hasher_type, Encoder>>(builder, timings,
@@ -118,17 +122,20 @@ void choose_mphf(Builder const& builder, build_timings const& timings,
 
 template <bool partitioned, typename Builder, typename Iterator>
 void choose_encoder(build_parameters<Iterator> const& params, build_configuration const& config) {
+    if (config.verbose_output) essentials::logger("construction starts");
+
     Builder builder;
     build_timings timings = builder.build_from_keys(params.keys, params.num_keys, config);
 
     bool encode_all = (params.encoder_type == "all");
 
+#ifdef PTHASH_ENABLE_ALL_ENCODERS
     if (encode_all or params.encoder_type == "compact") {
         choose_mphf<partitioned, compact>(builder, timings, params, config);
     }
-    // if (encode_all or params.encoder_type == "partitioned_compact") {
-    //     choose_mphf<partitioned, partitioned_compact>(builder, timings, params, config);
-    // }
+    if (encode_all or params.encoder_type == "partitioned_compact") {
+        choose_mphf<partitioned, partitioned_compact>(builder, timings, params, config);
+    }
     if (encode_all or params.encoder_type == "compact_compact") {
         choose_mphf<partitioned, compact_compact>(builder, timings, params, config);
     }
@@ -147,6 +154,17 @@ void choose_encoder(build_parameters<Iterator> const& params, build_configuratio
     if (encode_all or params.encoder_type == "sdc") {
         choose_mphf<partitioned, sdc>(builder, timings, params, config);
     }
+#else
+    if (encode_all or params.encoder_type == "partitioned_compact") {
+        choose_mphf<partitioned, partitioned_compact>(builder, timings, params, config);
+    }
+    if (encode_all or params.encoder_type == "dictionary_dictionary") {
+        choose_mphf<partitioned, dictionary_dictionary>(builder, timings, params, config);
+    }
+    if (encode_all or params.encoder_type == "elias_fano") {
+        choose_mphf<partitioned, elias_fano>(builder, timings, params, config);
+    }
+#endif
 }
 
 template <typename Hasher, typename Iterator>
@@ -184,11 +202,15 @@ void build(cmd_line_parser::parser const& parser, Iterator keys, uint64_t num_ke
 
     params.encoder_type = parser.get<std::string>("encoder_type");
     {
-        std::unordered_set<std::string> encoders({"compact",
-                                                  // "partitioned_compact",
-                                                  "compact_compact", "dictionary",
-                                                  "dictionary_dictionary", "elias_fano",
-                                                  "dictionary_elias_fano", "sdc", "all"});
+        std::unordered_set<std::string> encoders({
+
+#ifdef PTHASH_ENABLE_ALL_ENCODERS
+            "compact", "partitioned_compact", "compact_compact", "dictionary",
+            "dictionary_dictionary", "elias_fano", "dictionary_elias_fano", "sdc", "all"
+#else
+            "partitioned_compact", "dictionary_dictionary", "elias_fano", "all"
+#endif
+        });
         if (encoders.find(params.encoder_type) == encoders.end()) {
             std::cerr << "unknown encoder type" << std::endl;
             return;
@@ -210,14 +232,14 @@ void build(cmd_line_parser::parser const& parser, Iterator keys, uint64_t num_ke
 
     if (parser.parsed("num_threads")) {
         config.num_threads = parser.get<uint64_t>("num_threads");
+        if (config.num_threads == 0) {
+            std::cout << "Warning: specified 0 threads, defaulting to 1" << std::endl;
+            config.num_threads = 1;
+        }
         uint64_t num_threads = std::thread::hardware_concurrency();
         if (config.num_threads > num_threads) {
             config.num_threads = num_threads;
             std::cout << "Warning: too many threads specified, defaulting to " << config.num_threads
-                      << std::endl;
-        }
-        if (config.num_partitions == 1) {
-            std::cerr << "Warning: you have to specify more partitions to use multithreading"
                       << std::endl;
         }
     }
@@ -225,13 +247,28 @@ void build(cmd_line_parser::parser const& parser, Iterator keys, uint64_t num_ke
     if (parser.parsed("seed")) config.seed = parser.get<uint64_t>("seed");
     if (parser.parsed("tmp_dir")) config.tmp_dir = parser.get<std::string>("tmp_dir");
 
+    if (parser.parsed("ram")) {
+        constexpr uint64_t GB = 1000000000;
+        uint64_t ram = parser.get<double>("ram") * GB;
+        if (ram > constants::available_ram) {
+            double available_ram_in_GB = static_cast<double>(constants::available_ram) / GB;
+            std::cout << "Warning: too much RAM specified, this machine has " << available_ram_in_GB
+                      << " GB of RAM; defaulting to " << available_ram_in_GB * 0.75 << " GB"
+                      << std::endl;
+            ram = static_cast<double>(constants::available_ram) * 0.75;
+        }
+        config.ram = ram;
+    }
+
     choose_hasher(params, config);
 }
 
 int main(int argc, char** argv) {
     cmd_line_parser::parser parser(argc, argv);
     parser.add("num_keys", "The size of the input.");
-    parser.add("c", "A constant that trades construction speed for space effectiveness.");
+    parser.add("c",
+               "A constant that trades construction speed for space effectiveness. "
+               "A reasonable value lies between 3.0 and 10.0.");
     parser.add("alpha", "The table load factor. It must be a quantity > 0 and <= 1.");
     parser.add(
         "encoder_type",
@@ -250,6 +287,8 @@ int main(int argc, char** argv) {
                "Temporary directory used for building in external memory. Default is directory '" +
                    constants::default_tmp_dirname + "'.",
                "-d", false);
+    parser.add("ram", "Number of Giga bytes of RAM to use for construction in external memory.",
+               "-m", false);
     parser.add("external_memory", "Build the MPHF in external memory.", "--external", true);
     parser.add("verbose_output", "Verbose output during construction.", "--verbose", true);
     parser.add("check", "Check correctness after construction.", "--check", true);
@@ -263,18 +302,18 @@ int main(int argc, char** argv) {
     if (parser.parsed("input_filename")) {
         auto input_filename = parser.get<std::string>("input_filename");
         if (external_memory) {
-            file_lines_iterator keys(input_filename.c_str());
+            mm::file_source<uint8_t> input(input_filename, mm::advice::sequential);
+            lines_iterator keys(input.data(), input.data() + input.size());
             build(parser, keys, num_keys);
+            input.close();
         } else {
-            std::vector<std::string> keys =
-                read_string_collection(num_keys, input_filename.c_str());
+            std::vector<std::string> keys = read_string_collection(
+                num_keys, input_filename.c_str(), parser.get<bool>("verbose_output"));
             build(parser, keys.begin(), keys.size());
         }
     } else {  // use num_keys random 64-bit keys
         if (external_memory) {
-            std::cerr << "you must provide an input file to build a MPHF in external memory"
-                      << std::endl;
-            return 1;
+            std::cout << "Warning: external memory construction with in-memory input" << std::endl;
         }
         std::vector<uint64_t> keys = distinct_keys<uint64_t>(num_keys, seed);
         build(parser, keys.begin(), keys.size());

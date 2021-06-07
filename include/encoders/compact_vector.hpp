@@ -204,6 +204,7 @@ struct compact_vector {
 
     template <typename Iterator>
     void build(Iterator begin, uint64_t n) {
+        assert(n > 0);
         uint64_t max = *std::max_element(begin, begin + n);
         uint64_t width = max == 0 ? 1 : std::ceil(std::log2(max + 1));
         build(begin, n, width);

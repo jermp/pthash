@@ -30,7 +30,7 @@ struct sdc_sequence {
         assert(pos == bits);
         lengths.push_back(pos);
         bit_vector(&bvb_codewords).swap(m_codewords);
-        m_index.encode(lengths);
+        m_index.encode(lengths.data(), lengths.size());
     }
 
     inline uint64_t access(uint64_t i) const {
@@ -61,7 +61,7 @@ struct sdc_sequence {
 private:
     uint64_t m_size;
     bit_vector m_codewords;
-    ef_sequence m_index;
+    ef_sequence<false> m_index;
 };
 
 }  // namespace pthash

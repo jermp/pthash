@@ -44,10 +44,9 @@ public:
     }
 
     template <typename Builder>
-    double build(Builder const& builder, build_configuration const& config) {
+    double build(Builder& builder, build_configuration const& config) {
         auto start = clock_type::now();
         uint64_t num_partitions = builder.num_partitions();
-        uint64_t num_threads = config.num_threads;
 
         m_seed = builder.seed();
         m_num_keys = builder.num_keys();
@@ -56,6 +55,7 @@ public:
 
         auto const& offsets = builder.offsets();
         auto const& builders = builder.builders();
+        uint64_t num_threads = config.num_threads;
 
         if (num_threads > 1) {
             std::vector<std::thread> threads(num_threads);
@@ -83,6 +83,7 @@ public:
                 m_partitions[i].f.build(builders[i], config);
             }
         }
+
         auto stop = clock_type::now();
         return seconds(stop - start);
     }

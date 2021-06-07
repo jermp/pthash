@@ -50,8 +50,8 @@ inline uint64_t popcount(uint64_t x) {
 
 inline uint64_t select64_pdep_tzcnt(uint64_t x, const uint64_t k) {
     uint64_t i = 1ULL << k;
-    asm("pdep %[x], %[mask], %[x]" : [ x ] "+r"(x) : [ mask ] "r"(i));
-    asm("tzcnt %[bit], %[index]" : [ index ] "=r"(i) : [ bit ] "g"(x) : "cc");
+    asm("pdep %[x], %[mask], %[x]" : [x] "+r"(x) : [mask] "r"(i));
+    asm("tzcnt %[bit], %[index]" : [index] "=r"(i) : [bit] "g"(x) : "cc");
     return i;
 }
 

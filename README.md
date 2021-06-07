@@ -1,8 +1,10 @@
 PTHash
 ------
 
-PTHash is a C++ library implementing fast and compact minimal perfect hash functions as described in the paper
-[*PTHash: Revisiting FCH Minimal Perfect Hashing*](https://arxiv.org/abs/2104.10402) [1].
+PTHash is a C++ library implementing fast and compact minimal perfect hash functions as described in the papers
+
+* [*PTHash: Revisiting FCH Minimal Perfect Hashing*](https://arxiv.org/abs/2104.10402) [1]
+* [*Parallel and External-Memory Construction of Minimal Perfect Hash Functions with PTHash*](https://arxiv.org/abs/2106.02350) [2]
 
 Given a set *S* of *n* distinct keys, a function *f* that bijectively maps the keys of *S* into the first *n* natural numbers
 is called a *minimal perfect hash function* (MPHF) for *S*.
@@ -10,7 +12,7 @@ Algorithms that find such functions when *n* is large and retain constant evalua
 For instance, search engines and databases typically use minimal perfect hash functions to quickly assign identifiers to static sets of variable-length keys such as strings.
 The challenge is to design an algorithm which is efficient in three different aspects: time to find *f* (construction time), time to evaluate *f* on a key of *S* (lookup time), and space of representation for *f*.
 
-PTHash is one such algorithm [1].
+PTHash is one such algorithm.
 
 The following guide is meant to provide a brief overview of the library
 by illustrating its functionalities through some examples.
@@ -64,10 +66,20 @@ For a testing environment, use the following instead:
 
     mkdir debug_build
     cd debug_build
-    cmake .. -DCMAKE_BUILD_TYPE=Debug -DUSE_SANITIZERS=On
+    cmake .. -D CMAKE_BUILD_TYPE=Debug -D PTHASH_USE_SANITIZERS=On
     make
 
 (NOTE: Beware that the software will result in a much slower execution when running in debug mode and using sanitizers. Use this only for debug purposes, not to run performance tests.)
+
+### Enable All Encoders
+By default, you can choose between three encoders to compress the PTHash
+data structure: `partitioned_compact`, `dictionary_dictionary`, and `elias_fano`, respectively
+indicated with PC, D-D, and EF in our papers.
+
+If you want to test all the encoders we tested in the SIGIR paper [1],
+you can compile with
+
+	cmake .. -D PTHASH_ENABLE_ALL_ENCODERS=On
 
 Quick Start
 -----
@@ -81,7 +93,7 @@ After compilation, run this example with
 	./example
 
 which will build a PTHash MPHF on 10M random 64-bit keys
-using c = 7.0 and alpha = 0.94.
+using c = 6.0 and alpha = 0.94.
 It also shows how to serialize the data structure on disk
 and re-load it for evaluation.
 
@@ -160,36 +172,53 @@ Running the command
 
 shows the usage of the driver program, as reported below.
 
-	Usage: ./build [-h,--help] num_keys c alpha encoder_type [-p num_partitions] [-s seed] [-t num_threads] [-i input_filename] [-o output_filename] [-d tmp_dir] [--external] [--verbose] [--check] [--lookup]
-
+	Usage: ./build [-h,--help] num_keys c alpha encoder_type [-p num_partitions] [-s seed] [-t num_threads] [-i input_filename] [-o output_filename] [-d tmp_dir] [-m ram] [--external] [--verbose] [--check] [--lookup]
+	
 	 num_keys
 		The size of the input.
+	
 	 c
-		A constant that trades construction speed for space effectiveness.
+		A constant that trades construction speed for space effectiveness. A reasonable value lies between 3.0 and 10.0.
+	
 	 alpha
 		The table load factor. It must be a quantity > 0 and <= 1.
+	
 	 encoder_type
 		The encoder type. See include/encoders/encoders.hpp for a list of available types.
+	
 	 [-p num_partitions]
 		Number of partitions.
+	
 	 [-s seed]
 		Seed to use for construction.
+	
 	 [-t num_threads]
 		Number of threads to use for construction.
+	
 	 [-i input_filename]
 		A string input file name. If this is not provided, then num_keys 64-bit random keys will be used as input instead.
+	
 	 [-o output_filename]
 		Output file name where the MPHF will be serialized.
+	
 	 [-d tmp_dir]
 		Temporary directory used for building in external memory. Default is directory '.'.
+	
+	 [-m ram]
+		Number of Giga bytes of RAM to use for construction in external memory.
+	
 	 [--external]
 		Build the MPHF in external memory.
+	
 	 [--verbose]
 		Verbose output during construction.
+	
 	 [--check]
 		Check correctness after construction.
+	
 	 [--lookup]
 		Measure average lookup time after construction.
+	
 	 [-h,--help]
 		Print this help text and silently exits.
 
@@ -204,7 +233,7 @@ The data structure will be serialized on a binary file named `mphf.bin`.
 It will also check the correctness of the data structure (flag `--check`) and measure average lookup time (flag `--lookup`).
 
 Construction will happen in **internal memory**, using a **single processing thread**.
-(Experimental setting of the paper.)
+(Experimental setting of the SIGIR paper [1].)
 
 
 #### Example 2
@@ -224,7 +253,7 @@ After download, place the dataset in the `build` directory and run
 to uncompress it.
 The file contains one string per line, for a total of 39,459,925 strings.
 
-#### NOTE: Input files are read line by line (i.e., individual strings are assumed to be separated by the character `\n`).
+#### NOTE: Input files are read line by line (i.e., individual strings are assumed to be separated by the character `\n`). Be sure there are no blank lines.
 
 The following command will build a MPHF using the strings of the file as input keys,
 with c = 7.0, alpha = 0.94.
@@ -234,10 +263,10 @@ with c = 7.0, alpha = 0.94.
 
 #### Example 3
 
-	./build 39459925 7.0 0.94 dictionary_dictionary -s 1234567890 -i uk-2005.urls --verbose --check --lookup -p 128 -t 4
+	./build 39459925 7.0 0.94 dictionary_dictionary -s 1234567890 -i uk-2005.urls --verbose --check --lookup -p 128
 
 This example will run the construction over the same input and parameters used in Example 2,
-but with 128 partitions and using **4 parallel threads**.
+but with 128 **partitions**.
 The resulting data structure will consume essentially the same space as that built in Example 2 and only slightly slower at lookup.
 
 
@@ -248,6 +277,12 @@ The resulting data structure will consume essentially the same space as that bui
 This example will run the construction over the same input and parameters used in Example 2,
 but using **external memory**.
 The resulting data structure will be exactly the same as that built in Example 2.
+
+### Enable Multi-Threading
+You can always specify to use multiple threads for construction
+with `-t`. For example, just append `-t 4` to any of the previous build
+commands to use 4 parallel threads.
+(Also consult our second paper [2] for more information about parallelism.)
 
 
 An Example Benchmark
@@ -261,7 +296,7 @@ From within the directory where the code has been compiled, just run
 
 	bash ../script/run_benchmark.sh 2> results.json
 
-to reproduce the bottom part of Table 5 of the SIGIR 2021 paper [1].
+to reproduce the bottom part of Table 5 of the SIGIR 2021 paper [1]. (All constructions run in internal memory on a single core of the processor).
 
 Below, the result of the benchmark across different processors and compilers.
 The code is compiled with `-O3` and `-march=native` in all cases.
@@ -316,3 +351,4 @@ References
 -----
 * [1] Giulio Ermanno Pibiri and Roberto Trani. [*"PTHash: Revisiting FCH Minimal Perfect Hashing"*](https://arxiv.org/abs/2104.10402). In Proceedings of the 44th International
 Conference on Research and Development in Information Retrieval (SIGIR). 2021.
+* [2] Giulio Ermanno Pibiri and Roberto Trani. [*"Parallel and External-Memory Construction of Minimal Perfect Hash Functions with PTHash"*](https://arxiv.org/abs/2106.02350). ArXiv. 2021.

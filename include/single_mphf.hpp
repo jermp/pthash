@@ -37,8 +37,8 @@ struct single_mphf {
         m_table_size = builder.table_size();
         m_M = fastmod::computeM_u64(m_table_size);
         m_bucketer = builder.bucketer();
-        m_pilots.encode(builder.pilots());
-        m_free_slots.encode(builder.free_slots());
+        m_pilots.encode(builder.pilots().data(), m_bucketer.num_buckets());
+        m_free_slots.encode(builder.free_slots().data(), m_table_size - m_num_keys);
         auto stop = clock_type::now();
         return seconds(stop - start);
     }
@@ -54,7 +54,7 @@ struct single_mphf {
         uint64_t pilot = m_pilots.access(bucket);
         uint64_t hashed_pilot = default_hash64(pilot, m_seed);
         uint64_t p = fastmod::fastmod_u64(hash.second() ^ hashed_pilot, m_M, m_table_size);
-        if (PTH_LIKELY(p < num_keys())) return p;
+        if (PTHASH_LIKELY(p < num_keys())) return p;
         return m_free_slots.access(p - num_keys());
     }
 
@@ -93,7 +93,7 @@ private:
     __uint128_t m_M;
     skew_bucketer m_bucketer;
     Encoder m_pilots;
-    ef_sequence m_free_slots;
+    ef_sequence<false> m_free_slots;
 };
 
 }  // namespace pthash

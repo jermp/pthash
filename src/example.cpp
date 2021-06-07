@@ -7,7 +7,7 @@ int main() {
     using namespace pthash;
 
     /* Generate 10M random 64-bit keys as input data. */
-    static const uint64_t num_keys = 10000000;
+    static const uint64_t num_keys = 30000000;
     static const uint64_t seed = 1234567890;
     std::cout << "generating input data..." << std::endl;
     std::vector<uint64_t> keys = distinct_keys<uint64_t>(num_keys, seed);
@@ -24,12 +24,25 @@ int main() {
                         dictionary_dictionary  // encoder type
                         >
         pthash_type;
+
+    // config.num_partitions = 50;
+    // config.num_threads = 4;
+    // typedef partitioned_mphf<murmurhash2_64,        // base hasher
+    //                          dictionary_dictionary  // encoder type
+    //                          >
+    //     pthash_type;
+
     pthash_type f;
 
     /* Build the function in internal memory. */
     std::cout << "building the MPHF..." << std::endl;
-    f.build_in_internal_memory(keys.begin(), keys.size(), config);
-
+    auto start = clock_type::now();
+    auto timings = f.build_in_internal_memory(keys.begin(), keys.size(), config);
+    // auto timings = f.build_in_external_memory(keys.begin(), keys.size(), config);
+    double total_seconds = timings.partitioning_seconds + timings.mapping_ordering_seconds +
+                           timings.searching_seconds + timings.encoding_seconds;
+    std::cout << "MPHF built in " << seconds(clock_type::now() - start) << " seconds" << std::endl;
+    std::cout << "computed: " << total_seconds << " seconds" << std::endl;
     /* Compute and print the number of bits spent per key. */
     double bits_per_key = static_cast<double>(f.num_bits()) / f.num_keys();
     std::cout << "MPHF uses " << bits_per_key << " [bits/key]" << std::endl;
@@ -47,12 +60,14 @@ int main() {
     std::string output_filename("mphf.bin");
     essentials::save(f, output_filename.c_str());
 
-    /* Now reload from disk and query. */
-    pthash_type other;
-    essentials::load(other, output_filename.c_str());
-    for (uint64_t i = 0; i != 10; ++i) {
-        std::cout << "f(" << keys[i] << ") = " << other(keys[i]) << '\n';
-        assert(f(keys[i]) == other(keys[i]));
+    {
+        /* Now reload from disk and query. */
+        pthash_type other;
+        essentials::load(other, output_filename.c_str());
+        for (uint64_t i = 0; i != 10; ++i) {
+            std::cout << "f(" << keys[i] << ") = " << other(keys[i]) << '\n';
+            assert(f(keys[i]) == other(keys[i]));
+        }
     }
 
     return 0;
