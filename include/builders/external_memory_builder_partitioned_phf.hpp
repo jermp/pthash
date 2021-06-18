@@ -85,7 +85,7 @@ struct external_memory_builder_partitioned_phf {
                 break;
             }
             m_offsets[i] = cumulative_size;
-            cumulative_size += partition.size();
+            cumulative_size += config.minimal_output ? partition.size() : table_size;
         }
 
         if (failure) {

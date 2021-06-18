@@ -60,7 +60,7 @@ struct internal_memory_builder_partitioned_phf {
                     "each partition must contain more than one key: use less partitions");
             }
             m_offsets[i] = cumulative_size;
-            cumulative_size += partition.size();
+            cumulative_size += config.minimal_output ? partition.size() : table_size;
         }
 
         auto partition_config = config;
