@@ -2,19 +2,20 @@
 
 #include "utils/bucketers.hpp"
 #include "builders/util.hpp"
-#include "builders/internal_memory_builder_single_mphf.hpp"
-#include "builders/external_memory_builder_single_mphf.hpp"
+#include "builders/internal_memory_builder_single_phf.hpp"
+#include "builders/external_memory_builder_single_phf.hpp"
 
 namespace pthash {
 
-template <typename Hasher, typename Encoder>
-struct single_mphf {
+template <typename Hasher, typename Encoder, bool Minimal>
+struct single_phf {
     typedef Encoder encoder_type;
+    static constexpr bool minimal = Minimal;
 
     template <typename Iterator>
     build_timings build_in_internal_memory(Iterator keys, uint64_t n,
                                            build_configuration const& config) {
-        internal_memory_builder_single_mphf<Hasher> builder;
+        internal_memory_builder_single_phf<Hasher> builder;
         auto timings = builder.build_from_keys(keys, n, config);
         timings.encoding_seconds = build(builder, config);
         return timings;
@@ -23,7 +24,7 @@ struct single_mphf {
     template <typename Iterator>
     build_timings build_in_external_memory(Iterator keys, uint64_t n,
                                            build_configuration const& config) {
-        external_memory_builder_single_mphf<Hasher> builder;
+        external_memory_builder_single_phf<Hasher> builder;
         auto timings = builder.build_from_keys(keys, n, config);
         timings.encoding_seconds = build(builder, config);
         return timings;
@@ -38,7 +39,9 @@ struct single_mphf {
         m_M = fastmod::computeM_u64(m_table_size);
         m_bucketer = builder.bucketer();
         m_pilots.encode(builder.pilots().data(), m_bucketer.num_buckets());
-        m_free_slots.encode(builder.free_slots().data(), m_table_size - m_num_keys);
+        if constexpr (Minimal) {
+            m_free_slots.encode(builder.free_slots().data(), m_table_size - m_num_keys);
+        }
         auto stop = clock_type::now();
         return seconds(stop - start);
     }
@@ -54,8 +57,11 @@ struct single_mphf {
         uint64_t pilot = m_pilots.access(bucket);
         uint64_t hashed_pilot = default_hash64(pilot, m_seed);
         uint64_t p = fastmod::fastmod_u64(hash.second() ^ hashed_pilot, m_M, m_table_size);
-        if (PTHASH_LIKELY(p < num_keys())) return p;
-        return m_free_slots.access(p - num_keys());
+        if constexpr (Minimal) {
+            if (PTHASH_LIKELY(p < num_keys())) return p;
+            return m_free_slots.access(p - num_keys());
+        }
+        return p;
     }
 
     size_t num_bits_for_pilots() const {
@@ -73,6 +79,10 @@ struct single_mphf {
 
     inline uint64_t num_keys() const {
         return m_num_keys;
+    }
+
+    inline uint64_t table_size() const {
+        return m_table_size;
     }
 
     template <typename Visitor>

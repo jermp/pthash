@@ -1,5 +1,5 @@
 #pragma once
 
 #include "encoders/encoders.hpp"
-#include "single_mphf.hpp"
-#include "partitioned_mphf.hpp"
+#include "single_phf.hpp"
+#include "partitioned_phf.hpp"

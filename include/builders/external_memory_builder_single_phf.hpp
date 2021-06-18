@@ -11,17 +11,17 @@
 namespace pthash {
 
 template <typename Hasher>
-struct external_memory_builder_single_mphf {
+struct external_memory_builder_single_phf {
     typedef Hasher hasher_type;
 
-    external_memory_builder_single_mphf() : m_pilots_filename(""), m_free_slots_filename("") {}
+    external_memory_builder_single_phf() : m_pilots_filename(""), m_free_slots_filename("") {}
     // non construction-copyable
-    external_memory_builder_single_mphf(external_memory_builder_single_mphf const&) = delete;
+    external_memory_builder_single_phf(external_memory_builder_single_phf const&) = delete;
     // non copyable
-    external_memory_builder_single_mphf& operator=(external_memory_builder_single_mphf const&) =
+    external_memory_builder_single_phf& operator=(external_memory_builder_single_phf const&) =
         delete;
 
-    ~external_memory_builder_single_mphf() {
+    ~external_memory_builder_single_phf() {
         if (m_pilots_filename != "") std::remove(m_pilots_filename.c_str());
         m_pilots_filename = "";
         if (m_free_slots_filename != "") std::remove(m_free_slots_filename.c_str());
@@ -128,8 +128,7 @@ struct external_memory_builder_single_mphf {
             auto start = clock_type::now();
             bit_vector_builder taken(m_table_size);
 
-            // search
-            {
+            {  // search
                 auto buckets_iterator = tfm.buckets_iterator();
 
                 // write all bucket-pilot pairs to files
@@ -155,14 +154,12 @@ struct external_memory_builder_single_mphf {
                 tfm.remove_all_merge_files();
             }
 
-            // fill free slots
-            {
+            if (config.minimal_output) {  // fill free slots
                 // write all free slots to file
                 buffered_file_t<uint64_t> writer(tfm.get_free_slots_filename(),
                                                  ram - bitmap_taken_bytes);
                 fill_free_slots(taken, num_keys, writer);
                 writer.close();
-
                 if (m_free_slots_filename != "") std::remove(m_free_slots_filename.c_str());
                 m_free_slots_filename = tfm.get_free_slots_filename();
             }

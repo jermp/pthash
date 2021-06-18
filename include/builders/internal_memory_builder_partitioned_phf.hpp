@@ -1,12 +1,12 @@
 #pragma once
 
 #include "util.hpp"
-#include "internal_memory_builder_single_mphf.hpp"
+#include "internal_memory_builder_single_phf.hpp"
 
 namespace pthash {
 
 template <typename Hasher>
-struct internal_memory_builder_partitioned_mphf {
+struct internal_memory_builder_partitioned_phf {
     typedef Hasher hasher_type;
 
     template <typename Iterator>
@@ -25,6 +25,7 @@ struct internal_memory_builder_partitioned_mphf {
 
         m_seed = config.seed == constants::invalid_seed ? random_value() : config.seed;
         m_num_keys = num_keys;
+        m_table_size = 0;
         m_num_partitions = num_partitions;
         m_bucketer.init(num_partitions);
         m_offsets.resize(num_partitions);
@@ -49,6 +50,11 @@ struct internal_memory_builder_partitioned_mphf {
 
         for (uint64_t i = 0, cumulative_size = 0; i != num_partitions; ++i) {
             auto const& partition = partitions[i];
+
+            uint64_t table_size = static_cast<double>(partition.size()) / config.alpha;
+            if ((table_size & (table_size - 1)) == 0) table_size += 1;
+            m_table_size += table_size;
+
             if (partition.size() <= 1) {
                 throw std::runtime_error(
                     "each partition must contain more than one key: use less partitions");
@@ -59,9 +65,8 @@ struct internal_memory_builder_partitioned_mphf {
 
         auto partition_config = config;
         partition_config.seed = m_seed;
-        uint64_t num_buckets_single_mphf = std::ceil((config.c * num_keys) / std::log2(num_keys));
-        partition_config.num_buckets =
-            static_cast<double>(num_buckets_single_mphf) / num_partitions;
+        uint64_t num_buckets_single_phf = std::ceil((config.c * num_keys) / std::log2(num_keys));
+        partition_config.num_buckets = static_cast<double>(num_buckets_single_phf) / num_partitions;
         partition_config.verbose_output = false;
         partition_config.num_threads = 1;
 
@@ -133,6 +138,10 @@ struct internal_memory_builder_partitioned_mphf {
         return m_num_keys;
     }
 
+    uint64_t table_size() const {
+        return m_table_size;
+    }
+
     uint64_t num_partitions() const {
         return m_num_partitions;
     }
@@ -145,17 +154,18 @@ struct internal_memory_builder_partitioned_mphf {
         return m_offsets;
     }
 
-    std::vector<internal_memory_builder_single_mphf<hasher_type>> const& builders() const {
+    std::vector<internal_memory_builder_single_phf<hasher_type>> const& builders() const {
         return m_builders;
     }
 
 private:
     uint64_t m_seed;
     uint64_t m_num_keys;
+    uint64_t m_table_size;
     uint64_t m_num_partitions;
     uniform_bucketer m_bucketer;
     std::vector<uint64_t> m_offsets;
-    std::vector<internal_memory_builder_single_mphf<hasher_type>> m_builders;
+    std::vector<internal_memory_builder_single_phf<hasher_type>> m_builders;
 };
 
 }  // namespace pthash

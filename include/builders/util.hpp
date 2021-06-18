@@ -38,6 +38,7 @@ struct build_configuration {
         , seed(constants::invalid_seed)
         , ram(static_cast<double>(constants::available_ram) * 0.75)
         , tmp_dir(constants::default_tmp_dirname)
+        , minimal_output(false)
         , verbose_output(true) {}
 
     double c;
@@ -48,6 +49,7 @@ struct build_configuration {
     uint64_t seed;
     uint64_t ram;
     std::string tmp_dir;
+    bool minimal_output;
     bool verbose_output;
 };
 

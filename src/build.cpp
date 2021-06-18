@@ -19,10 +19,10 @@ struct build_parameters {
     std::string output_filename;
 };
 
-template <typename MPHF, typename Builder, typename Iterator>
+template <typename Function, typename Builder, typename Iterator>
 void build_benchmark(Builder& builder, build_timings const& timings,
                      build_parameters<Iterator> const& params, build_configuration const& config) {
-    MPHF f;
+    Function f;
     double encoding_seconds = f.build(builder, config);
 
     // timings breakdown
@@ -52,7 +52,7 @@ void build_benchmark(Builder& builder, build_timings const& timings,
         if (config.verbose_output) {
             essentials::logger("checking data structure for correctness...");
         }
-        if (check(params.keys, params.num_keys, f) and config.verbose_output) {
+        if (check(params.keys, f) and config.verbose_output) {
             std::cout << "EVERYTHING OK!" << std::endl;
         }
     }
@@ -84,7 +84,8 @@ void build_benchmark(Builder& builder, build_timings const& timings,
     result.add("n", params.num_keys);
     result.add("c", config.c);
     result.add("alpha", config.alpha);
-    result.add("encoder_type", MPHF::encoder_type::name().c_str());
+    result.add("minimal", config.minimal_output ? "true" : "false");
+    result.add("encoder_type", Function::encoder_type::name().c_str());
     result.add("num_partitions", config.num_partitions);
     if (config.seed != constants::invalid_seed) result.add("seed", config.seed);
     result.add("num_threads", config.num_threads);
@@ -109,14 +110,24 @@ void build_benchmark(Builder& builder, build_timings const& timings,
 }
 
 template <bool partitioned, typename Encoder, typename Builder, typename Iterator>
-void choose_mphf(Builder& builder, build_timings const& timings,
-                 build_parameters<Iterator> const& params, build_configuration const& config) {
+void choose_phf(Builder& builder, build_timings const& timings,
+                build_parameters<Iterator> const& params, build_configuration const& config) {
     if constexpr (partitioned) {
-        build_benchmark<partitioned_mphf<typename Builder::hasher_type, Encoder>>(builder, timings,
-                                                                                  params, config);
+        if (config.minimal_output) {
+            build_benchmark<partitioned_phf<typename Builder::hasher_type, Encoder, true>>(
+                builder, timings, params, config);
+        } else {
+            build_benchmark<partitioned_phf<typename Builder::hasher_type, Encoder, false>>(
+                builder, timings, params, config);
+        }
     } else {
-        build_benchmark<single_mphf<typename Builder::hasher_type, Encoder>>(builder, timings,
-                                                                             params, config);
+        if (config.minimal_output) {
+            build_benchmark<single_phf<typename Builder::hasher_type, Encoder, true>>(
+                builder, timings, params, config);
+        } else {
+            build_benchmark<single_phf<typename Builder::hasher_type, Encoder, false>>(
+                builder, timings, params, config);
+        }
     }
 }
 
@@ -131,38 +142,38 @@ void choose_encoder(build_parameters<Iterator> const& params, build_configuratio
 
 #ifdef PTHASH_ENABLE_ALL_ENCODERS
     if (encode_all or params.encoder_type == "compact") {
-        choose_mphf<partitioned, compact>(builder, timings, params, config);
+        choose_phf<partitioned, compact>(builder, timings, params, config);
     }
     if (encode_all or params.encoder_type == "partitioned_compact") {
-        choose_mphf<partitioned, partitioned_compact>(builder, timings, params, config);
+        choose_phf<partitioned, partitioned_compact>(builder, timings, params, config);
     }
     if (encode_all or params.encoder_type == "compact_compact") {
-        choose_mphf<partitioned, compact_compact>(builder, timings, params, config);
+        choose_phf<partitioned, compact_compact>(builder, timings, params, config);
     }
     if (encode_all or params.encoder_type == "dictionary") {
-        choose_mphf<partitioned, dictionary>(builder, timings, params, config);
+        choose_phf<partitioned, dictionary>(builder, timings, params, config);
     }
     if (encode_all or params.encoder_type == "dictionary_dictionary") {
-        choose_mphf<partitioned, dictionary_dictionary>(builder, timings, params, config);
+        choose_phf<partitioned, dictionary_dictionary>(builder, timings, params, config);
     }
     if (encode_all or params.encoder_type == "elias_fano") {
-        choose_mphf<partitioned, elias_fano>(builder, timings, params, config);
+        choose_phf<partitioned, elias_fano>(builder, timings, params, config);
     }
     if (encode_all or params.encoder_type == "dictionary_elias_fano") {
-        choose_mphf<partitioned, dictionary_elias_fano>(builder, timings, params, config);
+        choose_phf<partitioned, dictionary_elias_fano>(builder, timings, params, config);
     }
     if (encode_all or params.encoder_type == "sdc") {
-        choose_mphf<partitioned, sdc>(builder, timings, params, config);
+        choose_phf<partitioned, sdc>(builder, timings, params, config);
     }
 #else
     if (encode_all or params.encoder_type == "partitioned_compact") {
-        choose_mphf<partitioned, partitioned_compact>(builder, timings, params, config);
+        choose_phf<partitioned, partitioned_compact>(builder, timings, params, config);
     }
     if (encode_all or params.encoder_type == "dictionary_dictionary") {
-        choose_mphf<partitioned, dictionary_dictionary>(builder, timings, params, config);
+        choose_phf<partitioned, dictionary_dictionary>(builder, timings, params, config);
     }
     if (encode_all or params.encoder_type == "elias_fano") {
-        choose_mphf<partitioned, elias_fano>(builder, timings, params, config);
+        choose_phf<partitioned, elias_fano>(builder, timings, params, config);
     }
 #endif
 }
@@ -171,15 +182,15 @@ template <typename Hasher, typename Iterator>
 void choose_builder(build_parameters<Iterator> const& params, build_configuration const& config) {
     if (config.num_partitions > 1) {
         if (params.external_memory) {
-            choose_encoder<true, external_memory_builder_partitioned_mphf<Hasher>>(params, config);
+            choose_encoder<true, external_memory_builder_partitioned_phf<Hasher>>(params, config);
         } else {
-            choose_encoder<true, internal_memory_builder_partitioned_mphf<Hasher>>(params, config);
+            choose_encoder<true, internal_memory_builder_partitioned_phf<Hasher>>(params, config);
         }
     } else {
         if (params.external_memory) {
-            choose_encoder<false, external_memory_builder_single_mphf<Hasher>>(params, config);
+            choose_encoder<false, external_memory_builder_single_phf<Hasher>>(params, config);
         } else {
-            choose_encoder<false, internal_memory_builder_single_mphf<Hasher>>(params, config);
+            choose_encoder<false, internal_memory_builder_single_phf<Hasher>>(params, config);
         }
     }
 }
@@ -201,9 +212,10 @@ void build(cmd_line_parser::parser const& parser, Iterator keys, uint64_t num_ke
     params.lookup = parser.get<bool>("lookup");
 
     params.encoder_type = parser.get<std::string>("encoder_type");
+    std::cout << "encoder type: " << params.encoder_type << std::endl;
+
     {
         std::unordered_set<std::string> encoders({
-
 #ifdef PTHASH_ENABLE_ALL_ENCODERS
             "compact", "partitioned_compact", "compact_compact", "dictionary",
             "dictionary_dictionary", "elias_fano", "dictionary_elias_fano", "sdc", "all"
@@ -223,6 +235,7 @@ void build(cmd_line_parser::parser const& parser, Iterator keys, uint64_t num_ke
     build_configuration config;
     config.c = parser.get<double>("c");
     config.alpha = parser.get<double>("alpha");
+    config.minimal_output = parser.get<bool>("minimal_output");
     config.verbose_output = parser.get<bool>("verbose_output");
 
     config.num_partitions = 1;
@@ -273,6 +286,7 @@ int main(int argc, char** argv) {
     parser.add(
         "encoder_type",
         "The encoder type. See include/encoders/encoders.hpp for a list of available types.");
+
     parser.add("num_partitions", "Number of partitions.", "-p", false);
     parser.add("seed", "Seed to use for construction.", "-s", false);
     parser.add("num_threads", "Number of threads to use for construction.", "-t", false);
@@ -281,7 +295,7 @@ int main(int argc, char** argv) {
         "A string input file name. If this is not provided, then num_keys 64-bit random keys will "
         "be used as input instead.",
         "-i", false);
-    parser.add("output_filename", "Output file name where the MPHF will be serialized.", "-o",
+    parser.add("output_filename", "Output file name where the function will be serialized.", "-o",
                false);
     parser.add("tmp_dir",
                "Temporary directory used for building in external memory. Default is directory '" +
@@ -289,10 +303,13 @@ int main(int argc, char** argv) {
                "-d", false);
     parser.add("ram", "Number of Giga bytes of RAM to use for construction in external memory.",
                "-m", false);
-    parser.add("external_memory", "Build the MPHF in external memory.", "--external", true);
+
+    parser.add("minimal_output", "Build a minimal PHF.", "--minimal", true);
+    parser.add("external_memory", "Build the function in external memory.", "--external", true);
     parser.add("verbose_output", "Verbose output during construction.", "--verbose", true);
     parser.add("check", "Check correctness after construction.", "--check", true);
     parser.add("lookup", "Measure average lookup time after construction.", "--lookup", true);
+
     if (!parser.parse()) return 1;
 
     auto num_keys = parser.get<uint64_t>("num_keys");

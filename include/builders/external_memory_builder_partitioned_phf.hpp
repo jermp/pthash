@@ -3,13 +3,13 @@
 #include "util.hpp"
 #include "../../external/mm_file/include/mm_file/mm_file.hpp"
 
-#include "internal_memory_builder_single_mphf.hpp"
-#include "internal_memory_builder_partitioned_mphf.hpp"
+#include "internal_memory_builder_single_phf.hpp"
+#include "internal_memory_builder_partitioned_phf.hpp"
 
 namespace pthash {
 
 template <typename Hasher>
-struct external_memory_builder_partitioned_mphf {
+struct external_memory_builder_partitioned_phf {
     typedef Hasher hasher_type;
     typedef typename hasher_type::hash_type hash_type;
 
@@ -33,6 +33,7 @@ struct external_memory_builder_partitioned_mphf {
 
         m_seed = config.seed == constants::invalid_seed ? random_value() : config.seed;
         m_num_keys = num_keys;
+        m_table_size = 0;
         m_num_partitions = num_partitions;
         m_bucketer.init(num_partitions);
         m_offsets.resize(num_partitions);
@@ -74,6 +75,11 @@ struct external_memory_builder_partitioned_mphf {
         bool failure = false;
         for (uint64_t i = 0, cumulative_size = 0; i != num_partitions; ++i) {
             auto const& partition = partitions[i];
+
+            uint64_t table_size = static_cast<double>(partition.size()) / config.alpha;
+            if ((table_size & (table_size - 1)) == 0) table_size += 1;
+            m_table_size += table_size;
+
             if (partition.size() <= 1) {
                 failure = true;
                 break;
@@ -92,9 +98,8 @@ struct external_memory_builder_partitioned_mphf {
 
         auto partition_config = config;
         partition_config.seed = m_seed;
-        uint64_t num_buckets_single_mphf = std::ceil((config.c * num_keys) / std::log2(num_keys));
-        partition_config.num_buckets =
-            static_cast<double>(num_buckets_single_mphf) / num_partitions;
+        uint64_t num_buckets_single_phf = std::ceil((config.c * num_keys) / std::log2(num_keys));
+        partition_config.num_buckets = static_cast<double>(num_buckets_single_phf) / num_partitions;
         partition_config.num_threads = 1;
         partition_config.verbose_output = false;
 
@@ -112,10 +117,10 @@ struct external_memory_builder_partitioned_mphf {
                     std::cout << "processing " << in_memory_partitions.size() << "/"
                               << num_partitions << " partitions..." << std::endl;
                 }
-                std::vector<internal_memory_builder_single_mphf<hasher_type>> in_memory_builders(
+                std::vector<internal_memory_builder_single_phf<hasher_type>> in_memory_builders(
                     in_memory_partitions.size());
                 partition_config.num_partitions = in_memory_partitions.size();
-                auto t = internal_memory_builder_partitioned_mphf<hasher_type>::build_partitions(
+                auto t = internal_memory_builder_partitioned_phf<hasher_type>::build_partitions(
                     in_memory_partitions.begin(), in_memory_builders.begin(), partition_config,
                     config.num_threads);
                 timings.mapping_ordering_seconds += t.mapping_ordering_seconds;
@@ -130,7 +135,7 @@ struct external_memory_builder_partitioned_mphf {
                 uint64_t id = i - partition_config.num_partitions;
                 for (auto& builder : in_memory_builders) {
                     m_builders.save(builder, id);
-                    internal_memory_builder_single_mphf<hasher_type>().swap(builder);
+                    internal_memory_builder_single_phf<hasher_type>().swap(builder);
                     ++id;
                 }
                 timings.partitioning_seconds += seconds(clock_type::now() - start);
@@ -139,7 +144,7 @@ struct external_memory_builder_partitioned_mphf {
 
             for (; i != num_partitions; ++i) {
                 uint64_t size = partitions[i].size();
-                uint64_t partition_bytes = internal_memory_builder_single_mphf<
+                uint64_t partition_bytes = internal_memory_builder_single_phf<
                     hasher_type>::estimate_num_bytes_for_construction(size, partition_config);
                 if (bytes + partition_bytes >= config.ram) {
                     timings.partitioning_seconds += seconds(clock_type::now() - start);
@@ -161,7 +166,7 @@ struct external_memory_builder_partitioned_mphf {
             std::vector<std::vector<hash_type>>().swap(in_memory_partitions);
 
         } else {  // sequential
-            internal_memory_builder_single_mphf<hasher_type> b;
+            internal_memory_builder_single_phf<hasher_type> b;
             for (uint64_t i = 0; i != num_partitions; ++i) {
                 if (config.verbose_output) {
                     std::cout << "processing partition " << i << "/" << num_partitions
@@ -189,6 +194,10 @@ struct external_memory_builder_partitioned_mphf {
 
     uint64_t num_keys() const {
         return m_num_keys;
+    }
+
+    uint64_t table_size() const {
+        return m_table_size;
     }
 
     uint64_t num_partitions() const {
@@ -253,7 +262,7 @@ private:
     };
 
 public:
-    builders_files_manager<internal_memory_builder_single_mphf<hasher_type>> const& builders()
+    builders_files_manager<internal_memory_builder_single_phf<hasher_type>> const& builders()
         const {
         return m_builders;
     }
@@ -261,10 +270,11 @@ public:
 private:
     uint64_t m_seed;
     uint64_t m_num_keys;
+    uint64_t m_table_size;
     uint64_t m_num_partitions;
     uniform_bucketer m_bucketer;
     std::vector<uint64_t> m_offsets;
-    builders_files_manager<internal_memory_builder_single_mphf<hasher_type>> m_builders;
+    builders_files_manager<internal_memory_builder_single_phf<hasher_type>> m_builders;
 
     struct meta_partition {
         meta_partition(std::string const& dir_name, uint64_t id)

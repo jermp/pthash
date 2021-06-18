@@ -121,22 +121,24 @@ int main() {
     build_configuration config;
     config.c = 6.0;
     config.alpha = 0.94;
+    config.minimal_output = true;  // mphf
     config.verbose_output = true;
 
     /* Declare the PTHash function. */
-    typedef single_mphf<murmurhash2_64,        // base hasher
-                        dictionary_dictionary  // encoder type
-                        >
+    typedef single_phf<murmurhash2_64,         // base hasher
+                       dictionary_dictionary,  // encoder type
+                       true                    // minimal
+                       >
         pthash_type;
     pthash_type f;
 
     /* Build the function in internal memory. */
-    std::cout << "building the MPHF..." << std::endl;
+    std::cout << "building the function..." << std::endl;
     f.build_in_internal_memory(keys.begin(), keys.size(), config);
 
     /* Compute and print the number of bits spent per key. */
     double bits_per_key = static_cast<double>(f.num_bits()) / f.num_keys();
-    std::cout << "MPHF uses " << bits_per_key << " [bits/key]" << std::endl;
+    std::cout << "function uses " << bits_per_key << " [bits/key]" << std::endl;
 
     /* Sanity check! */
     if (check(keys.begin(), keys.size(), f)) std::cout << "EVERYTHING OK!" << std::endl;
@@ -147,8 +149,8 @@ int main() {
     }
 
     /* Serialize the data structure to a file. */
-    std::cout << "serializing the MPHF to disk..." << std::endl;
-    std::string output_filename("mphf.bin");
+    std::cout << "serializing the function to disk..." << std::endl;
+    std::string output_filename("pthash.bin");
     essentials::save(f, output_filename.c_str());
 
     /* Now reload from disk and query. */
@@ -159,6 +161,7 @@ int main() {
         assert(f(keys[i]) == other(keys[i]));
     }
 
+	std::remove(output_filename.c_str());
     return 0;
 }
 ```
@@ -176,7 +179,7 @@ Running the command
 
 shows the usage of the driver program, as reported below.
 
-	Usage: ./build [-h,--help] num_keys c alpha encoder_type [-p num_partitions] [-s seed] [-t num_threads] [-i input_filename] [-o output_filename] [-d tmp_dir] [-m ram] [--external] [--verbose] [--check] [--lookup]
+	Usage: ./build [-h,--help] num_keys c alpha encoder_type [-p num_partitions] [-s seed] [-t num_threads] [-i input_filename] [-o output_filename] [-d tmp_dir] [-m ram] [--minimal] [--external] [--verbose] [--check] [--lookup]
 	
 	 num_keys
 		The size of the input.
@@ -203,7 +206,7 @@ shows the usage of the driver program, as reported below.
 		A string input file name. If this is not provided, then num_keys 64-bit random keys will be used as input instead.
 	
 	 [-o output_filename]
-		Output file name where the MPHF will be serialized.
+		Output file name where the function will be serialized.
 	
 	 [-d tmp_dir]
 		Temporary directory used for building in external memory. Default is directory '.'.
@@ -211,8 +214,11 @@ shows the usage of the driver program, as reported below.
 	 [-m ram]
 		Number of Giga bytes of RAM to use for construction in external memory.
 	
+	 [--minimal]
+		Build a minimal PHF.
+	
 	 [--external]
-		Build the MPHF in external memory.
+		Build the function in external memory.
 	
 	 [--verbose]
 		Verbose output during construction.
@@ -228,7 +234,7 @@ shows the usage of the driver program, as reported below.
 
 #### Example 1
 
-	./build 1000000 4.5 0.99 dictionary_dictionary -s 727369 --verbose --check --lookup -o mphf.bin
+	./build 1000000 4.5 0.99 dictionary_dictionary -s 727369 --minimal --verbose --check --lookup -o mphf.bin
 
 This example will build a MPHF over 1M random 64-bit keys (generated with seed 727369), using c = 4.5, alpha = 0.99, and compressing the MPHF data structure with the encoder `dictionary_dictionary`.
 
@@ -262,12 +268,12 @@ The file contains one string per line, for a total of 39,459,925 strings.
 The following command will build a MPHF using the strings of the file as input keys,
 with c = 7.0, alpha = 0.94.
 
-	./build 39459925 7.0 0.94 dictionary_dictionary -s 1234567890 -i uk-2005.urls --verbose --check --lookup
+	./build 39459925 7.0 0.94 dictionary_dictionary -s 1234567890 --minimal -i uk-2005.urls --verbose --check --lookup
 
 
 #### Example 3
 
-	./build 39459925 7.0 0.94 dictionary_dictionary -s 1234567890 -i uk-2005.urls --verbose --check --lookup -p 128
+	./build 39459925 7.0 0.94 dictionary_dictionary -s 1234567890 --minimal -i uk-2005.urls --verbose --check --lookup -p 128
 
 This example will run the construction over the same input and parameters used in Example 2,
 but with 128 **partitions**.
@@ -288,6 +294,8 @@ with `-t`. For example, just append `-t 4` to any of the previous build
 commands to use 4 parallel threads.
 (Also consult our second paper [2] for more information about parallelism.)
 
+### Building Perfect Hash Functions (not Minimal)
+Just do not specify the `--minimal` flag when using the `build` utility.
 
 An Example Benchmark
 -----

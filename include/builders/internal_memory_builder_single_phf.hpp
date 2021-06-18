@@ -9,7 +9,7 @@
 namespace pthash {
 
 template <typename Hasher>
-struct internal_memory_builder_single_mphf {
+struct internal_memory_builder_single_phf {
     typedef Hasher hasher_type;
 
     template <typename RandomAccessIterator>
@@ -99,9 +99,11 @@ struct internal_memory_builder_single_mphf {
             pilots_wrapper_t pilots_wrapper(m_pilots);
             search(m_num_keys, m_num_buckets, num_non_empty_buckets, m_seed, config,
                    buckets_iterator, taken, pilots_wrapper);
-            m_free_slots.clear();
-            m_free_slots.reserve(taken.size() - num_keys);
-            fill_free_slots(taken, num_keys, m_free_slots);
+            if (config.minimal_output) {
+                m_free_slots.clear();
+                m_free_slots.reserve(taken.size() - num_keys);
+                fill_free_slots(taken, num_keys, m_free_slots);
+            }
         }
         time.searching_seconds = seconds(clock_type::now() - start);
         if (config.verbose_output) {
@@ -135,7 +137,7 @@ struct internal_memory_builder_single_mphf {
         return m_free_slots;
     }
 
-    void swap(internal_memory_builder_single_mphf& other) {
+    void swap(internal_memory_builder_single_phf& other) {
         std::swap(m_seed, other.m_seed);
         std::swap(m_num_keys, other.m_num_keys);
         std::swap(m_num_buckets, other.m_num_buckets);
@@ -167,11 +169,12 @@ struct internal_memory_builder_single_mphf {
         size_t mapping_bytes = num_keys * sizeof(bucket_payload_pair)          // pairs
                                + (num_keys + num_buckets) * sizeof(uint64_t);  // buckets
 
-        size_t search_bytes = num_buckets * sizeof(uint64_t)                    // pilots
-                              + num_buckets * sizeof(uint64_t)                  // buckets
-                              + 2 * (table_size - num_keys) * sizeof(uint64_t)  // free_slots
-                              + num_keys * sizeof(uint64_t)                     // hashes
-                              + table_size / 8;                                 // bitmap taken
+        size_t search_bytes = num_buckets * sizeof(uint64_t)    // pilots
+                              + num_buckets * sizeof(uint64_t)  // buckets
+                              + (config.minimal_output ? (table_size - num_keys) * sizeof(uint64_t)
+                                                       : 0)  // free_slots
+                              + num_keys * sizeof(uint64_t)  // hashes
+                              + table_size / 8;              // bitmap taken
         return std::max<size_t>(mapping_bytes, search_bytes);
     }
 

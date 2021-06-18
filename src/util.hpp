@@ -102,29 +102,48 @@ std::vector<Uint> distinct_keys(uint64_t num_keys, uint64_t seed = constants::in
     return keys;
 }
 
-template <typename MPHF, typename Iterator>
-bool check(Iterator keys, uint64_t num_keys, MPHF const& f) {
-    __uint128_t n = num_keys;
-    __uint128_t sum = 0;
-    for (uint64_t i = 0; i != n; ++i) {
-        auto const& key = *keys;
-        uint64_t p = f(key);
-        if (p >= n) {
-            std::cout << "ERROR: position is out of range" << std::endl;
+template <typename Function, typename Iterator>
+bool check(Iterator keys, Function const& f) {
+    __uint128_t n = f.num_keys();
+    if (Function::minimal) {
+        __uint128_t sum = 0;
+        for (uint64_t i = 0; i != n; ++i) {
+            auto const& key = *keys;
+            uint64_t p = f(key);
+            if (p >= n) {
+                std::cout << "ERROR: position is out of range" << std::endl;
+                return false;
+            }
+            sum += p;
+            ++keys;
+        }
+        if (sum != (n * (n - 1)) / 2) {
+            std::cout << "ERROR: mphf contains duplicates" << std::endl;
             return false;
         }
-        sum += p;
-        ++keys;
-    }
-    if (sum != (n * (n - 1)) / 2) {
-        std::cout << "ERROR: mphf contains duplicates" << std::endl;
-        return false;
+    } else {
+        uint64_t m = f.table_size();
+        bit_vector_builder taken(m);
+        for (uint64_t i = 0; i != n; ++i) {
+            auto const& key = *keys;
+            uint64_t p = f(key);
+            if (p >= m) {
+                std::cout << "ERROR: position is out of range" << std::endl;
+                return false;
+            }
+            if (taken.get(p) != 0) {
+                std::cout << "ERROR: mphf contains duplicates" << std::endl;
+                return false;
+            }
+            taken.set(p, 1);
+            ++keys;
+        }
     }
     return true;
 }
 
-template <typename MPHF, typename Iterator>
-double perf(Iterator keys, uint64_t num_keys, MPHF const& f) {
+template <typename Function, typename Iterator>
+double perf(Iterator keys, uint64_t num_keys, Function const& f) {
     static const uint64_t runs = 5;
     essentials::timer<std::chrono::high_resolution_clock, std::chrono::nanoseconds> t;
     t.start();

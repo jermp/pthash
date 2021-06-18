@@ -5,20 +5,21 @@ using namespace pthash;
 template <typename Encoder, typename Builder, typename Iterator>
 void test_encoder(Builder const& builder, build_configuration const& config, Iterator keys,
                   uint64_t num_keys) {
-    single_mphf<typename Builder::hasher_type, Encoder> f;
+    single_phf<typename Builder::hasher_type, Encoder, true> f;
     f.build(builder, config);
     testing::require_equal(f.num_keys(), num_keys);
-    check(keys, num_keys, f);
+    check(keys, f);
 }
 
 template <typename Iterator>
 void test_internal_memory_single_mphf(Iterator keys, uint64_t num_keys) {
     std::cout << "testing on " << num_keys << " keys..." << std::endl;
 
-    internal_memory_builder_single_mphf<murmurhash2_64> builder_64;
-    internal_memory_builder_single_mphf<murmurhash2_128> builder_128;
+    internal_memory_builder_single_phf<murmurhash2_64> builder_64;
+    internal_memory_builder_single_phf<murmurhash2_128> builder_128;
 
     build_configuration config;
+    config.minimal_output = true;  // mphf
     config.verbose_output = false;
     config.seed = random_value();
 
