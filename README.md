@@ -8,6 +8,13 @@ PTHash is a C++ library implementing fast and compact minimal perfect hash funct
 
 Please, cite these papers if you use PTHash.
 
+#### Features
+- Minimal and Non-Minimal Perfect Hash Functions
+- Space/Time Efficiency: fast lookup within compressed space
+- External-Memory Scaling
+- Multi-Threaded Construction
+- Configurable: can offer different trade-offs (between construction time, lookup time, and space effectiveness)
+
 Introduction
 ----
 Given a set *S* of *n* distinct keys, a function *f* that bijectively maps the keys of *S* into the first *n* natural numbers
@@ -20,8 +27,6 @@ PTHash is one such algorithm.
 
 The following guide is meant to provide a brief overview of the library
 by illustrating its functionalities through some examples.
-Scripts to generate the data for the tables used in the paper
-are also provided.
 
 ##### Table of contents
 * [Integration](#integration)
