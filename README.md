@@ -304,6 +304,10 @@ The script `script/run_benchmark.sh` runs the 4 trade-off configurations (encode
 
 C-C stands for "compact-compact" encoder; D-D for "dictionary-dictionary"; and EF for "Elias-Fano".
 
+Be sure you run the benchmark after compiling with
+
+	cmake .. -D PTHASH_ENABLE_ALL_ENCODERS=On
+
 From within the directory where the code has been compiled, just run
 
 	bash ../script/run_benchmark.sh 2> results.json
