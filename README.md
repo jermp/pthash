@@ -6,6 +6,10 @@ PTHash is a C++ library implementing fast and compact minimal perfect hash funct
 * [*PTHash: Revisiting FCH Minimal Perfect Hashing*](https://arxiv.org/abs/2104.10402) [1]
 * [*Parallel and External-Memory Construction of Minimal Perfect Hash Functions with PTHash*](https://arxiv.org/abs/2106.02350) [2]
 
+Please, cite these papers if you use PTHash.
+
+Introduction
+----
 Given a set *S* of *n* distinct keys, a function *f* that bijectively maps the keys of *S* into the first *n* natural numbers
 is called a *minimal perfect hash function* (MPHF) for *S*.
 Algorithms that find such functions when *n* is large and retain constant evaluation time are of practical interest.
