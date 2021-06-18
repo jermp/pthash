@@ -212,8 +212,6 @@ void build(cmd_line_parser::parser const& parser, Iterator keys, uint64_t num_ke
     params.lookup = parser.get<bool>("lookup");
 
     params.encoder_type = parser.get<std::string>("encoder_type");
-    std::cout << "encoder type: " << params.encoder_type << std::endl;
-
     {
         std::unordered_set<std::string> encoders({
 #ifdef PTHASH_ENABLE_ALL_ENCODERS
