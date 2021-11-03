@@ -1,3 +1,5 @@
+[![Language grade: C/C++](https://img.shields.io/lgtm/grade/cpp/g/jermp/pthash.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/jermp/pthash/context:cpp)
+
 PTHash
 ------
 
