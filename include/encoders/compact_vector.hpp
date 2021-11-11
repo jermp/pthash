@@ -72,25 +72,22 @@ struct compact_vector {
     };
 
     struct builder {
-        builder() : m_back(0), m_cur_block(0), m_cur_shift(0) {}
+        builder() : m_size(0), m_width(0), m_mask(0), m_back(0), m_cur_block(0), m_cur_shift(0) {}
 
-        builder(uint64_t n, uint64_t w)
-            : m_size(n)
-            , m_width(w)
-            , m_mask(-(w == 64) | ((1ULL << w) - 1))
-            , m_back(0)
-            , m_cur_block(0)
-            , m_cur_shift(0)
-            , m_bits(
-                  essentials::words_for(m_size * m_width) + 1  // use 1 word more for safe access()
-                  ,
-                  0) {}
+        builder(uint64_t n, uint64_t w) {
+            resize(n, w);
+        }
 
         void resize(size_t n, uint64_t w) {
             m_size = n;
             m_width = w;
             m_mask = -(w == 64) | ((uint64_t(1) << w) - 1);
-            m_bits.resize(essentials::words_for(m_size * m_width), 0);
+            m_back = 0;
+            m_cur_block = 0;
+            m_cur_shift = 0;
+            m_bits.resize(
+                /* use 1 word more for safe access() */
+                essentials::words_for(m_size * m_width) + 1, 0);
         }
 
         template <typename Iterator>
@@ -107,7 +104,7 @@ struct compact_vector {
         void set(uint64_t i, uint64_t v) {
             assert(m_width);
             assert(i < m_size);
-            if (i == m_size - 1) { m_back = v; }
+            if (i == m_size - 1) m_back = v;
 
             uint64_t pos = i * m_width;
             uint64_t block = pos >> 6;
