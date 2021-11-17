@@ -359,11 +359,13 @@ The code is compiled with `-O3` and `-march=native` in all cases.
 Other Resources
 -----
 
-We maintain a benchmark to evaluate MPHF algorithms available at
+* We maintain a benchmark to evaluate MPHF algorithms available at
 
-[https://github.com/roberto-trani/mphf_benchmark](https://github.com/roberto-trani/mphf_benchmark).
+	[https://github.com/roberto-trani/mphf_benchmark](https://github.com/roberto-trani/mphf_benchmark).
 
-This benchmark was also used for the experiments in the SIGIR 2021 paper [1].
+	This benchmark was also used for the experiments in the SIGIR 2021 paper [1].
+
+* If you want an overview of the algorithm, you can listen of [this short video](https://underline.io/lecture/24671-pthash-revisiting-fch-minimal-perfect-hashing) (13 mins) and consult [these slides](http://pages.di.unipi.it/pibiri/slides/PTHash.pdf).
 
 Authors
 -----
