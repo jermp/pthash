@@ -365,7 +365,7 @@ Other Resources
 
 	This benchmark was also used for the experiments in the SIGIR 2021 paper [1].
 
-* If you want an overview of the algorithm, you can listen of [this short video](https://underline.io/lecture/24671-pthash-revisiting-fch-minimal-perfect-hashing) (13 mins) and consult [these slides](http://pages.di.unipi.it/pibiri/slides/PTHash.pdf).
+* If you want an overview of the algorithm, you can listen to [this short video](https://underline.io/lecture/24671-pthash-revisiting-fch-minimal-perfect-hashing) (13 mins) and consult [these slides](http://pages.di.unipi.it/pibiri/slides/PTHash.pdf).
 
 Authors
 -----
