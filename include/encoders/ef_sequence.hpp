@@ -13,13 +13,12 @@ struct ef_sequence {
     template <typename Iterator>
     void encode(Iterator begin, uint64_t n) {
         if (n == 0) return;
-        uint64_t u;
+
+        uint64_t u = *(begin + n - 1);
         if constexpr (encode_prefix_sum) {
             u = std::accumulate(begin, begin + n, static_cast<uint64_t>(0));
             n = n + 1;  // because I will add a zero at the beginning
-        } else {
-            u = *(begin + n - 1);
-        };
+        }
 
         uint64_t l = uint64_t((n && u / n) ? util::msb(u / n) : 0);
         bit_vector_builder bvb_high_bits(n + (u >> l) + 1);
@@ -50,7 +49,7 @@ struct ef_sequence {
 
         bit_vector(&bvb_high_bits).swap(m_high_bits);
         cv_builder_low_bits.build(m_low_bits);
-        darray1(m_high_bits).swap(m_high_bits_d1);
+        m_high_bits_d1.build(m_high_bits);
     }
 
     inline uint64_t access(uint64_t i) const {

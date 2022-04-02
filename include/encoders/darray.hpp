@@ -8,9 +8,9 @@ namespace detail {
 
 template <typename WordGetter>
 struct darray {
-    darray() : m_positions() {}
+    darray() : m_positions(0) {}
 
-    darray(bit_vector const& bv) : m_positions() {
+    void build(bit_vector const& bv) {
         std::vector<uint64_t> const& data = bv.data();
         std::vector<uint64_t> cur_block_positions;
         std::vector<int64_t> block_inventory;
@@ -46,13 +46,6 @@ struct darray {
         m_block_inventory.swap(block_inventory);
         m_subblock_inventory.swap(subblock_inventory);
         m_overflow_positions.swap(overflow_positions);
-    }
-
-    void swap(darray& other) {
-        std::swap(other.m_positions, m_positions);
-        m_block_inventory.swap(other.m_block_inventory);
-        m_subblock_inventory.swap(other.m_subblock_inventory);
-        m_overflow_positions.swap(other.m_overflow_positions);
     }
 
     inline uint64_t select(bit_vector const& bv, uint64_t idx) const {
