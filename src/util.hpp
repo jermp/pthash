@@ -85,20 +85,29 @@ std::vector<std::string> read_string_collection(uint64_t n, char const* filename
 
 template <typename Uint>
 std::vector<Uint> distinct_keys(uint64_t num_keys, uint64_t seed = constants::invalid_seed) {
+    assert(num_keys > 0);
     auto gen = std::mt19937_64((seed != constants::invalid_seed) ? seed : std::random_device()());
     std::vector<Uint> keys(num_keys * 1.05);       // allocate a vector slightly larger than needed
     std::generate(keys.begin(), keys.end(), gen);  // fill with random numbers
-    std::sort(keys.begin(), keys.end());           // sort the keys
-    std::unique(keys.begin(), keys.end());         // remove the duplicates
-    uint64_t size = keys.size();
-    while (size < num_keys) {  // unlikely
-        keys.push_back(keys.back() + 1);
-        size++;
+    std::sort(keys.begin(), keys.end());
+    auto it = std::unique(keys.begin(), keys.end());
+    uint64_t size = std::distance(keys.begin(), it);
+    if (size < num_keys) {  // unlikely
+        uint64_t end = size;
+        assert(end > 0);
+        for (uint64_t i = 0; i != end - 1 and size != num_keys; ++i) {
+            uint64_t first = keys[i];
+            uint64_t second = keys[i + 1];
+            /* fill the gaps */
+            for (uint64_t val = first + 1; val != second; ++val) {
+                keys[size] = val;
+                ++size;
+                if (size == num_keys) break;
+            }
+        }
     }
-    assert(std::adjacent_find(keys.begin(), keys.end()) == keys.end());  // must be all distinct
+    keys.resize(num_keys);
     std::shuffle(keys.begin(), keys.end(), gen);
-    if (keys.size() > num_keys) keys.resize(num_keys);
-    assert(keys.size() == num_keys);
     return keys;
 }
 
