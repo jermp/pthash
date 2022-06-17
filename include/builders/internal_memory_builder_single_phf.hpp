@@ -329,7 +329,7 @@ private:
     template <typename RandomAccessIterator>
     void map(RandomAccessIterator hashes, uint64_t num_keys, std::vector<pairs_t>& pairs_blocks,
              build_configuration const& config) const {
-        if (config.num_threads > 1) {
+        if (config.num_threads > 1 and num_keys >= config.num_threads) {
             map_parallel(hashes, num_keys, pairs_blocks, config);
         } else {
             map_sequential(hashes, num_keys, pairs_blocks, config);
