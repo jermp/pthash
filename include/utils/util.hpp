@@ -19,7 +19,7 @@ static const uint64_t invalid_num_buckets = uint64_t(-1);
 static const std::string default_tmp_dirname(".");
 }  // namespace constants
 
-uint64_t random_value() {
+static inline uint64_t random_value() {
     unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
     std::mt19937_64 rng(seed);
     return rng();

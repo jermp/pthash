@@ -14,7 +14,7 @@ struct byte_range {
     https://github.com/aappleby/smhasher/blob/master/src/MurmurHash2.cpp
         by Austin Appleby
 */
-uint64_t MurmurHash2_64(void const* key, size_t len, uint64_t seed) {
+static uint64_t MurmurHash2_64(void const* key, size_t len, uint64_t seed) {
     const uint64_t m = 0xc6a4a7935bd1e995ULL;
     const int r = 47;
 
