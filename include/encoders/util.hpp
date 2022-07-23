@@ -57,7 +57,7 @@ inline uint64_t popcount(uint64_t x) {
 }
 
 inline uint64_t select64(uint64_t x, uint64_t k) {
-#ifndef __haswell__
+#ifndef __BMI2__
     // Modified from: Bit Twiddling Hacks
     // https://graphics.stanford.edu/~seander/bithacks.html#SelectPosFromMSBRank
     unsigned int s;      // Output: Resulting position of bit with rank r [1-64]
