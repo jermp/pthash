@@ -5,6 +5,8 @@
 
 #include "util.hpp"
 
+#include "../../external/essentials/include/essentials.hpp"
+
 namespace pthash {
 
 struct bit_vector_builder {

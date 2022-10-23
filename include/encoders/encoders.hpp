@@ -1,7 +1,5 @@
 #pragma once
 
-#include "../../external/essentials/include/essentials.hpp"
-
 #include "compact_vector.hpp"
 #include "ef_sequence.hpp"
 #include "sdc_sequence.hpp"

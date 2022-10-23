@@ -3,6 +3,8 @@
 #include <vector>
 #include <cmath>
 
+#include "../../external/essentials/include/essentials.hpp"
+
 namespace pthash {
 
 struct compact_vector {
