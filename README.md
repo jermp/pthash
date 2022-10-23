@@ -1,4 +1,4 @@
-[![Language grade: C/C++](https://img.shields.io/lgtm/grade/cpp/g/jermp/pthash.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/jermp/pthash/context:cpp)
+[![CodeQL](https://github.com/jermp/pthash/actions/workflows/codeql.yml/badge.svg)](https://github.com/jermp/pthash/actions/workflows/codeql.yml)
 
 PTHash
 ------
