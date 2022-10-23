@@ -52,20 +52,19 @@ jobs:
         # Details on CodeQL's query packs refer to : https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/configuring-code-scanning#using-queries-in-ql-packs
         # queries: security-extended,security-and-quality
 
-      - name: Checkout submodules
-        run: git submodule update --init --recursive
+    - name: Checkout submodules
+      run: git submodule update --init --recursive
 
-      - name: Creating build directory
-        run: cmake -E make_directory ./build
+    - name: Creating build directory
+      run: cmake -E make_directory ./build
 
-      - name: Run CMake
-        working-directory: ./build
-        run: cmake .. -DCMAKE_BUILD_TYPE=Release
+    - name: Run CMake
+      working-directory: ./build
+      run: cmake .. -DCMAKE_BUILD_TYPE=Release
 
-      - name: Compilation
-        working-directory: ./build
-        run: cmake --build . --config Release
-
+    - name: Compilation
+      working-directory: ./build
+      run: cmake --build . --config Release
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v2
