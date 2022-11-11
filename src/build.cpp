@@ -276,15 +276,19 @@ void build(cmd_line_parser::parser const& parser, Iterator keys, uint64_t num_ke
 
 int main(int argc, char** argv) {
     cmd_line_parser::parser parser(argc, argv);
-    parser.add("num_keys", "The size of the input.");
+
+    /* Required arguments. */
+    parser.add("num_keys", "The size of the input.", "-n", true);
     parser.add("c",
                "A constant that trades construction speed for space effectiveness. "
-               "A reasonable value lies between 3.0 and 10.0.");
-    parser.add("alpha", "The table load factor. It must be a quantity > 0 and <= 1.");
-    parser.add(
-        "encoder_type",
-        "The encoder type. See include/encoders/encoders.hpp for a list of available types.");
+               "A reasonable value lies between 3.0 and 10.0.",
+               "-c", true);
+    parser.add("alpha", "The table load factor. It must be a quantity > 0 and <= 1.", "-a", true);
+    parser.add("encoder_type",
+               "The encoder type. See include/encoders/encoders.hpp for a list of available types.",
+               "-e", true);
 
+    /* Optional arguments. */
     parser.add("num_partitions", "Number of partitions.", "-p", false);
     parser.add("seed", "Seed to use for construction.", "-s", false);
     parser.add("num_threads", "Number of threads to use for construction.", "-t", false);
@@ -301,12 +305,13 @@ int main(int argc, char** argv) {
                "-d", false);
     parser.add("ram", "Number of Giga bytes of RAM to use for construction in external memory.",
                "-m", false);
-
-    parser.add("minimal_output", "Build a minimal PHF.", "--minimal", true);
-    parser.add("external_memory", "Build the function in external memory.", "--external", true);
-    parser.add("verbose_output", "Verbose output during construction.", "--verbose", true);
-    parser.add("check", "Check correctness after construction.", "--check", true);
-    parser.add("lookup", "Measure average lookup time after construction.", "--lookup", true);
+    parser.add("minimal_output", "Build a minimal PHF.", "--minimal", false, true);
+    parser.add("external_memory", "Build the function in external memory.", "--external", false,
+               true);
+    parser.add("verbose_output", "Verbose output during construction.", "--verbose", false, true);
+    parser.add("check", "Check correctness after construction.", "--check", false, true);
+    parser.add("lookup", "Measure average lookup time after construction.", "--lookup", false,
+               true);
 
     if (!parser.parse()) return 1;
 

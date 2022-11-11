@@ -60,11 +60,10 @@ Clone the repository with
 
 	git clone --recursive https://github.com/jermp/pthash.git
 
-If you have cloned the repository without `--recursive`, you will need to perform the following commands before
+If you have cloned the repository **without** `--recursive`, be sure you pull the dependencies with the following command before
 compiling:
 
-    git submodule init
-    git submodule update
+    git submodule update --init --recursive
 
 To compile the code for a release environment (see file `CMakeLists.txt` for the used compilation flags), it is sufficient to do the following:
 
@@ -186,62 +185,62 @@ Running the command
 
 shows the usage of the driver program, as reported below.
 
-	Usage: ./build [-h,--help] num_keys c alpha encoder_type [-p num_partitions] [-s seed] [-t num_threads] [-i input_filename] [-o output_filename] [-d tmp_dir] [-m ram] [--minimal] [--external] [--verbose] [--check] [--lookup]
-	
-	 num_keys
-		The size of the input.
-	
-	 c
-		A constant that trades construction speed for space effectiveness. A reasonable value lies between 3.0 and 10.0.
-	
-	 alpha
-		The table load factor. It must be a quantity > 0 and <= 1.
-	
-	 encoder_type
-		The encoder type. See include/encoders/encoders.hpp for a list of available types.
-	
-	 [-p num_partitions]
-		Number of partitions.
-	
-	 [-s seed]
-		Seed to use for construction.
-	
-	 [-t num_threads]
-		Number of threads to use for construction.
-	
-	 [-i input_filename]
-		A string input file name. If this is not provided, then num_keys 64-bit random keys will be used as input instead.
-	
-	 [-o output_filename]
-		Output file name where the function will be serialized.
-	
-	 [-d tmp_dir]
-		Temporary directory used for building in external memory. Default is directory '.'.
-	
-	 [-m ram]
-		Number of Giga bytes of RAM to use for construction in external memory.
-	
-	 [--minimal]
-		Build a minimal PHF.
-	
-	 [--external]
-		Build the function in external memory.
-	
-	 [--verbose]
-		Verbose output during construction.
-	
-	 [--check]
-		Check correctness after construction.
-	
-	 [--lookup]
-		Measure average lookup time after construction.
-	
-	 [-h,--help]
-		Print this help text and silently exits.
+    Usage: ./build [-h,--help] [-n num_keys] [-c c] [-a alpha] [-e encoder_type] [-p num_partitions] [-s seed] [-t num_threads] [-i input_filename] [-o output_filename] [-d tmp_dir] [-m ram] [--minimal] [--external] [--verbose] [--check] [--lookup]
+
+     [-n num_keys]
+        REQUIRED: The size of the input.
+
+     [-c c]
+        REQUIRED: A constant that trades construction speed for space effectiveness. A reasonable value lies between 3.0 and 10.0.
+
+     [-a alpha]
+        REQUIRED: The table load factor. It must be a quantity > 0 and <= 1.
+
+     [-e encoder_type]
+        REQUIRED: The encoder type. See include/encoders/encoders.hpp for a list of available types.
+
+     [-p num_partitions]
+        Number of partitions.
+
+     [-s seed]
+        Seed to use for construction.
+
+     [-t num_threads]
+        Number of threads to use for construction.
+
+     [-i input_filename]
+        A string input file name. If this is not provided, then num_keys 64-bit random keys will be used as input instead.
+
+     [-o output_filename]
+        Output file name where the function will be serialized.
+
+     [-d tmp_dir]
+        Temporary directory used for building in external memory. Default is directory '.'.
+
+     [-m ram]
+        Number of Giga bytes of RAM to use for construction in external memory.
+
+     [--minimal]
+        Build a minimal PHF.
+
+     [--external]
+        Build the function in external memory.
+
+     [--verbose]
+        Verbose output during construction.
+
+     [--check]
+        Check correctness after construction.
+
+     [--lookup]
+        Measure average lookup time after construction.
+
+     [-h,--help]
+        Print this help text and silently exits.
 
 #### Example 1
 
-	./build 1000000 4.5 0.99 dictionary_dictionary -s 727369 --minimal --verbose --check --lookup -o mphf.bin
+	./build -n 1000000 -c 4.5 -a 0.99 -e dictionary_dictionary -s 727369 --minimal --verbose --check --lookup -o mphf.bin
 
 This example will build a MPHF over 1M random 64-bit keys (generated with seed 727369), using c = 4.5, alpha = 0.99, and compressing the MPHF data structure with the encoder `dictionary_dictionary`.
 
@@ -275,12 +274,12 @@ The file contains one string per line, for a total of 39,459,925 strings.
 The following command will build a MPHF using the strings of the file as input keys,
 with c = 7.0, alpha = 0.94.
 
-	./build 39459925 7.0 0.94 dictionary_dictionary -s 1234567890 --minimal -i uk-2005.urls --verbose --check --lookup
+	./build -n 39459925 -c 7.0 -a 0.94 -e dictionary_dictionary -s 1234567890 --minimal -i uk-2005.urls --verbose --check --lookup
 
 
 #### Example 3
 
-	./build 39459925 7.0 0.94 dictionary_dictionary -s 1234567890 --minimal -i uk-2005.urls --verbose --check --lookup -p 128
+	./build -n 39459925 -c 7.0 -a 0.94 -e dictionary_dictionary -s 1234567890 --minimal -i uk-2005.urls --verbose --check --lookup -p 128
 
 This example will run the construction over the same input and parameters used in Example 2,
 but with 128 **partitions**.
@@ -289,7 +288,7 @@ The resulting data structure will consume essentially the same space as that bui
 
 #### Example 4
 
-	./build 39459925 7.0 0.94 dictionary_dictionary -s 1234567890 -i uk-2005.urls --verbose --check --lookup --external
+	./build -n 39459925 -c 7.0 -a 0.94 -e dictionary_dictionary -s 1234567890 -i uk-2005.urls --verbose --check --lookup --external
 
 This example will run the construction over the same input and parameters used in Example 2,
 but using **external memory**.
@@ -365,11 +364,11 @@ Other Resources
 
 	This benchmark was also used for the experiments in the SIGIR 2021 paper [1].
 
-* If you want an overview of the algorithm, you can consult [these slides](http://pages.di.unipi.it/pibiri/slides/PTHash.pdf).
+* If you want an overview of the algorithm, you can consult [these slides](https://jermp.github.io/assets/pdf/slides/SIGIR2021.pdf).
 
 Authors
 -----
-* [Giulio Ermanno Pibiri](http://pages.di.unipi.it/pibiri/), <giulio.ermanno.pibiri@isti.cnr.it>
+* [Giulio Ermanno Pibiri](https://jermp.github.io/), <giulioermanno.pibiri@unive.it>
 * [Roberto Trani](), <roberto.trani@isti.cnr.it>
 
 References
