@@ -158,24 +158,26 @@ struct internal_memory_builder_single_phf {
         visitor.visit(m_free_slots);
     }
 
-    static size_t estimate_num_bytes_for_construction(uint64_t num_keys,
-                                                      build_configuration const& config) {
+    static uint64_t estimate_num_bytes_for_construction(uint64_t num_keys,
+                                                        build_configuration const& config) {
         uint64_t table_size = static_cast<double>(num_keys) / config.alpha;
         if ((table_size & (table_size - 1)) == 0) table_size += 1;
         uint64_t num_buckets = (config.num_buckets == constants::invalid_num_buckets)
                                    ? (std::ceil((config.c * num_keys) / std::log2(num_keys)))
                                    : config.num_buckets;
 
-        size_t mapping_bytes = num_keys * sizeof(bucket_payload_pair)          // pairs
-                               + (num_keys + num_buckets) * sizeof(uint64_t);  // buckets
+        uint64_t num_bytes_for_map = num_keys * sizeof(bucket_payload_pair)          // pairs
+                                     + (num_keys + num_buckets) * sizeof(uint64_t);  // buckets
 
-        size_t search_bytes = num_buckets * sizeof(uint64_t)    // pilots
-                              + num_buckets * sizeof(uint64_t)  // buckets
-                              + (config.minimal_output ? (table_size - num_keys) * sizeof(uint64_t)
-                                                       : 0)  // free_slots
-                              + num_keys * sizeof(uint64_t)  // hashes
-                              + table_size / 8;              // bitmap taken
-        return std::max<size_t>(mapping_bytes, search_bytes);
+        uint64_t num_bytes_for_search =
+            num_buckets * sizeof(uint64_t)    // pilots
+            + num_buckets * sizeof(uint64_t)  // buckets
+            +
+            (config.minimal_output ? (table_size - num_keys) * sizeof(uint64_t) : 0)  // free_slots
+            + num_keys * sizeof(uint64_t)                                             // hashes
+            + table_size / 8;  // bitmap taken
+
+        return std::max<uint64_t>(num_bytes_for_map, num_bytes_for_search);
     }
 
 private:
