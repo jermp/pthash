@@ -82,12 +82,26 @@ struct internal_memory_builder_single_phf {
                 std::cout << " == merge+check took: " << elapsed << " seconds" << std::endl;
             }
         }
+
         auto buckets_iterator = buckets.begin();
         time.mapping_ordering_seconds = seconds(clock_type::now() - start);
         if (config.verbose_output) {
             std::cout << " == mapping+ordering took " << time.mapping_ordering_seconds
                       << " seconds " << std::endl;
-            std::cout << " == max bucket size = " << int((*buckets_iterator).size()) << std::endl;
+            uint64_t max_bucket_size = (*buckets_iterator).size();
+            std::cout << " == max bucket size = " << max_bucket_size << std::endl;
+
+            // avg. bucket size
+            double lambda = std::log2(num_keys) / config.c;
+            // avg. bucket size in first 30% of buckets (60% of keys)
+            double lambda_1 = 2.0 * lambda;
+            // avg. bucket size in last 70% of buckets (40% of keys)
+            double lambda_2 = 4.0 * lambda / 7.0;
+            std::cout << " == lambda = " << lambda << std::endl;
+            std::cout << " == lambda_1 = " << lambda_1 << std::endl;
+            std::cout << " == lambda_2 = " << lambda_2 << std::endl;
+            buckets.print_bucket_size_distribution(max_bucket_size, num_buckets, lambda_1,
+                                                   lambda_2);
         }
 
         start = clock_type::now();
@@ -266,6 +280,20 @@ private:
 
         buckets_iterator_t begin() const {
             return buckets_iterator_t(m_buffers);
+        }
+
+        void print_bucket_size_distribution(uint64_t max_bucket_size, uint64_t num_buckets,
+                                            double lambda_1, double lambda_2) {
+            for (int64_t i = max_bucket_size - 1; i >= 0; --i) {
+                uint64_t t = i + 1;
+                uint64_t num_buckets_of_size_t = m_buffers[i].size() / (t + 1);
+                uint64_t estimated_num_buckets_of_size_t =
+                    ((3.0 * poisson_pmf(t, lambda_1) + 7.0 * poisson_pmf(t, lambda_2)) / 10.0) *
+                    num_buckets;
+                std::cout << " == num_buckets of size " << t << " = " << num_buckets_of_size_t
+                          << " (estimated with Poisson = " << estimated_num_buckets_of_size_t << ")"
+                          << std::endl;
+            }
         }
 
     private:
