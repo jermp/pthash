@@ -134,8 +134,7 @@ int main() {
     typedef single_phf<murmurhash2_64,         // base hasher
                        dictionary_dictionary,  // encoder type
                        true                    // minimal
-                       >
-        pthash_type;
+                       > pthash_type;
     pthash_type f;
 
     /* Build the function in internal memory. */
@@ -167,7 +166,7 @@ int main() {
         assert(f(keys[i]) == other(keys[i]));
     }
 
-	std::remove(output_filename.c_str());
+    std::remove(output_filename.c_str());
     return 0;
 }
 ```
