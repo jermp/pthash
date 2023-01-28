@@ -22,7 +22,7 @@ static inline std::string get_tmp_builder_filename(std::string const& dir_name, 
                 = e^(log_e(e^-lambda * lambda^k / gamma(k+1))) =
                 = e^(k * log_e(lambda) - log_e(gamma(k+1)) - lambda)
 */
-static double poisson_pmf(double k, double lambda) {
+static inline double poisson_pmf(double k, double lambda) {
     return exp(k * log(lambda) - lgamma(k + 1.0) - lambda);
 }
 
