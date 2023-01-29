@@ -13,6 +13,8 @@ struct internal_memory_builder_partitioned_phf {
     build_timings build_from_keys(Iterator keys, uint64_t num_keys,
                                   build_configuration const& config) {
         assert(num_keys > 1);
+        util::check_hash_collision_probability<Hasher>(num_keys);
+
         if (config.num_partitions == 0) {
             throw std::invalid_argument("number of partitions must be > 0");
         }

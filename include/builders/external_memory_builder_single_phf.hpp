@@ -32,6 +32,8 @@ struct external_memory_builder_single_phf {
     build_timings build_from_keys(Iterator keys, uint64_t num_keys,
                                   build_configuration const& config) {
         assert(num_keys > 1);
+        util::check_hash_collision_probability<Hasher>(num_keys);
+
         if (config.alpha == 0 or config.alpha > 1.0) {
             throw std::invalid_argument("load factor must be > 0 and <= 1.0");
         }
