@@ -6,13 +6,6 @@
 
 namespace pthash::util {
 
-template <typename T>
-inline void prefetch(T const* ptr) {
-#if defined(__x86_64__)
-    _mm_prefetch(reinterpret_cast<const char*>(ptr), _MM_HINT_T0);
-#endif
-}
-
 inline uint8_t msb(uint64_t x) {
     assert(x);
     unsigned long ret = -1U;
@@ -92,8 +85,8 @@ inline uint64_t select64(uint64_t x, uint64_t k) {
     return s - 1;
 #else
     uint64_t i = 1ULL << k;
-    asm("pdep %[x], %[mask], %[x]" : [ x ] "+r"(x) : [ mask ] "r"(i));
-    asm("tzcnt %[bit], %[index]" : [ index ] "=r"(i) : [ bit ] "g"(x) : "cc");
+    asm("pdep %[x], %[mask], %[x]" : [x] "+r"(x) : [mask] "r"(i));
+    asm("tzcnt %[bit], %[index]" : [index] "=r"(i) : [bit] "g"(x) : "cc");
     return i;
 #endif
 }
