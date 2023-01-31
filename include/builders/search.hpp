@@ -184,7 +184,8 @@ void search_parallel(uint64_t num_keys, uint64_t num_buckets, uint64_t num_non_e
     search_logger log(num_keys, table_size, num_buckets);
     if (config.verbose_output) log.init();
 
-    volatile uint64_t next_bucket_idx = 0;
+    std::atomic<uint64_t> next_bucket_idx = 0;
+    static_assert(next_bucket_idx.is_always_lock_free);
 
     auto exe = [&](uint64_t local_bucket_idx, bucket_t bucket) {
         std::vector<uint64_t> positions;
