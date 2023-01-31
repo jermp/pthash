@@ -53,7 +53,7 @@ If you use `git`, the easiest way to add PTHash is via `git add submodule` as fo
 Compiling the Code
 -----
 
-The code is tested on Linux with `gcc` and on Mac with `clang`.
+The code is tested on Linux with `gcc` and on Mac OS with `clang` (both Intel and ARM processors, like Apple M1).
 To build the code, [`CMake`](https://cmake.org/) is required.
 
 Clone the repository with
