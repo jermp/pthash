@@ -2,6 +2,7 @@
 
 #include <math.h>   // for pow, round, log2
 #include <sstream>  // for stringbuf
+#include <atomic>   // for std::atomic
 #include <vector>
 #include "../../external/essentials/include/essentials.hpp"
 
