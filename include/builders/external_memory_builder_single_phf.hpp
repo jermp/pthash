@@ -504,15 +504,20 @@ private:
             if (m_num_threads_sort > 1) {  // parallel
                 std::vector<memory_view<bucket_payload_pair>> blocks;
                 uint64_t num_keys_per_thread = (size + m_num_threads_sort - 1) / m_num_threads_sort;
-                auto exe = [&](uint64_t tid) { std::sort(blocks[tid].begin(), blocks[tid].end()); };
-
-                std::vector<std::thread> threads(m_num_threads_sort);
                 for (uint64_t i = 0; i != m_num_threads_sort; ++i) {
                     auto begin = buffer.data() + i * num_keys_per_thread;
                     auto end = buffer.data() + std::min((i + 1) * num_keys_per_thread, size);
                     uint64_t block_size = std::distance(begin, end);
-
                     blocks.emplace_back(begin, block_size);
+                }
+
+                auto exe = [&](uint64_t tid) {
+                    assert(tid < blocks.size());
+                    std::sort(blocks[tid].begin(), blocks[tid].end());
+                };
+
+                std::vector<std::thread> threads(m_num_threads_sort);
+                for (uint64_t i = 0; i != m_num_threads_sort; ++i) {
                     threads[i] = std::thread(exe, i);
                 }
                 for (uint64_t i = 0; i != m_num_threads_sort; ++i) {
