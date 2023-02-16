@@ -17,6 +17,12 @@ static const uint64_t available_ram = sysconf(_SC_PAGESIZE) * sysconf(_SC_PHYS_P
 static const uint64_t invalid_seed = uint64_t(-1);
 static const uint64_t invalid_num_buckets = uint64_t(-1);
 static const std::string default_tmp_dirname(".");
+
+/* p1=n*a keys are placed in p2=m*b buckets */
+constexpr float a = 0.6;
+constexpr float b = 0.3;
+/****************************************/
+
 }  // namespace constants
 
 static inline uint64_t random_value() {

@@ -95,10 +95,10 @@ struct internal_memory_builder_single_phf {
 
             // avg. bucket size
             double lambda = std::log2(num_keys) / config.c;
-            // avg. bucket size in first 30% of buckets (60% of keys)
-            double lambda_1 = 2.0 * lambda;
-            // avg. bucket size in last 70% of buckets (40% of keys)
-            double lambda_2 = 4.0 * lambda / 7.0;
+            // avg. bucket size in first p2=b*m buckets containing p1=a*n keys
+            double lambda_1 = constants::a / constants::b * lambda;
+            // avg. bucket size in the other m-p2=(1-b)*m buckets containing n-p1=(1-a)*n keys
+            double lambda_2 = (1 - constants::a) / (1 - constants::b) * lambda;
             std::cout << " == lambda = " << lambda << std::endl;
             std::cout << " == lambda_1 = " << lambda_1 << std::endl;
             std::cout << " == lambda_2 = " << lambda_2 << std::endl;
@@ -290,7 +290,8 @@ private:
                 uint64_t t = i + 1;
                 uint64_t num_buckets_of_size_t = m_buffers[i].size() / (t + 1);
                 uint64_t estimated_num_buckets_of_size_t =
-                    ((3.0 * poisson_pmf(t, lambda_1) + 7.0 * poisson_pmf(t, lambda_2)) / 10.0) *
+                    (constants::b * poisson_pmf(t, lambda_1) +
+                     (1 - constants::b) * poisson_pmf(t, lambda_2)) *
                     num_buckets;
                 std::cout << " == num_buckets of size " << t << " = " << num_buckets_of_size_t
                           << " (estimated with Poisson = " << estimated_num_buckets_of_size_t << ")"
