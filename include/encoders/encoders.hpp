@@ -125,15 +125,15 @@ std::pair<std::vector<uint64_t>, std::vector<uint64_t>> compute_ranks_and_dictio
     }
     std::vector<std::pair<uint64_t, uint64_t>> vec;
     vec.reserve(distinct.size());
-    for (auto p : distinct) vec.emplace_back(p.first, p.second);
+    for (auto& p : distinct) vec.emplace_back(p.first, p.second);
     std::sort(vec.begin(), vec.end(),
               [](auto const& x, auto const& y) { return x.second > y.second; });
     distinct.clear();
     // assign codewords by non-increasing frequency
     std::vector<uint64_t> dict;
-    dict.reserve(distinct.size());
+    dict.reserve(vec.size());
     for (uint64_t i = 0; i != vec.size(); ++i) {
-        auto p = vec[i];
+        auto& p = vec[i];
         distinct.insert({p.first, i});
         dict.push_back(p.first);
     }
