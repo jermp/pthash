@@ -283,7 +283,7 @@ int main(int argc, char** argv) {
                "A constant that trades construction speed for space effectiveness. "
                "A reasonable value lies between 3.0 and 10.0.",
                "-c", true);
-    parser.add("alpha", "The table load factor. It must be a quantity > 0 and < 1.", "-a", true);
+    parser.add("alpha", "The table load factor. It must be a quantity > 0 and <= 1.", "-a", true);
 
     parser.add("encoder_type",
                "The encoder type. Possibile values are: "

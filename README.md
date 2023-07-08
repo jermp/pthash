@@ -193,7 +193,7 @@ shows the usage of the driver program, as reported below.
       REQUIRED: A constant that trades construction speed for space effectiveness. A reasonable value lies between 3.0 and 10.0.
 
     [-a alpha]
-      REQUIRED: The table load factor. It must be a quantity > 0 and < 1.
+      REQUIRED: The table load factor. It must be a quantity > 0 and <= 1.
 
     [-e encoder_type]
       REQUIRED: The encoder type. Possibile values are: 'partitioned_compact', 'dictionary_dictionary', 'elias_fano', 'all'.
