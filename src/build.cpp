@@ -283,9 +283,22 @@ int main(int argc, char** argv) {
                "A constant that trades construction speed for space effectiveness. "
                "A reasonable value lies between 3.0 and 10.0.",
                "-c", true);
-    parser.add("alpha", "The table load factor. It must be a quantity > 0 and <= 1.", "-a", true);
+    parser.add("alpha", "The table load factor. It must be a quantity > 0 and < 1.", "-a", true);
+
     parser.add("encoder_type",
-               "The encoder type. See include/encoders/encoders.hpp for a list of available types.",
+               "The encoder type. Possibile values are: "
+#ifdef PTHASH_ENABLE_ALL_ENCODERS
+               "'compact', 'partitioned_compact', 'compact_compact', 'dictionary', "
+               "'dictionary_dictionary', 'elias_fano', 'dictionary_elias_fano', 'sdc', "
+               "'all'.\n\t"
+#else
+               "'partitioned_compact', 'dictionary_dictionary', 'elias_fano', "
+               "'all'.\n\t"
+               "(For more encoders, compile again with 'cmake .. -D "
+               "PTHASH_ENABLE_ALL_ENCODERS=On').\n\t"
+#endif
+               "The 'all' type will just benchmark all encoders. (Useful for benchmarking "
+               "purposes.)",
                "-e", true);
 
     /* Optional arguments. */

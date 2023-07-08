@@ -184,58 +184,60 @@ Running the command
 
 shows the usage of the driver program, as reported below.
 
-    Usage: ./build [-h,--help] [-n num_keys] [-c c] [-a alpha] [-e encoder_type] [-p num_partitions] [-s seed] [-t num_threads] [-i input_filename] [-o output_filename] [-d tmp_dir] [-m ram] [--minimal] [--external] [--verbose] [--check] [--lookup]
+   Usage: ./build [-h,--help] [-n num_keys] [-c c] [-a alpha] [-e encoder_type] [-p num_partitions] [-s seed] [-t num_threads] [-i input_filename] [-o output_filename] [-d tmp_dir] [-m ram] [--minimal] [--external] [--verbose] [--check] [--lookup]
 
-     [-n num_keys]
-        REQUIRED: The size of the input.
+    [-n num_keys]
+      REQUIRED: The size of the input.
 
-     [-c c]
-        REQUIRED: A constant that trades construction speed for space effectiveness. A reasonable value lies between 3.0 and 10.0.
+    [-c c]
+      REQUIRED: A constant that trades construction speed for space effectiveness. A reasonable value lies between 3.0 and 10.0.
 
-     [-a alpha]
-        REQUIRED: The table load factor. It must be a quantity > 0 and <= 1.
+    [-a alpha]
+      REQUIRED: The table load factor. It must be a quantity > 0 and < 1.
 
-     [-e encoder_type]
-        REQUIRED: The encoder type. See include/encoders/encoders.hpp for a list of available types.
+    [-e encoder_type]
+      REQUIRED: The encoder type. Possibile values are: 'partitioned_compact', 'dictionary_dictionary', 'elias_fano', 'all'.
+      (For more encoders, compile again with 'cmake .. -D PTHASH_ENABLE_ALL_ENCODERS=On').
+      The 'all' type will just benchmark all encoders. (Useful for benchmarking purposes.)
 
-     [-p num_partitions]
-        Number of partitions.
+    [-p num_partitions]
+      Number of partitions.
 
-     [-s seed]
-        Seed to use for construction.
+    [-s seed]
+      Seed to use for construction.
 
-     [-t num_threads]
-        Number of threads to use for construction.
+    [-t num_threads]
+      Number of threads to use for construction.
 
-     [-i input_filename]
-        A string input file name. If this is not provided, then num_keys 64-bit random keys will be used as input instead.
+    [-i input_filename]
+      A string input file name. If this is not provided, then num_keys 64-bit random keys will be used as input instead.
 
-     [-o output_filename]
-        Output file name where the function will be serialized.
+    [-o output_filename]
+      Output file name where the function will be serialized.
 
-     [-d tmp_dir]
-        Temporary directory used for building in external memory. Default is directory '.'.
+    [-d tmp_dir]
+      Temporary directory used for building in external memory. Default is directory '.'.
 
-     [-m ram]
-        Number of Giga bytes of RAM to use for construction in external memory.
+    [-m ram]
+      Number of Giga bytes of RAM to use for construction in external memory.
 
-     [--minimal]
-        Build a minimal PHF.
+    [--minimal]
+      Build a minimal PHF.
 
-     [--external]
-        Build the function in external memory.
+    [--external]
+      Build the function in external memory.
 
-     [--verbose]
-        Verbose output during construction.
+    [--verbose]
+      Verbose output during construction.
 
-     [--check]
-        Check correctness after construction.
+    [--check]
+      Check correctness after construction.
 
-     [--lookup]
-        Measure average lookup time after construction.
+    [--lookup]
+      Measure average lookup time after construction.
 
-     [-h,--help]
-        Print this help text and silently exits.
+    [-h,--help]
+      Print this help text and silently exits.
 
 #### Example 1
 
