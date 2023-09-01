@@ -6,7 +6,7 @@ PTHash
 PTHash is a C++ library implementing fast and compact minimal perfect hash functions as described in the papers
 
 * [*PTHash: Revisiting FCH Minimal Perfect Hashing*](https://dl.acm.org/doi/10.1145/3404835.3462849) [1]
-* [*Parallel and External-Memory Construction of Minimal Perfect Hash Functions with PTHash*](https://arxiv.org/abs/2106.02350) [2]
+* [*Parallel and External-Memory Construction of Minimal Perfect Hash Functions with PTHash*](https://ieeexplore.ieee.org/document/10210677) [2]
 
 Please, cite these papers if you use PTHash.
 
@@ -376,4 +376,4 @@ References
 -----
 * [1] Giulio Ermanno Pibiri and Roberto Trani. [*"PTHash: Revisiting FCH Minimal Perfect Hashing"*](https://dl.acm.org/doi/10.1145/3404835.3462849). In Proceedings of the 44th International
 Conference on Research and Development in Information Retrieval (SIGIR). 2021.
-* [2] Giulio Ermanno Pibiri and Roberto Trani. [*"Parallel and External-Memory Construction of Minimal Perfect Hash Functions with PTHash"*](https://arxiv.org/abs/2106.02350). ArXiv. 2021.
+* [2] Giulio Ermanno Pibiri and Roberto Trani. [*"Parallel and External-Memory Construction of Minimal Perfect Hash Functions with PTHash"*](https://ieeexplore.ieee.org/document/10210677). Transactions on Knowledge and Data Engineering (TKDE). 2023.
