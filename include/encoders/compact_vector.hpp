@@ -206,6 +206,7 @@ struct compact_vector {
         assert(n > 0);
         uint64_t max = *std::max_element(begin, begin + n);
         uint64_t width = max == 0 ? 1 : std::ceil(std::log2(max + 1));
+        std::cout << "width = " << width << std::endl;
         build(begin, n, width);
     }
 
