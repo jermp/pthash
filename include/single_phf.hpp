@@ -101,6 +101,7 @@ private:
     uint64_t m_num_keys;
     uint64_t m_table_size;
     __uint128_t m_M;
+    // opt_bucketer m_bucketer;
     skew_bucketer m_bucketer;
     Encoder m_pilots;
     ef_sequence<false> m_free_slots;

@@ -83,7 +83,7 @@ struct search_logger {
 
         if (pilot >= 256) {
             num_large_pilots += 1;
-            std::cerr << "pilot " << pilot << "; bucket_size " << bucket_size << std::endl;
+            // std::cerr << "pilot " << pilot << "; bucket_size " << bucket_size << std::endl;
             num_keys_large_pilots += bucket_size;
         }
         num_pilots += 1;

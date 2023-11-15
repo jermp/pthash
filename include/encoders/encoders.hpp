@@ -13,9 +13,9 @@ namespace pthash {
 struct compact {
     template <typename Iterator>
     void encode(Iterator begin, uint64_t n) {
-        // m_values.build(begin, n);
-        m_values.reserve(n);
-        for (uint64_t i = 0; i != n; ++i, ++begin) m_values.push_back(*begin);
+        m_values.build(begin, n);
+        // m_values.reserve(n);
+        // for (uint64_t i = 0; i != n; ++i, ++begin) m_values.push_back(*begin);
     }
 
     static std::string name() {
@@ -27,13 +27,13 @@ struct compact {
     }
 
     size_t num_bits() const {
-        // return m_values.bytes() * 8;
-        return essentials::vec_bytes(m_values) * 8;
+        return m_values.bytes() * 8;
+        // return essentials::vec_bytes(m_values) * 8;
     }
 
     uint64_t access(uint64_t i) const {
-        // return m_values.access(i);
-        return m_values[i];
+        return m_values.access(i);
+        // return m_values[i];
     }
 
     template <typename Visitor>
@@ -42,8 +42,8 @@ struct compact {
     }
 
 private:
-    // compact_vector m_values;
-    std::vector<uint8_t> m_values;
+    compact_vector m_values;
+    // std::vector<uint8_t> m_values;
 };
 
 struct partitioned_compact {
@@ -153,9 +153,9 @@ struct dictionary {
     template <typename Iterator>
     void encode(Iterator begin, uint64_t n) {
         auto [ranks, dict] = compute_ranks_and_dictionary(begin, n);
-        // m_ranks.build(ranks.begin(), ranks.size());
-        m_ranks.reserve(ranks.size());
-        for (auto r : ranks) m_ranks.push_back(r);
+        m_ranks.build(ranks.begin(), ranks.size());
+        // m_ranks.reserve(ranks.size());
+        // for (auto r : ranks) m_ranks.push_back(r);
         m_dict.build(dict.begin(), dict.size());
     }
 
@@ -168,13 +168,13 @@ struct dictionary {
     }
 
     size_t num_bits() const {
-        // return (m_ranks.bytes() + m_dict.bytes()) * 8;
-        return (essentials::vec_bytes(m_ranks) + m_dict.bytes()) * 8;
+        return (m_ranks.bytes() + m_dict.bytes()) * 8;
+        // return (essentials::vec_bytes(m_ranks) + m_dict.bytes()) * 8;
     }
 
     uint64_t access(uint64_t i) const {
-        // uint64_t rank = m_ranks.access(i);
-        uint64_t rank = m_ranks[i];
+        uint64_t rank = m_ranks.access(i);
+        // uint64_t rank = m_ranks[i];
         return m_dict.access(rank);
     }
 
@@ -185,8 +185,8 @@ struct dictionary {
     }
 
 private:
-    // compact_vector m_ranks;
-    std::vector<uint8_t> m_ranks;
+    compact_vector m_ranks;
+    // std::vector<uint8_t> m_ranks;
     compact_vector m_dict;
 };
 

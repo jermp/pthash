@@ -141,6 +141,9 @@ struct internal_memory_builder_single_phf {
         return m_table_size;
     }
 
+    // opt_bucketer bucketer() const {
+    //     return m_bucketer;
+    // }
     skew_bucketer bucketer() const {
         return m_bucketer;
     }
@@ -201,6 +204,7 @@ private:
     uint64_t m_num_keys;
     uint64_t m_num_buckets;
     uint64_t m_table_size;
+    // opt_bucketer m_bucketer;
     skew_bucketer m_bucketer;
     std::vector<uint64_t> m_pilots;
     std::vector<uint64_t> m_free_slots;

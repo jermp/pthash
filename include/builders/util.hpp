@@ -10,7 +10,8 @@ namespace pthash {
 
 typedef uint32_t bucket_id_type;
 typedef uint8_t bucket_size_type;
-constexpr bucket_size_type MAX_BUCKET_SIZE = 100;
+// constexpr bucket_size_type MAX_BUCKET_SIZE = 100;
+constexpr bucket_size_type MAX_BUCKET_SIZE = 255;
 
 static inline std::string get_tmp_builder_filename(std::string const& dir_name, uint64_t id) {
     return dir_name + "/pthash.temp." + std::to_string(id) + ".builder";

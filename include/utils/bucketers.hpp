@@ -4,6 +4,42 @@
 
 namespace pthash {
 
+struct opt_bucketer {
+    opt_bucketer() {}
+
+    void init(uint64_t num_buckets) {
+        m_num_buckets = num_buckets;
+    }
+
+    inline uint64_t bucket(uint64_t hash) const {
+        double normalized_hash = static_cast<double>(hash) / double(~0ul);
+        constexpr double c = 0.080;
+        double normalized_bucket =
+            (normalized_hash + (1 - normalized_hash) * std::log(1 - normalized_hash)) * (1 - c) +
+            normalized_hash * c;
+        uint64_t bucket_id =
+            std::min(uint64_t(normalized_bucket * m_num_buckets), m_num_buckets - 1);
+        assert(bucket_id < num_buckets());
+        return bucket_id;
+    }
+
+    uint64_t num_buckets() const {
+        return m_num_buckets;
+    }
+
+    size_t num_bits() const {
+        return 8 * sizeof(m_num_buckets);
+    }
+
+    template <typename Visitor>
+    void visit(Visitor& visitor) {
+        visitor.visit(m_num_buckets);
+    }
+
+private:
+    uint64_t m_num_buckets;
+};
+
 struct skew_bucketer {
     skew_bucketer() {}
 
