@@ -57,6 +57,7 @@ struct search_logger {
     }
 
     double min_p = 1.0;
+    double sum = 0.0;
     uint64_t bucket_size_min_p = 0;
     uint64_t num_keys_large_pilots = 0;
     void update(uint64_t bucket, uint64_t bucket_size, uint64_t pilot) {
@@ -72,6 +73,8 @@ struct search_logger {
             double e = 1.0 / p;
             m_expected_trials += e;
             m_total_expected_trials += e;
+
+            sum += 1 - pow(1 - p, 256);
         }
 
         m_placed_keys += bucket_size;
@@ -194,6 +197,9 @@ void search_sequential(uint64_t num_keys, uint64_t num_buckets, uint64_t num_non
 
     if (config.verbose_output) log.finalize(processed_buckets);
 
+    /* num. pilots is the num. of non-empty buckets (can be computed with Poisson) */
+    std::cout << "num. pilots = " << log.num_pilots << "/" << num_buckets << std::endl;
+
     std::cout << "num. large pilots = " << log.num_large_pilots << "/" << log.num_pilots
               << std::endl;
     std::cout << "num. small pilots = " << log.num_pilots - log.num_large_pilots << "/"
@@ -205,6 +211,7 @@ void search_sequential(uint64_t num_keys, uint64_t num_buckets, uint64_t num_non
               << std::endl;
     std::cout << "num_keys_large_pilots " << log.num_keys_large_pilots << "("
               << (log.num_keys_large_pilots * 100.0) / num_keys << "%)" << std::endl;
+    std::cout << "sum = " << log.sum << "; prob = " << log.sum / log.num_pilots << std::endl;
 }
 
 template <typename BucketsIterator, typename PilotsBuffer>
