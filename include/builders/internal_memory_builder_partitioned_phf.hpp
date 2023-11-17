@@ -69,7 +69,7 @@ struct internal_memory_builder_partitioned_phf {
         partition_config.seed = m_seed;
         uint64_t num_buckets_single_phf = std::ceil((config.c * num_keys) / std::log2(num_keys));
         partition_config.num_buckets = static_cast<double>(num_buckets_single_phf) / num_partitions;
-        // partition_config.verbose_output = false;
+        partition_config.verbose_output = false;
         partition_config.num_threads = 1;
 
         timings.partitioning_seconds = seconds(clock_type::now() - start);

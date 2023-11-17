@@ -197,21 +197,23 @@ void search_sequential(uint64_t num_keys, uint64_t num_buckets, uint64_t num_non
 
     if (config.verbose_output) log.finalize(processed_buckets);
 
-    /* num. pilots is the num. of non-empty buckets (can be computed with Poisson) */
-    std::cout << "num. pilots = " << log.num_pilots << "/" << num_buckets << std::endl;
+    if (config.verbose_output) {
+        /* num. pilots is the num. of non-empty buckets (can be computed with Poisson) */
+        std::cout << "num. pilots = " << log.num_pilots << "/" << num_buckets << std::endl;
 
-    std::cout << "num. large pilots = " << log.num_large_pilots << "/" << log.num_pilots
-              << std::endl;
-    std::cout << "num. small pilots = " << log.num_pilots - log.num_large_pilots << "/"
-              << log.num_pilots << std::endl;
-    std::cout << "prob. of small pilot = "
-              << static_cast<double>(log.num_pilots - log.num_large_pilots) / log.num_pilots
-              << std::endl;
-    std::cout << "min_p = " << log.min_p << "; bucket_size_min_p = " << log.bucket_size_min_p
-              << std::endl;
-    std::cout << "num_keys_large_pilots " << log.num_keys_large_pilots << "("
-              << (log.num_keys_large_pilots * 100.0) / num_keys << "%)" << std::endl;
-    std::cout << "sum = " << log.sum << "; prob = " << log.sum / log.num_pilots << std::endl;
+        std::cout << "num. large pilots = " << log.num_large_pilots << "/" << log.num_pilots
+                  << std::endl;
+        std::cout << "num. small pilots = " << log.num_pilots - log.num_large_pilots << "/"
+                  << log.num_pilots << std::endl;
+        std::cout << "prob. of small pilot = "
+                  << static_cast<double>(log.num_pilots - log.num_large_pilots) / log.num_pilots
+                  << std::endl;
+        std::cout << "min_p = " << log.min_p << "; bucket_size_min_p = " << log.bucket_size_min_p
+                  << std::endl;
+        std::cout << "num_keys_large_pilots " << log.num_keys_large_pilots << "("
+                  << (log.num_keys_large_pilots * 100.0) / num_keys << "%)" << std::endl;
+        std::cout << "sum = " << log.sum << "; prob = " << log.sum / log.num_pilots << std::endl;
+    }
 }
 
 template <typename BucketsIterator, typename PilotsBuffer>
