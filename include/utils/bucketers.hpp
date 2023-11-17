@@ -13,7 +13,7 @@ struct opt_bucketer {
 
     inline uint64_t bucket(uint64_t hash) const {
         double normalized_hash = static_cast<double>(hash) / double(~0ul);
-        constexpr double c = 0.080;
+        constexpr double c = 0.08;
         double normalized_bucket =
             (normalized_hash + (1 - normalized_hash) * std::log(1 - normalized_hash)) * (1 - c) +
             normalized_hash * c;

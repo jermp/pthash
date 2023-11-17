@@ -193,12 +193,12 @@ struct external_memory_builder_single_phf {
         return m_table_size;
     }
 
-    // opt_bucketer bucketer() const {
-    //     return m_bucketer;
-    // }
-    skew_bucketer bucketer() const {
+    opt_bucketer bucketer() const {
         return m_bucketer;
     }
+    // skew_bucketer bucketer() const {
+    //     return m_bucketer;
+    // }
 
     mm::file_source<uint64_t> pilots() const {
         return mm::file_source<uint64_t>(m_pilots_filename);
@@ -213,8 +213,8 @@ private:
     uint64_t m_num_keys;
     uint64_t m_table_size;
     uint64_t m_num_buckets;
-    // opt_bucketer m_bucketer;
-    skew_bucketer m_bucketer;
+    opt_bucketer m_bucketer;
+    // skew_bucketer m_bucketer;
     std::string m_pilots_filename;
     std::string m_free_slots_filename;
 
