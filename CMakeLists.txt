@@ -28,6 +28,11 @@ if (PTHASH_ENABLE_ALL_ENCODERS)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DPTHASH_ENABLE_ALL_ENCODERS")
 endif()
 
+if (PTHASH_ENABLE_LARGE_BUCKET_ID_TYPE)
+  MESSAGE(STATUS "bucket_id_type is uint64_t")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DPTHASH_ENABLE_LARGE_BUCKET_ID_TYPE")
+endif()
+
 if (UNIX)
 
   MESSAGE(STATUS "Compiling with flags: -std=c++17 -O3 -ggdb -pthread -Wall -Wextra -Wno-missing-braces -Wno-unknown-attributes -Wno-unused-function")

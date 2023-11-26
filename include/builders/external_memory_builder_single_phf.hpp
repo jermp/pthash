@@ -43,11 +43,14 @@ struct external_memory_builder_single_phf {
         if ((table_size & (table_size - 1)) == 0) table_size += 1;
         uint64_t num_buckets = std::ceil((config.c * num_keys) / std::log2(num_keys));
 
-        if (sizeof(bucket_id_type) != sizeof(uint64_t) and
-            num_buckets > (1ULL << (sizeof(bucket_id_type) * 8))) {
+#ifndef DPTHASH_ENABLE_LARGE_BUCKET_ID_TYPE
+        if (num_buckets >= (1ULL << (sizeof(bucket_id_type) * 8))) {
             throw std::runtime_error(
-                "using too many buckets: change bucket_id_type to uint64_t or use a smaller c");
+                "using too many buckets: recompile the library with 'cmake .. "
+                "-D PTHASH_ENABLE_LARGE_BUCKET_ID_TYPE=On' to change bucket_id_type to uint64_t or "
+                "use a smaller c");
         }
+#endif
 
         m_num_keys = num_keys;
         m_table_size = table_size;

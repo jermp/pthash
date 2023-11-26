@@ -8,7 +8,11 @@
 
 namespace pthash {
 
+#ifdef DPTHASH_ENABLE_LARGE_BUCKET_ID_TYPE
+typedef uint64_t bucket_id_type;
+#else
 typedef uint32_t bucket_id_type;
+#endif
 typedef uint8_t bucket_size_type;
 constexpr bucket_size_type MAX_BUCKET_SIZE = 100;
 

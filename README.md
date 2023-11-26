@@ -91,6 +91,14 @@ you can compile with
 
 	cmake .. -D PTHASH_ENABLE_ALL_ENCODERS=On
 
+### Enable Large Bucket-Id Type
+By default, PTHash assumes there are less than $2^{32}$ buckets, hence 32-bit integers are used
+for bucket ids. To overcome this, you can either lower the value of `c` or recompile with
+
+    cmake .. -D PTHASH_ENABLE_LARGE_BUCKET_ID_TYPE=On
+
+to use 64-bit integers for bucket ids.
+
 Quick Start
 -----
 
