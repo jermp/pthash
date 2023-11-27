@@ -18,7 +18,7 @@ struct lines_iterator : std::forward_iterator_tag {
     typedef std::string value_type;
 
     lines_iterator(uint8_t const* begin, uint8_t const* end)
-        : m_begin(begin), m_end(end), m_num_nonempty_lines(0) {}
+        : m_begin(begin), m_end(end), m_num_nonempty_lines(0), m_num_empty_lines(0) {}
 
     std::string operator*() {
         uint8_t const* begin = m_begin;
@@ -32,9 +32,10 @@ struct lines_iterator : std::forward_iterator_tag {
                 os << "reached end of file";
             } else {
                 os << "blank line detected";
+                ++m_num_empty_lines;
             }
             os << " after reading " << m_num_nonempty_lines << " non-empty lines";
-            throw std::runtime_error(buffer.str());
+            if (m_num_empty_lines > 1 or m_begin == m_end) throw std::runtime_error(buffer.str());
         }
 
         ++m_num_nonempty_lines;
@@ -52,6 +53,7 @@ private:
     uint8_t const* m_begin;
     uint8_t const* m_end;
     uint64_t m_num_nonempty_lines;
+    uint64_t m_num_empty_lines;
 };
 
 std::vector<std::string> read_string_collection(uint64_t n, char const* filename, bool verbose) {

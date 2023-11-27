@@ -159,7 +159,7 @@ struct external_memory_builder_single_phf {
                 tfm.remove_all_merge_files();
             }
 
-            if (config.minimal_output) {  // fill free slots
+            if (config.minimal_output and config.alpha < 1.0) {  // fill free slots
                 // write all free slots to file
                 buffered_file_t<uint64_t> writer(tfm.get_free_slots_filename(),
                                                  ram - bitmap_taken_bytes);

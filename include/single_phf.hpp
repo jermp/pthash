@@ -31,7 +31,7 @@ struct single_phf {
     }
 
     template <typename Builder>
-    double build(Builder const& builder, build_configuration const&) {
+    double build(Builder const& builder, build_configuration const& config) {
         auto start = clock_type::now();
         m_seed = builder.seed();
         m_num_keys = builder.num_keys();
@@ -39,7 +39,7 @@ struct single_phf {
         m_M = fastmod::computeM_u64(m_table_size);
         m_bucketer = builder.bucketer();
         m_pilots.encode(builder.pilots().data(), m_bucketer.num_buckets());
-        if constexpr (Minimal) {
+        if (Minimal and config.alpha < 1.0) {
             m_free_slots.encode(builder.free_slots().data(), m_table_size - m_num_keys);
         }
         auto stop = clock_type::now();
