@@ -321,6 +321,7 @@ int main(int argc, char** argv) {
     parser.add("minimal_output", "Build a minimal PHF.", "--minimal", false, true);
     parser.add("external_memory", "Build the function in external memory.", "--external", false,
                true);
+    parser.add("mmap", "Use mmap for the input file.", "--mmap", false, true);
     parser.add("verbose_output", "Verbose output during construction.", "--verbose", false, true);
     parser.add("check", "Check correctness after construction.", "--check", false, true);
     parser.add("lookup", "Measure average lookup time after construction.", "--lookup", false,
@@ -331,14 +332,23 @@ int main(int argc, char** argv) {
     auto num_keys = parser.get<uint64_t>("num_keys");
     auto seed = (parser.parsed("seed")) ? parser.get<uint64_t>("seed") : constants::invalid_seed;
     bool external_memory = parser.get<bool>("external_memory");
+    bool mmap = parser.get<bool>("mmap");
 
     if (parser.parsed("input_filename")) {
         auto input_filename = parser.get<std::string>("input_filename");
         if (external_memory) {
-            mm::file_source<uint8_t> input(input_filename, mm::advice::sequential);
-            lines_iterator keys(input.data(), input.data() + input.size());
-            build(parser, keys, num_keys);
-            input.close();
+            if (mmap) {
+                mm::file_source<uint8_t> input(input_filename, mm::advice::sequential);
+                lines_iterator keys(input.data(), input.data() + input.size());
+                build(parser, keys, num_keys);
+                input.close();
+            } else {
+                std::ifstream input(input_filename);
+                if (!input.good()) throw std::runtime_error("error in opening file.");
+                lines_iterator_wrapper keys(input);
+                build(parser, keys, num_keys);
+                input.close();
+            }
         } else {
             std::vector<std::string> keys = read_string_collection(
                 num_keys, input_filename.c_str(), parser.get<bool>("verbose_output"));

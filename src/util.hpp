@@ -35,6 +35,7 @@ struct lines_iterator : std::forward_iterator_tag {
                 ++m_num_empty_lines;
             }
             os << " after reading " << m_num_nonempty_lines << " non-empty lines";
+            /* does not allow more than 1 empty key */
             if (m_num_empty_lines > 1 or m_begin == m_end) throw std::runtime_error(buffer.str());
         }
 
@@ -44,7 +45,6 @@ struct lines_iterator : std::forward_iterator_tag {
 
     void operator++(int) const {}
     void operator++() const {}
-
     lines_iterator operator+(uint64_t) const {
         throw std::runtime_error("lines_iterator::operator+(uint64_t) has not been implemented");
     }
@@ -54,6 +54,102 @@ private:
     uint8_t const* m_end;
     uint64_t m_num_nonempty_lines;
     uint64_t m_num_empty_lines;
+};
+
+struct lines_iterator_wrapper : std::forward_iterator_tag {
+    typedef std::string value_type;
+    static const uint64_t buf_size = 1024;
+
+    lines_iterator_wrapper(std::ifstream const& ifs) : m_pifs(&ifs) {
+        init();
+    }
+
+    lines_iterator_wrapper(lines_iterator_wrapper const& rhs) {
+        *this = rhs;
+    }
+
+    lines_iterator_wrapper& operator=(lines_iterator_wrapper const& rhs) {
+        m_pifs = rhs.m_pifs;
+        init(); /* NOTE: iteration starts from the beginning of the file. */
+        return *this;
+    }
+
+    std::string operator*()  //
+    {
+        m_key.clear();
+        if (m_read == m_size) {
+            std::stringbuf buffer;
+            std::ostream os(&buffer);
+            os << "reached end of file";
+            os << " after reading " << m_num_nonempty_lines << " non-empty lines";
+            throw std::runtime_error(buffer.str());
+        }
+
+        while (m_read != m_size) {
+            if (m_buf_pos == m_buf.size()) fill_buf();
+            if (m_buf[m_buf_pos] == '\n') break;
+            m_key.push_back(m_buf[m_buf_pos]);
+            m_buf_pos += 1;
+            m_read += 1;
+        }
+
+        m_buf_pos += 1;
+        m_read += 1;
+        ++m_num_nonempty_lines;
+
+        if (m_key.length() == 0) {
+            ++m_num_empty_lines;
+            std::stringbuf buffer;
+            std::ostream os(&buffer);
+            os << "blank line detected";
+            os << " after reading " << m_num_nonempty_lines << " non-empty lines";
+
+            /* NOTE: does not allow more than 1 empty key */
+            if (m_num_empty_lines > 1) throw std::runtime_error(buffer.str());
+        }
+
+        return m_key;
+    }
+
+    void operator++(int) const {}
+    void operator++() const {}
+    lines_iterator_wrapper operator+(uint64_t) const {
+        throw std::runtime_error(
+            "lines_iterator_wrapper::operator+(uint64_t) has not been implemented");
+    }
+
+private:
+    std::ifstream const* m_pifs;
+    std::filebuf* m_pbuf;
+    std::string m_buf;
+    std::string m_key;
+    uint64_t m_buf_pos;
+    uint64_t m_size;
+    uint64_t m_read;
+    uint64_t m_num_nonempty_lines;
+    uint64_t m_num_empty_lines;
+
+    void fill_buf() {
+        assert(m_buf_pos == m_buf.size());
+        uint64_t n = buf_size;
+        if (m_read + buf_size > m_size) n = m_size - m_read;
+        m_buf.resize(n);
+        m_pbuf->sgetn(m_buf.data(), n);
+        m_buf_pos = 0;
+    }
+
+    void init() {
+        m_pbuf = m_pifs->rdbuf();
+        m_buf_pos = buf_size;
+        m_size = 0;
+        m_read = 0;
+        m_num_nonempty_lines = 0;
+        m_num_empty_lines = 0;
+        m_size = m_pbuf->pubseekoff(0, m_pifs->end, m_pifs->in);
+        m_pbuf->pubseekpos(0, m_pifs->in);
+        m_buf.resize(buf_size);
+        fill_buf();
+    }
 };
 
 std::vector<std::string> read_string_collection(uint64_t n, char const* filename, bool verbose) {
