@@ -57,22 +57,20 @@ private:
 
 struct sequential_lines_iterator : std::forward_iterator_tag {
     typedef std::string value_type;
-    static const uint64_t buf_size = 1024;
 
-    sequential_lines_iterator(std::istream & is)
-        : m_pis(&is), m_num_lines(0), m_num_empty_lines(0) {
-    }
+    sequential_lines_iterator(std::istream& is)
+        : m_pis(&is), m_num_lines(0), m_num_empty_lines(0) {}
 
-    sequential_lines_iterator(sequential_lines_iterator const& rhs) {
-        *this = rhs;
-    }
+    // sequential_lines_iterator(sequential_lines_iterator const& rhs) {
+    //     *this = rhs;
+    // }
 
-    sequential_lines_iterator& operator=(sequential_lines_iterator const& rhs) {
-        m_pis = rhs.m_pis;
-        m_num_lines = rhs.m_num_lines;
-        m_num_empty_lines = rhs.m_num_empty_lines;
-        return *this;
-    }
+    // sequential_lines_iterator& operator=(sequential_lines_iterator const& rhs) {
+    //     m_pis = rhs.m_pis;
+    //     m_num_lines = rhs.m_num_lines;
+    //     m_num_empty_lines = rhs.m_num_empty_lines;
+    //     return *this;
+    // }
 
     std::string operator*()  //
     {
@@ -110,7 +108,7 @@ private:
 };
 
 template <typename IStream>
-std::vector<std::string> read_string_collection(uint64_t n, IStream &is, bool verbose) {
+std::vector<std::string> read_string_collection(uint64_t n, IStream& is, bool verbose) {
     progress_logger logger(n, "read ", " keys from file", verbose);
     std::string s;
     uint64_t max_string_length = 0;

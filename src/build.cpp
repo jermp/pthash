@@ -327,9 +327,12 @@ int main(int argc, char** argv) {
                true);
 
     if (!parser.parse()) return 1;
-    if (parser.parsed("input_filename") && parser.get<std::string>("input_filename") == "-" && parser.get<bool>("external_memory")) {
+    if (parser.parsed("input_filename") && parser.get<std::string>("input_filename") == "-" &&
+        parser.get<bool>("external_memory")) {
         if (parser.get<bool>("check") || parser.get<bool>("lookup")) {
-            std::cerr << "--input_filename - (stdin input) in combination with --external can be used only without --check and --lookup" << std::endl;
+            std::cerr << "--input_filename - (stdin input) in combination with --external can be "
+                         "used only without --check and --lookup"
+                      << std::endl;
             return 1;
         }
     }
@@ -353,14 +356,14 @@ int main(int argc, char** argv) {
         } else {
             std::vector<std::string> keys;
             if (input_filename == "-") {
-                keys = read_string_collection(num_keys, std::cin, parser.get<bool>("verbose_output"));
+                keys =
+                    read_string_collection(num_keys, std::cin, parser.get<bool>("verbose_output"));
             } else {
                 std::ifstream input(input_filename.c_str());
                 if (!input.good()) throw std::runtime_error("error in opening file.");
                 keys = read_string_collection(num_keys, input, parser.get<bool>("verbose_output"));
                 input.close();
             }
-
             build(parser, keys.begin(), keys.size());
         }
     } else {  // use num_keys random 64-bit keys
