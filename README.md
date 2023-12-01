@@ -191,61 +191,60 @@ Running the command
 	./build --help
 
 shows the usage of the driver program, as reported below.
-
-   Usage: ./build [-h,--help] [-n num_keys] [-c c] [-a alpha] [-e encoder_type] [-p num_partitions] [-s seed] [-t num_threads] [-i input_filename] [-o output_filename] [-d tmp_dir] [-m ram] [--minimal] [--external] [--verbose] [--check] [--lookup]
-
-    [-n num_keys]
-      REQUIRED: The size of the input.
-
-    [-c c]
-      REQUIRED: A constant that trades construction speed for space effectiveness. A reasonable value lies between 3.0 and 10.0.
-
-    [-a alpha]
-      REQUIRED: The table load factor. It must be a quantity > 0 and <= 1.
-
-    [-e encoder_type]
-      REQUIRED: The encoder type. Possibile values are: 'partitioned_compact', 'dictionary_dictionary', 'elias_fano', 'all'.
-      (For more encoders, compile again with 'cmake .. -D PTHASH_ENABLE_ALL_ENCODERS=On').
-      The 'all' type will just benchmark all encoders. (Useful for benchmarking purposes.)
-
-    [-p num_partitions]
-      Number of partitions.
-
-    [-s seed]
-      Seed to use for construction.
-
-    [-t num_threads]
-      Number of threads to use for construction.
-
-    [-i input_filename]
-      A string input file name. If this is not provided, then num_keys 64-bit random keys will be used as input instead.
-
-    [-o output_filename]
-      Output file name where the function will be serialized.
-
-    [-d tmp_dir]
-      Temporary directory used for building in external memory. Default is directory '.'.
-
-    [-m ram]
-      Number of Giga bytes of RAM to use for construction in external memory.
-
-    [--minimal]
-      Build a minimal PHF.
-
-    [--external]
-      Build the function in external memory.
-
-    [--verbose]
-      Verbose output during construction.
-
-    [--check]
-      Check correctness after construction.
-
-    [--lookup]
-      Measure average lookup time after construction.
-
-    [-h,--help]
-      Print this help text and silently exits.
+	
+	Usage: ./build [-h,--help] [-n num_keys] [-c c] [-a alpha] [-e encoder_type] [-p num_partitions] [-s seed] [-t num_threads] [-i input_filename] [-o output_filename] [-d tmp_dir] [-m ram] [--minimal] [--external] [--verbose] [--check] [--lookup]
+	
+	[-n num_keys]
+	REQUIRED: The size of the input.
+	
+	[-c c]
+	REQUIRED: A constant that trades construction speed for space effectiveness. A reasonable value lies between 3.0 and 10.0.
+	
+	[-a alpha]
+	REQUIRED: The table load factor. It must be a quantity > 0 and <= 1.
+	
+	[-e encoder_type]
+	REQUIRED: The encoder type. Possibile values are: 'compact', 'partitioned_compact', 'compact_compact', 'dictionary', 'dictionary_dictionary', 'elias_fano', 'dictionary_elias_fano', 'sdc', 'all'.
+	The 'all' type will just benchmark all encoders. (Useful for benchmarking purposes.)
+	
+	[-p num_partitions]
+	Number of partitions.
+	
+	[-s seed]
+	Seed to use for construction.
+	
+	[-t num_threads]
+	Number of threads to use for construction.
+	
+	[-i input_filename]
+	A string input file name. If this is not provided, then num_keys 64-bit random keys will be used as input instead.If, instead, the filename is '-', then input is read from standard input.
+	
+	[-o output_filename]
+	Output file name where the function will be serialized.
+	
+	[-d tmp_dir]
+	Temporary directory used for building in external memory. Default is directory '.'.
+	
+	[-m ram]
+	Number of Giga bytes of RAM to use for construction in external memory.
+	
+	[--minimal]
+	Build a minimal PHF.
+	
+	[--external]
+	Build the function in external memory.
+	
+	[--verbose]
+	Verbose output during construction.
+	
+	[--check]
+	Check correctness after construction.
+	
+	[--lookup]
+	Measure average lookup time after construction.
+	
+	[-h,--help]
+	Print this help text and silently exits.
 
 #### Example 1
 
@@ -310,7 +309,28 @@ commands to use 4 parallel threads.
 (Also consult our second paper [2] for more information about parallelism.)
 
 ### Building Perfect Hash Functions (not Minimal)
-Just do not specify the `--minimal` flag when using the `build` utility.
+Just do not specify the `--minimal` flag when using the `build` tool.
+
+### Reading Keys from Standard Input
+You can make the `build` tool read the keys from stardard input using bash pipelining (`|`)
+in combination with option `-i -`. This is very useful when building keys from compressed files.
+
+Some examples below.
+
+	for i in $(seq 1 1000000) ; do echo $i ; done > foo.txt
+	cat foo.txt | ./build --minimal -c 5 -a 0.94 -e dictionary_dictionary -n 1000000 -m 1 -i - -o foo.mph --verbose --external
+
+	gzip foo.txt
+	zcat foo.txt.gz | ./build --minimal -c 5 -a 0.94 -e dictionary_dictionary -n 1000000 -m 1 -i - -o foo.mph --verbose --external
+
+	gunzip foo.txt.gz
+	zstd foo.txt
+	zstdcat foo.txt.zst | ./build --minimal -c 5 -a 0.94 -e dictionary_dictionary -n 1000000 -m 1 -i - -o foo.mph --verbose --external
+
+**Note**: you may need to write `zcat < foo.txt.gz | (...)` on Mac OSX.
+
+One caveat of this approach is that is **not** possible to use `--check` nor `--lookup` because these two options
+need to re-iterate over the keys from the stream.
 
 An Example Benchmark
 -----
