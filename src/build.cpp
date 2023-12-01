@@ -305,11 +305,11 @@ int main(int argc, char** argv) {
     parser.add("num_partitions", "Number of partitions.", "-p", false);
     parser.add("seed", "Seed to use for construction.", "-s", false);
     parser.add("num_threads", "Number of threads to use for construction.", "-t", false);
-    parser.add(
-        "input_filename",
-        "A string input file name. If this is not provided, then num_keys 64-bit random keys will "
-        "be used as input instead.",
-        "-i", false);
+    parser.add("input_filename",
+               "A string input file name. If this is not provided, then num_keys 64-bit random "
+               "keys will be used as input instead."
+               "If, instead, the filename is '-', then input is read from standard input.",
+               "-i", false);
     parser.add("output_filename", "Output file name where the function will be serialized.", "-o",
                false);
     parser.add("tmp_dir",
