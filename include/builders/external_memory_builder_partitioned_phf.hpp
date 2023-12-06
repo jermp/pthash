@@ -46,7 +46,7 @@ struct external_memory_builder_partitioned_phf {
         std::vector<meta_partition> partitions;
         partitions.reserve(num_partitions);
         double average_partition_size = static_cast<double>(num_keys) / num_partitions;
-        if (average_partition_size < 10000 and num_partitions > 1) {
+        if (average_partition_size < constants::min_partition_size and num_partitions > 1) {
             throw std::runtime_error("average partition size is too small: use less partitions");
         }
         for (uint64_t id = 0; id != num_partitions; ++id) {
