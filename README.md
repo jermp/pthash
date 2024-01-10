@@ -104,7 +104,7 @@ Quick Start
 
 For a quick start, see the source file `src/example.cpp` (reported below).
 The example shows how to setup a simple build configuration
-for PTHash (parameters, bash hasher, and encoder).
+for PTHash (parameters, base hasher, and encoder).
 
 After compilation, run this example with
 
