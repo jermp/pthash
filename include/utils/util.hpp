@@ -3,7 +3,7 @@
 #include <chrono>
 #include <string>
 
-#include "../../external/essentials/include/essentials.hpp"
+#include <essentials.hpp>
 #include "../../external/fastmod/fastmod.h"
 
 #define PTHASH_LIKELY(expr) __builtin_expect((bool)(expr), true)
