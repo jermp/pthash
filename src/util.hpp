@@ -10,7 +10,7 @@
 #include <vector>
 
 #include "../include/utils/util.hpp"
-#include "../external/essentials/include/essentials.hpp"
+#include <essentials.hpp>
 
 namespace pthash {
 

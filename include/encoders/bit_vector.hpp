@@ -5,7 +5,7 @@
 
 #include "util.hpp"
 
-#include "../../external/essentials/include/essentials.hpp"
+#include <essentials.hpp>
 
 namespace pthash {
 

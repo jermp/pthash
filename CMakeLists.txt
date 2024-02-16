@@ -47,6 +47,9 @@ if(NOT TARGET PTHASH)
       target_compile_options(PTHASH INTERFACE -fsanitize=address -fno-omit-frame-pointer)
     endif()
   endif()
+
+  add_subdirectory(external/essentials)
+  target_link_libraries(PTHASH INTERFACE ESSENTIALS)
 endif()
 
 # Only add benchmarks and tests when compiling PTHash itself, not when added as a dependency
