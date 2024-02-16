@@ -305,11 +305,11 @@ int main(int argc, char** argv) {
     parser.add("num_partitions", "Number of partitions.", "-p", false);
     parser.add("seed", "Seed to use for construction.", "-s", false);
     parser.add("num_threads", "Number of threads to use for construction.", "-t", false);
-    parser.add(
-        "input_filename",
-        "A string input file name. If this is not provided, then num_keys 64-bit random keys will "
-        "be used as input instead.",
-        "-i", false);
+    parser.add("input_filename",
+               "A string input file name. If this is not provided, then num_keys 64-bit random "
+               "keys will be used as input instead."
+               "If, instead, the filename is '-', then input is read from standard input.",
+               "-i", false);
     parser.add("output_filename", "Output file name where the function will be serialized.", "-o",
                false);
     parser.add("tmp_dir",
@@ -327,6 +327,15 @@ int main(int argc, char** argv) {
                true);
 
     if (!parser.parse()) return 1;
+    if (parser.parsed("input_filename") && parser.get<std::string>("input_filename") == "-" &&
+        parser.get<bool>("external_memory")) {
+        if (parser.get<bool>("check") || parser.get<bool>("lookup")) {
+            std::cerr << "--input_filename - (stdin input) in combination with --external can be "
+                         "used only without --check and --lookup"
+                      << std::endl;
+            return 1;
+        }
+    }
 
     auto num_keys = parser.get<uint64_t>("num_keys");
     auto seed = (parser.parsed("seed")) ? parser.get<uint64_t>("seed") : constants::invalid_seed;
@@ -335,13 +344,26 @@ int main(int argc, char** argv) {
     if (parser.parsed("input_filename")) {
         auto input_filename = parser.get<std::string>("input_filename");
         if (external_memory) {
-            mm::file_source<uint8_t> input(input_filename, mm::advice::sequential);
-            lines_iterator keys(input.data(), input.data() + input.size());
-            build(parser, keys, num_keys);
-            input.close();
+            if (input_filename == "-") {
+                sequential_lines_iterator keys(std::cin);
+                build(parser, keys, num_keys);
+            } else {
+                mm::file_source<uint8_t> input(input_filename, mm::advice::sequential);
+                lines_iterator keys(input.data(), input.data() + input.size());
+                build(parser, keys, num_keys);
+                input.close();
+            }
         } else {
-            std::vector<std::string> keys = read_string_collection(
-                num_keys, input_filename.c_str(), parser.get<bool>("verbose_output"));
+            std::vector<std::string> keys;
+            if (input_filename == "-") {
+                keys =
+                    read_string_collection(num_keys, std::cin, parser.get<bool>("verbose_output"));
+            } else {
+                std::ifstream input(input_filename.c_str());
+                if (!input.good()) throw std::runtime_error("error in opening file.");
+                keys = read_string_collection(num_keys, input, parser.get<bool>("verbose_output"));
+                input.close();
+            }
             build(parser, keys.begin(), keys.size());
         }
     } else {  // use num_keys random 64-bit keys

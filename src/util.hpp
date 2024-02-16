@@ -10,7 +10,7 @@
 #include <vector>
 
 #include "../include/utils/util.hpp"
-#include "../external/essentials/include/essentials.hpp"
+#include <essentials.hpp>
 
 namespace pthash {
 
@@ -18,7 +18,7 @@ struct lines_iterator : std::forward_iterator_tag {
     typedef std::string value_type;
 
     lines_iterator(uint8_t const* begin, uint8_t const* end)
-        : m_begin(begin), m_end(end), m_num_nonempty_lines(0) {}
+        : m_begin(begin), m_end(end), m_num_lines(0), m_num_empty_lines(0) {}
 
     std::string operator*() {
         uint8_t const* begin = m_begin;
@@ -29,21 +29,21 @@ struct lines_iterator : std::forward_iterator_tag {
             std::stringbuf buffer;
             std::ostream os(&buffer);
             if (m_begin == m_end) {
-                os << "reached end of file";
+                os << "reached end of file after " << m_num_lines << " lines";
             } else {
-                os << "blank line detected";
+                os << "second blank line detected after " << m_num_lines << " lines";
+                ++m_num_empty_lines;
             }
-            os << " after reading " << m_num_nonempty_lines << " non-empty lines";
-            throw std::runtime_error(buffer.str());
+            /* does not allow more than 1 empty key */
+            if (m_num_empty_lines > 1 or m_begin == m_end) throw std::runtime_error(buffer.str());
         }
 
-        ++m_num_nonempty_lines;
+        ++m_num_lines;
         return std::string(reinterpret_cast<const char*>(begin), m_begin - begin - 1);
     }
 
     void operator++(int) const {}
     void operator++() const {}
-
     lines_iterator operator+(uint64_t) const {
         throw std::runtime_error("lines_iterator::operator+(uint64_t) has not been implemented");
     }
@@ -51,26 +51,77 @@ struct lines_iterator : std::forward_iterator_tag {
 private:
     uint8_t const* m_begin;
     uint8_t const* m_end;
-    uint64_t m_num_nonempty_lines;
+    uint64_t m_num_lines;
+    uint64_t m_num_empty_lines;
 };
 
-std::vector<std::string> read_string_collection(uint64_t n, char const* filename, bool verbose) {
+struct sequential_lines_iterator : std::forward_iterator_tag {
+    typedef std::string value_type;
+
+    sequential_lines_iterator(std::istream& is)
+        : m_pis(&is), m_num_lines(0), m_num_empty_lines(0) {}
+
+    // sequential_lines_iterator(sequential_lines_iterator const& rhs) {
+    //     *this = rhs;
+    // }
+
+    // sequential_lines_iterator& operator=(sequential_lines_iterator const& rhs) {
+    //     m_pis = rhs.m_pis;
+    //     m_num_lines = rhs.m_num_lines;
+    //     m_num_empty_lines = rhs.m_num_empty_lines;
+    //     return *this;
+    // }
+
+    std::string operator*()  //
+    {
+        std::getline(*m_pis, m_key);
+
+        if (!m_pis->good() || m_key.empty()) {
+            std::stringbuf buffer;
+            std::ostream os(&buffer);
+            if (!m_pis->good()) {
+                os << "reached end of file after " << m_num_lines << " lines";
+            } else {
+                os << "second blank line detected after " << m_num_lines << " lines";
+                ++m_num_empty_lines;
+            }
+            /* does not allow more than 1 empty key */
+            if (m_num_empty_lines > 1 or !m_pis->good()) throw std::runtime_error(buffer.str());
+        }
+
+        ++m_num_lines;
+        return m_key;
+    }
+
+    void operator++(int) const {}
+    void operator++() const {}
+    sequential_lines_iterator operator+(uint64_t) const {
+        throw std::runtime_error(
+            "sequential_lines_iterator::operator+(uint64_t) has not been implemented");
+    }
+
+private:
+    std::istream* m_pis;
+    uint64_t m_num_lines;
+    uint64_t m_num_empty_lines;
+    std::string m_key;
+};
+
+template <typename IStream>
+std::vector<std::string> read_string_collection(uint64_t n, IStream& is, bool verbose) {
     progress_logger logger(n, "read ", " keys from file", verbose);
-    std::ifstream input(filename);
-    if (!input.good()) throw std::runtime_error("error in opening file.");
     std::string s;
     uint64_t max_string_length = 0;
     uint64_t sum_of_lengths = 0;
     std::vector<std::string> strings;
     strings.reserve(n);
-    while (std::getline(input, s)) {
+    while (std::getline(is, s)) {
         if (s.size() > max_string_length) max_string_length = s.size();
         sum_of_lengths += s.size();
         strings.push_back(s);
         logger.log();
         if (strings.size() == n) break;
     }
-    input.close();
     strings.shrink_to_fit();
     logger.finalize();
     if (verbose) {

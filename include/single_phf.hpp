@@ -39,7 +39,7 @@ struct single_phf {
         m_M = fastmod::computeM_u64(m_table_size);
         m_bucketer = builder.bucketer();
         m_pilots.encode(builder.pilots().data(), m_bucketer.num_buckets());
-        if constexpr (Minimal) {
+        if (Minimal and m_num_keys < m_table_size) {
             m_free_slots.encode(builder.free_slots().data(), m_table_size - m_num_keys);
         }
         auto stop = clock_type::now();

@@ -34,7 +34,7 @@ struct internal_memory_builder_partitioned_phf {
         m_builders.resize(num_partitions);
 
         double average_partition_size = static_cast<double>(num_keys) / num_partitions;
-        if (average_partition_size < 10000 and num_partitions > 1) {
+        if (average_partition_size < constants::min_partition_size and num_partitions > 1) {
             throw std::runtime_error("average partition size is too small: use less partitions");
         }
         std::vector<std::vector<typename hasher_type::hash_type>> partitions(num_partitions);
