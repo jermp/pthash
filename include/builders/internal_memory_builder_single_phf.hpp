@@ -8,9 +8,10 @@
 
 namespace pthash {
 
-template <typename Hasher>
+template <typename Hasher, typename Bucketer>
 struct internal_memory_builder_single_phf {
     typedef Hasher hasher_type;
+    typedef Bucketer bucketer_type;
 
     template <typename RandomAccessIterator>
     build_timings build_from_keys(RandomAccessIterator keys, uint64_t num_keys,
@@ -141,12 +142,9 @@ struct internal_memory_builder_single_phf {
         return m_table_size;
     }
 
-    opt_bucketer bucketer() const {
+    Bucketer bucketer() const {
         return m_bucketer;
     }
-    // skew_bucketer bucketer() const {
-    //     return m_bucketer;
-    // }
 
     std::vector<uint64_t> const& pilots() const {
         return m_pilots;
@@ -204,8 +202,7 @@ private:
     uint64_t m_num_keys;
     uint64_t m_num_buckets;
     uint64_t m_table_size;
-    opt_bucketer m_bucketer;
-    // skew_bucketer m_bucketer;
+    Bucketer m_bucketer;
     std::vector<uint64_t> m_pilots;
     std::vector<uint64_t> m_free_slots;
 

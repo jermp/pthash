@@ -22,6 +22,7 @@ int main() {
 
     /* Declare the PTHash function. */
     typedef single_phf<murmurhash2_64,         // base hasher
+                       skew_bucketer,          // bucketer type
                        dictionary_dictionary,  // encoder type
                        true                    // minimal
                        >

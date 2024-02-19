@@ -8,7 +8,7 @@
 
 namespace pthash {
 
-template <typename Hasher, typename Encoder, bool Minimal>
+template <typename Hasher, typename Bucketer, typename Encoder, bool Minimal>
 struct partitioned_phf {
 private:
     struct partition {
@@ -19,7 +19,7 @@ private:
         }
 
         uint64_t offset;
-        single_phf<Hasher, Encoder, Minimal> f;
+        single_phf<Hasher, Bucketer, Encoder, Minimal> f;
     };
 
 public:
@@ -29,7 +29,7 @@ public:
     template <typename Iterator>
     build_timings build_in_internal_memory(Iterator keys, uint64_t num_keys,
                                            build_configuration const& config) {
-        internal_memory_builder_partitioned_phf<Hasher> builder;
+        internal_memory_builder_partitioned_phf<Hasher, Bucketer> builder;
         auto timings = builder.build_from_keys(keys, num_keys, config);
         timings.encoding_seconds = build(builder, config);
         return timings;
@@ -38,7 +38,7 @@ public:
     template <typename Iterator>
     build_timings build_in_external_memory(Iterator keys, uint64_t num_keys,
                                            build_configuration const& config) {
-        external_memory_builder_partitioned_phf<Hasher> builder;
+        external_memory_builder_partitioned_phf<Hasher, Bucketer> builder;
         auto timings = builder.build_from_keys(keys, num_keys, config);
         timings.encoding_seconds = build(builder, config);
         return timings;

@@ -5,9 +5,10 @@
 
 namespace pthash {
 
-template <typename Hasher>
+template <typename Hasher, typename Bucketer>
 struct internal_memory_builder_partitioned_phf {
     typedef Hasher hasher_type;
+    typedef Bucketer bucketer_type;
 
     template <typename Iterator>
     build_timings build_from_keys(Iterator keys, uint64_t num_keys,
@@ -156,7 +157,8 @@ struct internal_memory_builder_partitioned_phf {
         return m_offsets;
     }
 
-    std::vector<internal_memory_builder_single_phf<hasher_type>> const& builders() const {
+    std::vector<internal_memory_builder_single_phf<hasher_type, bucketer_type>> const& builders()
+        const {
         return m_builders;
     }
 
@@ -167,7 +169,7 @@ private:
     uint64_t m_num_partitions;
     uniform_bucketer m_bucketer;
     std::vector<uint64_t> m_offsets;
-    std::vector<internal_memory_builder_single_phf<hasher_type>> m_builders;
+    std::vector<internal_memory_builder_single_phf<hasher_type, bucketer_type>> m_builders;
 };
 
 }  // namespace pthash

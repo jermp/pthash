@@ -17,12 +17,11 @@ constexpr uint64_t search_cache_size = 1000;
 struct search_logger {
     search_logger(uint64_t num_keys, uint64_t table_size, uint64_t num_buckets)
 
-        :
+        // :
+        // num_pilots(0)
+        // , num_large_pilots(0)
 
-        num_pilots(0)
-        , num_large_pilots(0)
-
-        , m_num_keys(num_keys)
+        : m_num_keys(num_keys)
         , m_table_size(table_size)
         , m_num_buckets(num_buckets)
         , m_step(m_num_buckets > 20 ? m_num_buckets / 20 : 1)
@@ -31,9 +30,7 @@ struct search_logger {
         , m_trials(0)
         , m_total_trials(0)
         , m_expected_trials(0.0)
-        , m_total_expected_trials(0.0)
-
-    {}
+        , m_total_expected_trials(0.0) {}
 
     void init() {
         essentials::logger("search starts");
@@ -66,27 +63,27 @@ struct search_logger {
             double p = pow(base, bucket_size);
             // std::cout << "bucket " << bucket << ": p = " << p << std::endl;
             // std::cerr << p << '\n';
-            if (p < min_p) {
-                min_p = p;
-                bucket_size_min_p = bucket_size;
-            }
+            // if (p < min_p) {
+            //     min_p = p;
+            //     bucket_size_min_p = bucket_size;
+            // }
             double e = 1.0 / p;
             m_expected_trials += e;
             m_total_expected_trials += e;
 
-            sum += 1 - pow(1 - p, 256);
+            // sum += 1 - pow(1 - p, 256);
         }
 
         m_placed_keys += bucket_size;
         m_trials += pilot + 1;
         m_total_trials += pilot + 1;
 
-        if (pilot >= 256) {
-            num_large_pilots += 1;
-            // std::cerr << "pilot " << pilot << "; bucket_size " << bucket_size << std::endl;
-            num_keys_large_pilots += bucket_size;
-        }
-        num_pilots += 1;
+        // if (pilot >= 256) {
+        //     num_large_pilots += 1;
+        //     // std::cerr << "pilot " << pilot << "; bucket_size " << bucket_size << std::endl;
+        //     num_keys_large_pilots += bucket_size;
+        // }
+        // num_pilots += 1;
 
         if (bucket > 0 and bucket % m_step == 0) print(bucket);
     }
@@ -197,23 +194,23 @@ void search_sequential(uint64_t num_keys, uint64_t num_buckets, uint64_t num_non
 
     if (config.verbose_output) log.finalize(processed_buckets);
 
-    if (config.verbose_output) {
-        /* num. pilots is the num. of non-empty buckets (can be computed with Poisson) */
-        std::cout << "num. pilots = " << log.num_pilots << "/" << num_buckets << std::endl;
+    // if (config.verbose_output) {
+    //     /* num. pilots is the num. of non-empty buckets (can be computed with Poisson) */
+    //     std::cout << "num. pilots = " << log.num_pilots << "/" << num_buckets << std::endl;
 
-        std::cout << "num. large pilots = " << log.num_large_pilots << "/" << log.num_pilots
-                  << std::endl;
-        std::cout << "num. small pilots = " << log.num_pilots - log.num_large_pilots << "/"
-                  << log.num_pilots << std::endl;
-        std::cout << "prob. of small pilot = "
-                  << static_cast<double>(log.num_pilots - log.num_large_pilots) / log.num_pilots
-                  << std::endl;
-        std::cout << "min_p = " << log.min_p << "; bucket_size_min_p = " << log.bucket_size_min_p
-                  << std::endl;
-        std::cout << "num_keys_large_pilots " << log.num_keys_large_pilots << "("
-                  << (log.num_keys_large_pilots * 100.0) / num_keys << "%)" << std::endl;
-        std::cout << "sum = " << log.sum << "; prob = " << log.sum / log.num_pilots << std::endl;
-    }
+    //     std::cout << "num. large pilots = " << log.num_large_pilots << "/" << log.num_pilots
+    //               << std::endl;
+    //     std::cout << "num. small pilots = " << log.num_pilots - log.num_large_pilots << "/"
+    //               << log.num_pilots << std::endl;
+    //     std::cout << "prob. of small pilot = "
+    //               << static_cast<double>(log.num_pilots - log.num_large_pilots) / log.num_pilots
+    //               << std::endl;
+    //     std::cout << "min_p = " << log.min_p << "; bucket_size_min_p = " << log.bucket_size_min_p
+    //               << std::endl;
+    //     std::cout << "num_keys_large_pilots " << log.num_keys_large_pilots << "("
+    //               << (log.num_keys_large_pilots * 100.0) / num_keys << "%)" << std::endl;
+    //     std::cout << "sum = " << log.sum << "; prob = " << log.sum / log.num_pilots << std::endl;
+    // }
 }
 
 template <typename BucketsIterator, typename PilotsBuffer>

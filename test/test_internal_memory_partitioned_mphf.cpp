@@ -1,11 +1,12 @@
 #include "common.hpp"
 
 using namespace pthash;
+using bucketer_type = skew_bucketer;
 
 template <typename Encoder, typename Builder, typename Iterator>
 void test_encoder(Builder& builder, build_configuration const& config, Iterator keys,
                   uint64_t num_keys) {
-    partitioned_phf<typename Builder::hasher_type, Encoder, true> f;
+    partitioned_phf<typename Builder::hasher_type, bucketer_type, Encoder, true> f;
     f.build(builder, config);
     testing::require_equal(f.num_keys(), num_keys);
     check(keys, f);
@@ -15,8 +16,8 @@ template <typename Iterator>
 void test_internal_memory_partitioned_mphf(Iterator keys, uint64_t num_keys) {
     std::cout << "testing on " << num_keys << " keys..." << std::endl;
 
-    internal_memory_builder_partitioned_phf<murmurhash2_64> builder_64;
-    internal_memory_builder_partitioned_phf<murmurhash2_128> builder_128;
+    internal_memory_builder_partitioned_phf<murmurhash2_64, bucketer_type> builder_64;
+    internal_memory_builder_partitioned_phf<murmurhash2_128, bucketer_type> builder_128;
 
     build_configuration config;
     config.minimal_output = true;  // mphf

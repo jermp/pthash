@@ -15,6 +15,7 @@ struct build_parameters {
     Iterator keys;
     uint64_t num_keys;
     bool external_memory, check, lookup;
+    std::string bucketer_type;
     std::string encoder_type;
     std::string output_filename;
 };
@@ -114,18 +115,22 @@ void choose_phf(Builder& builder, build_timings const& timings,
                 build_parameters<Iterator> const& params, build_configuration const& config) {
     if constexpr (partitioned) {
         if (config.minimal_output) {
-            build_benchmark<partitioned_phf<typename Builder::hasher_type, Encoder, true>>(
+            build_benchmark<partitioned_phf<typename Builder::hasher_type,
+                                            typename Builder::bucketer_type, Encoder, true>>(
                 builder, timings, params, config);
         } else {
-            build_benchmark<partitioned_phf<typename Builder::hasher_type, Encoder, false>>(
+            build_benchmark<partitioned_phf<typename Builder::hasher_type,
+                                            typename Builder::bucketer_type, Encoder, false>>(
                 builder, timings, params, config);
         }
     } else {
         if (config.minimal_output) {
-            build_benchmark<single_phf<typename Builder::hasher_type, Encoder, true>>(
+            build_benchmark<single_phf<typename Builder::hasher_type,
+                                       typename Builder::bucketer_type, Encoder, true>>(
                 builder, timings, params, config);
         } else {
-            build_benchmark<single_phf<typename Builder::hasher_type, Encoder, false>>(
+            build_benchmark<single_phf<typename Builder::hasher_type,
+                                       typename Builder::bucketer_type, Encoder, false>>(
                 builder, timings, params, config);
         }
     }
@@ -178,29 +183,46 @@ void choose_encoder(build_parameters<Iterator> const& params, build_configuratio
 #endif
 }
 
-template <typename Hasher, typename Iterator>
+template <typename Hasher, typename Bucketer, typename Iterator>
 void choose_builder(build_parameters<Iterator> const& params, build_configuration const& config) {
     if (config.num_partitions > 1) {
         if (params.external_memory) {
-            choose_encoder<true, external_memory_builder_partitioned_phf<Hasher>>(params, config);
+            choose_encoder<true, external_memory_builder_partitioned_phf<Hasher, Bucketer>>(params,
+                                                                                            config);
         } else {
-            choose_encoder<true, internal_memory_builder_partitioned_phf<Hasher>>(params, config);
+            choose_encoder<true, internal_memory_builder_partitioned_phf<Hasher, Bucketer>>(params,
+                                                                                            config);
         }
     } else {
         if (params.external_memory) {
-            choose_encoder<false, external_memory_builder_single_phf<Hasher>>(params, config);
+            choose_encoder<false, external_memory_builder_single_phf<Hasher, Bucketer>>(params,
+                                                                                        config);
         } else {
-            choose_encoder<false, internal_memory_builder_single_phf<Hasher>>(params, config);
+            choose_encoder<false, internal_memory_builder_single_phf<Hasher, Bucketer>>(params,
+                                                                                        config);
         }
+    }
+}
+
+template <typename Hasher, typename Iterator>
+void choose_bucketer(build_parameters<Iterator> const& params, build_configuration const& config) {
+    if (params.bucketer_type == "uniform") {
+        choose_builder<Hasher, uniform_bucketer>(params, config);
+    } else if (params.bucketer_type == "skew") {
+        choose_builder<Hasher, skew_bucketer>(params, config);
+    } else if (params.bucketer_type == "opt") {
+        choose_builder<Hasher, opt_bucketer>(params, config);
+    } else {
+        assert(false);
     }
 }
 
 template <typename Iterator>
 void choose_hasher(build_parameters<Iterator> const& params, build_configuration const& config) {
     if (params.num_keys <= (uint64_t(1) << 30)) {
-        choose_builder<murmurhash2_64>(params, config);
+        choose_bucketer<murmurhash2_64>(params, config);
     } else {
-        choose_builder<murmurhash2_128>(params, config);
+        choose_bucketer<murmurhash2_128>(params, config);
     }
 }
 
@@ -212,6 +234,7 @@ void build(cmd_line_parser::parser const& parser, Iterator keys, uint64_t num_ke
     params.lookup = parser.get<bool>("lookup");
 
     params.encoder_type = parser.get<std::string>("encoder_type");
+    params.bucketer_type = parser.get<std::string>("bucketer_type");
     {
         std::unordered_set<std::string> encoders({
 #ifdef PTHASH_ENABLE_ALL_ENCODERS
@@ -223,6 +246,11 @@ void build(cmd_line_parser::parser const& parser, Iterator keys, uint64_t num_ke
         });
         if (encoders.find(params.encoder_type) == encoders.end()) {
             std::cerr << "unknown encoder type" << std::endl;
+            return;
+        }
+        std::unordered_set<std::string> bucketers({"uniform", "skew", "opt"});
+        if (bucketers.find(params.bucketer_type) == bucketers.end()) {
+            std::cerr << "unknown bucketer type" << std::endl;
             return;
         }
     }
@@ -300,6 +328,9 @@ int main(int argc, char** argv) {
                "The 'all' type will just benchmark all encoders. (Useful for benchmarking "
                "purposes.)",
                "-e", true);
+
+    parser.add("bucketer_type", "The bucketer type. Possible values are: 'uniform', 'skew', 'opt'.",
+               "-b", true);
 
     /* Optional arguments. */
     parser.add("num_partitions", "Number of partitions.", "-p", false);

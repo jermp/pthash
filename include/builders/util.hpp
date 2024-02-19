@@ -14,6 +14,7 @@ typedef uint64_t bucket_id_type;
 typedef uint32_t bucket_id_type;
 #endif
 typedef uint8_t bucket_size_type;
+
 // constexpr bucket_size_type MAX_BUCKET_SIZE = 100;
 constexpr bucket_size_type MAX_BUCKET_SIZE = 255;
 

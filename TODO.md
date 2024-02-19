@@ -1,10 +1,12 @@
 TODO
 ----
 
-- optimal bucketing: implemented; have to test it and make it available as a build option rather than recompile the whole library.
+- optimal bucketing: implemented; have to test it.
 
 - dense partitioning
 
-- orthogonal encoding 
+- orthogonal encoding
 
 - secondary sorting
+
+- additive displacement vs. XOR-based displacement ?

@@ -7,7 +7,7 @@
 
 namespace pthash {
 
-template <typename Hasher, typename Encoder, bool Minimal>
+template <typename Hasher, typename Bucketer, typename Encoder, bool Minimal>
 struct single_phf {
     typedef Encoder encoder_type;
     static constexpr bool minimal = Minimal;
@@ -15,7 +15,7 @@ struct single_phf {
     template <typename Iterator>
     build_timings build_in_internal_memory(Iterator keys, uint64_t n,
                                            build_configuration const& config) {
-        internal_memory_builder_single_phf<Hasher> builder;
+        internal_memory_builder_single_phf<Hasher, Bucketer> builder;
         auto timings = builder.build_from_keys(keys, n, config);
         timings.encoding_seconds = build(builder, config);
         return timings;
@@ -24,7 +24,7 @@ struct single_phf {
     template <typename Iterator>
     build_timings build_in_external_memory(Iterator keys, uint64_t n,
                                            build_configuration const& config) {
-        external_memory_builder_single_phf<Hasher> builder;
+        external_memory_builder_single_phf<Hasher, Bucketer> builder;
         auto timings = builder.build_from_keys(keys, n, config);
         timings.encoding_seconds = build(builder, config);
         return timings;
@@ -101,8 +101,7 @@ private:
     uint64_t m_num_keys;
     uint64_t m_table_size;
     __uint128_t m_M;
-    opt_bucketer m_bucketer;
-    // skew_bucketer m_bucketer;
+    Bucketer m_bucketer;
     Encoder m_pilots;
     ef_sequence<false> m_free_slots;
 };
