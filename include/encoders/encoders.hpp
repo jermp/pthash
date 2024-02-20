@@ -14,12 +14,6 @@ struct compact {
     template <typename Iterator>
     void encode(Iterator begin, uint64_t n) {
         m_values.build(begin, n);
-        // m_values.reserve(n);
-        // for (uint64_t i = 0; i != n; ++i, ++begin) m_values.push_back(*begin);
-    }
-
-    static std::string name() {
-        return "compact";
     }
 
     size_t size() const {
@@ -28,12 +22,10 @@ struct compact {
 
     size_t num_bits() const {
         return m_values.bytes() * 8;
-        // return essentials::vec_bytes(m_values) * 8;
     }
 
     uint64_t access(uint64_t i) const {
         return m_values.access(i);
-        // return m_values[i];
     }
 
     template <typename Visitor>
@@ -43,7 +35,6 @@ struct compact {
 
 private:
     compact_vector m_values;
-    // std::vector<uint8_t> m_values;
 };
 
 struct partitioned_compact {
@@ -78,10 +69,6 @@ struct partitioned_compact {
             begin_partition = end_partition;
         }
         m_values.build(&bvb);
-    }
-
-    static std::string name() {
-        return "partitioned_compact";
     }
 
     size_t size() const {
@@ -154,13 +141,7 @@ struct dictionary {
     void encode(Iterator begin, uint64_t n) {
         auto [ranks, dict] = compute_ranks_and_dictionary(begin, n);
         m_ranks.build(ranks.begin(), ranks.size());
-        // m_ranks.reserve(ranks.size());
-        // for (auto r : ranks) m_ranks.push_back(r);
         m_dict.build(dict.begin(), dict.size());
-    }
-
-    static std::string name() {
-        return "dictionary";
     }
 
     size_t size() const {
@@ -169,12 +150,10 @@ struct dictionary {
 
     size_t num_bits() const {
         return (m_ranks.bytes() + m_dict.bytes()) * 8;
-        // return (essentials::vec_bytes(m_ranks) + m_dict.bytes()) * 8;
     }
 
     uint64_t access(uint64_t i) const {
         uint64_t rank = m_ranks.access(i);
-        // uint64_t rank = m_ranks[i];
         return m_dict.access(rank);
     }
 
@@ -186,7 +165,6 @@ struct dictionary {
 
 private:
     compact_vector m_ranks;
-    // std::vector<uint8_t> m_ranks;
     compact_vector m_dict;
 };
 
@@ -194,10 +172,6 @@ struct elias_fano {
     template <typename Iterator>
     void encode(Iterator begin, uint64_t n) {
         m_values.encode(begin, n);
-    }
-
-    static std::string name() {
-        return "elias_fano";
     }
 
     size_t size() const {
@@ -228,10 +202,6 @@ struct sdc {
         auto [ranks, dict] = compute_ranks_and_dictionary(begin, n);
         m_ranks.build(ranks.begin(), ranks.size());
         m_dict.build(dict.begin(), dict.size());
-    }
-
-    static std::string name() {
-        return "sdc";
     }
 
     size_t size() const {
@@ -265,10 +235,6 @@ struct dual {
         size_t front_size = n * 0.3;
         m_front.encode(begin, front_size);
         m_back.encode(begin + front_size, n - front_size);
-    }
-
-    static std::string name() {
-        return Front::name() + "-" + Back::name();
     }
 
     size_t num_bits() const {

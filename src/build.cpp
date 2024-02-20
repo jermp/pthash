@@ -86,7 +86,8 @@ void build_benchmark(Builder& builder, build_timings const& timings,
     result.add("c", config.c);
     result.add("alpha", config.alpha);
     result.add("minimal", config.minimal_output ? "true" : "false");
-    result.add("encoder_type", Function::encoder_type::name().c_str());
+    result.add("encoder_type", params.encoder_type.c_str());
+    result.add("bucketer_type", params.bucketer_type.c_str());
     result.add("num_partitions", config.num_partitions);
     if (config.seed != constants::invalid_seed) result.add("seed", config.seed);
     result.add("num_threads", config.num_threads);
