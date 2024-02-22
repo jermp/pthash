@@ -4,7 +4,6 @@
 
 #include "single_phf.hpp"
 #include "builders/internal_memory_builder_partitioned_phf.hpp"
-#include "builders/external_memory_builder_partitioned_phf.hpp"
 
 namespace pthash {
 
@@ -30,15 +29,6 @@ public:
     build_timings build_in_internal_memory(Iterator keys, uint64_t num_keys,
                                            build_configuration const& config) {
         internal_memory_builder_partitioned_phf<Hasher, Bucketer> builder;
-        auto timings = builder.build_from_keys(keys, num_keys, config);
-        timings.encoding_seconds = build(builder, config);
-        return timings;
-    }
-
-    template <typename Iterator>
-    build_timings build_in_external_memory(Iterator keys, uint64_t num_keys,
-                                           build_configuration const& config) {
-        external_memory_builder_partitioned_phf<Hasher, Bucketer> builder;
         auto timings = builder.build_from_keys(keys, num_keys, config);
         timings.encoding_seconds = build(builder, config);
         return timings;

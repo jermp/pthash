@@ -3,7 +3,6 @@
 #include "utils/bucketers.hpp"
 #include "builders/util.hpp"
 #include "builders/internal_memory_builder_single_phf.hpp"
-#include "builders/external_memory_builder_single_phf.hpp"
 
 namespace pthash {
 
@@ -16,15 +15,6 @@ struct single_phf {
     build_timings build_in_internal_memory(Iterator keys, uint64_t n,
                                            build_configuration const& config) {
         internal_memory_builder_single_phf<Hasher, Bucketer> builder;
-        auto timings = builder.build_from_keys(keys, n, config);
-        timings.encoding_seconds = build(builder, config);
-        return timings;
-    }
-
-    template <typename Iterator>
-    build_timings build_in_external_memory(Iterator keys, uint64_t n,
-                                           build_configuration const& config) {
-        external_memory_builder_single_phf<Hasher, Bucketer> builder;
         auto timings = builder.build_from_keys(keys, n, config);
         timings.encoding_seconds = build(builder, config);
         return timings;

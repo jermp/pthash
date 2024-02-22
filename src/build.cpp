@@ -14,7 +14,7 @@ struct build_parameters {
 
     Iterator keys;
     uint64_t num_keys;
-    bool external_memory, check, lookup;
+    bool check, lookup;
     std::string bucketer_type;
     std::string encoder_type;
     std::string output_filename;
@@ -61,22 +61,7 @@ void build_benchmark(Builder& builder, build_timings const& timings,
     double nanosec_per_key = 0;
     if (params.lookup) {
         if (config.verbose_output) essentials::logger("measuring lookup time...");
-        if (params.external_memory) {
-            std::vector<typename Iterator::value_type> queries;
-            uint64_t remaining = params.num_keys, batch_size = 100 * 1000000;
-            Iterator query = params.keys;
-            while (remaining > 0) {
-                auto cur_batch_size = std::min(remaining, batch_size);
-                queries.reserve(cur_batch_size);
-                for (uint64_t i = 0; i != cur_batch_size; ++i, ++query) queries.push_back(*query);
-                nanosec_per_key += perf(queries.begin(), cur_batch_size, f) * cur_batch_size;
-                remaining -= cur_batch_size;
-                queries.clear();
-            }
-            nanosec_per_key /= params.num_keys;
-        } else {
-            nanosec_per_key = perf(params.keys, params.num_keys, f);
-        }
+        nanosec_per_key = perf(params.keys, params.num_keys, f);
         if (config.verbose_output) std::cout << nanosec_per_key << " [nanosec/key]" << std::endl;
     }
 
@@ -91,7 +76,6 @@ void build_benchmark(Builder& builder, build_timings const& timings,
     result.add("num_partitions", config.num_partitions);
     if (config.seed != constants::invalid_seed) result.add("seed", config.seed);
     result.add("num_threads", config.num_threads);
-    result.add("external_memory", params.external_memory ? "true" : "false");
 
     result.add("partitioning_seconds", timings.partitioning_seconds);
     result.add("mapping_ordering_seconds", timings.mapping_ordering_seconds);
@@ -187,21 +171,10 @@ void choose_encoder(build_parameters<Iterator> const& params, build_configuratio
 template <typename Hasher, typename Bucketer, typename Iterator>
 void choose_builder(build_parameters<Iterator> const& params, build_configuration const& config) {
     if (config.num_partitions > 1) {
-        if (params.external_memory) {
-            choose_encoder<true, external_memory_builder_partitioned_phf<Hasher, Bucketer>>(params,
-                                                                                            config);
-        } else {
-            choose_encoder<true, internal_memory_builder_partitioned_phf<Hasher, Bucketer>>(params,
-                                                                                            config);
-        }
+        choose_encoder<true, internal_memory_builder_partitioned_phf<Hasher, Bucketer>>(params,
+                                                                                        config);
     } else {
-        if (params.external_memory) {
-            choose_encoder<false, external_memory_builder_single_phf<Hasher, Bucketer>>(params,
-                                                                                        config);
-        } else {
-            choose_encoder<false, internal_memory_builder_single_phf<Hasher, Bucketer>>(params,
-                                                                                        config);
-        }
+        choose_encoder<false, internal_memory_builder_single_phf<Hasher, Bucketer>>(params, config);
     }
 }
 
@@ -230,7 +203,6 @@ void choose_hasher(build_parameters<Iterator> const& params, build_configuration
 template <typename Iterator>
 void build(cmd_line_parser::parser const& parser, Iterator keys, uint64_t num_keys) {
     build_parameters<Iterator> params(keys, num_keys);
-    params.external_memory = parser.get<bool>("external_memory");
     params.check = parser.get<bool>("check");
     params.lookup = parser.get<bool>("lookup");
 
@@ -344,64 +316,30 @@ int main(int argc, char** argv) {
                "-i", false);
     parser.add("output_filename", "Output file name where the function will be serialized.", "-o",
                false);
-    parser.add("tmp_dir",
-               "Temporary directory used for building in external memory. Default is directory '" +
-                   constants::default_tmp_dirname + "'.",
-               "-d", false);
-    parser.add("ram", "Number of Giga bytes of RAM to use for construction in external memory.",
-               "-m", false);
     parser.add("minimal_output", "Build a minimal PHF.", "--minimal", false, true);
-    parser.add("external_memory", "Build the function in external memory.", "--external", false,
-               true);
     parser.add("verbose_output", "Verbose output during construction.", "--verbose", false, true);
     parser.add("check", "Check correctness after construction.", "--check", false, true);
     parser.add("lookup", "Measure average lookup time after construction.", "--lookup", false,
                true);
 
     if (!parser.parse()) return 1;
-    if (parser.parsed("input_filename") && parser.get<std::string>("input_filename") == "-" &&
-        parser.get<bool>("external_memory")) {
-        if (parser.get<bool>("check") || parser.get<bool>("lookup")) {
-            std::cerr << "--input_filename - (stdin input) in combination with --external can be "
-                         "used only without --check and --lookup"
-                      << std::endl;
-            return 1;
-        }
-    }
 
     auto num_keys = parser.get<uint64_t>("num_keys");
     auto seed = (parser.parsed("seed")) ? parser.get<uint64_t>("seed") : constants::invalid_seed;
-    bool external_memory = parser.get<bool>("external_memory");
 
     if (parser.parsed("input_filename")) {
         auto input_filename = parser.get<std::string>("input_filename");
-        if (external_memory) {
-            if (input_filename == "-") {
-                sequential_lines_iterator keys(std::cin);
-                build(parser, keys, num_keys);
-            } else {
-                mm::file_source<uint8_t> input(input_filename, mm::advice::sequential);
-                lines_iterator keys(input.data(), input.data() + input.size());
-                build(parser, keys, num_keys);
-                input.close();
-            }
+        std::vector<std::string> keys;
+        if (input_filename == "-") {
+            keys = read_string_collection(num_keys, std::cin, parser.get<bool>("verbose_output"));
         } else {
-            std::vector<std::string> keys;
-            if (input_filename == "-") {
-                keys =
-                    read_string_collection(num_keys, std::cin, parser.get<bool>("verbose_output"));
-            } else {
-                std::ifstream input(input_filename.c_str());
-                if (!input.good()) throw std::runtime_error("error in opening file.");
-                keys = read_string_collection(num_keys, input, parser.get<bool>("verbose_output"));
-                input.close();
-            }
-            build(parser, keys.begin(), keys.size());
+            std::ifstream input(input_filename.c_str());
+            if (!input.good()) throw std::runtime_error("error in opening file.");
+            keys = read_string_collection(num_keys, input, parser.get<bool>("verbose_output"));
+            input.close();
         }
+        build(parser, keys.begin(), keys.size());
     } else {  // use num_keys random 64-bit keys
-        if (external_memory) {
-            std::cout << "Warning: external memory construction with in-memory input" << std::endl;
-        }
         std::vector<uint64_t> keys = distinct_keys<uint64_t>(num_keys, seed);
         build(parser, keys.begin(), keys.size());
     }
