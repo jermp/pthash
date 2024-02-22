@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "../include/pthash.hpp"
+#include "pthash.hpp"
 #include "util.hpp"  // for functions distinct_keys and check
 
 int main() {

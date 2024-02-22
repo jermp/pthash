@@ -2,11 +2,10 @@
 
 #include "util.hpp"
 #include "search.hpp"
-#include "../../external/mm_file/include/mm_file/mm_file.hpp"
-
-#include "../utils/bucketers.hpp"
-#include "../utils/logger.hpp"
-#include "../utils/hasher.hpp"
+#include "external/mm_file/include/mm_file/mm_file.hpp"
+#include "utils/bucketers.hpp"
+#include "utils/logger.hpp"
+#include "utils/hasher.hpp"
 
 namespace pthash {
 

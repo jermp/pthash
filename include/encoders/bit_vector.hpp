@@ -4,8 +4,7 @@
 #include <vector>
 
 #include "util.hpp"
-
-#include <essentials.hpp>
+#include "essentials.hpp"
 
 namespace pthash {
 

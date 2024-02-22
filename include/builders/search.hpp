@@ -4,11 +4,11 @@
 #include <sstream>  // for stringbuf
 #include <atomic>   // for std::atomic
 #include <vector>
-#include <essentials.hpp>
 
+#include "essentials.hpp"
 #include "util.hpp"
-#include "../encoders/bit_vector.hpp"
-#include "../utils/hasher.hpp"
+#include "encoders/bit_vector.hpp"
+#include "utils/hasher.hpp"
 
 namespace pthash {
 
