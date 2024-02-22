@@ -2,9 +2,9 @@
 
 #include "util.hpp"
 #include "search.hpp"
-#include "../utils/bucketers.hpp"
-#include "../utils/logger.hpp"
-#include "../utils/hasher.hpp"
+#include "utils/bucketers.hpp"
+#include "utils/logger.hpp"
+#include "utils/hasher.hpp"
 
 namespace pthash {
 

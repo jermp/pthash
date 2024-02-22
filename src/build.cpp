@@ -3,7 +3,7 @@
 #include <unordered_set>
 
 #include "../external/cmd_line_parser/include/parser.hpp"
-#include "../include/pthash.hpp"
+#include "pthash.hpp"
 #include "util.hpp"
 
 using namespace pthash;

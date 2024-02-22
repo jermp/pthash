@@ -9,8 +9,8 @@
 #include <string>
 #include <vector>
 
-#include "../include/utils/util.hpp"
-#include <essentials.hpp>
+#include "utils/util.hpp"
+#include "essentials.hpp"
 
 namespace pthash {
 
