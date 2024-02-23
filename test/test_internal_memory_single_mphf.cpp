@@ -24,10 +24,10 @@ void test_internal_memory_single_mphf(Iterator keys, uint64_t num_keys) {
     config.verbose_output = false;
     config.seed = random_value();
 
-    std::vector<double> C{4.0, 4.5, 5.0, 5.5, 6.0};
+    std::vector<double> L{4.0, 4.5, 5.0, 5.5, 6.0};
     std::vector<double> A{1.0, 0.99, 0.98, 0.97, 0.96};
-    for (auto c : C) {
-        config.c = c;
+    for (auto lambda : L) {
+        config.lambda = lambda;
         for (auto alpha : A) {
             config.alpha = alpha;
 

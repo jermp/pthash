@@ -15,7 +15,7 @@ int main() {
 
     /* Set up a build configuration. */
     build_configuration config;
-    config.c = 6.0;
+    config.lambda = 4.0;
     config.alpha = 0.94;
     config.minimal_output = true;  // mphf
     config.verbose_output = true;

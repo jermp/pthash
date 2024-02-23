@@ -68,7 +68,7 @@ void build_benchmark(Builder& builder, build_timings const& timings,
     essentials::json_lines result;
 
     result.add("n", params.num_keys);
-    result.add("c", config.c);
+    result.add("lambda", config.lambda);
     result.add("alpha", config.alpha);
     result.add("minimal", config.minimal_output ? "true" : "false");
     result.add("encoder_type", params.encoder_type.c_str());
@@ -232,7 +232,7 @@ void build(cmd_line_parser::parser const& parser, Iterator keys, uint64_t num_ke
         (!parser.parsed("output_filename")) ? "" : parser.get<std::string>("output_filename");
 
     build_configuration config;
-    config.c = parser.get<double>("c");
+    config.lambda = parser.get<double>("lambda");
     config.alpha = parser.get<double>("alpha");
     config.minimal_output = parser.get<bool>("minimal_output");
     config.verbose_output = parser.get<bool>("verbose_output");
@@ -280,10 +280,10 @@ int main(int argc, char** argv) {
 
     /* Required arguments. */
     parser.add("num_keys", "The size of the input.", "-n", true);
-    parser.add("c",
+    parser.add("lambda",
                "A constant that trades construction speed for space effectiveness. "
                "A reasonable value lies between 3.0 and 10.0.",
-               "-c", true);
+               "-l", true);
     parser.add("alpha", "The table load factor. It must be a quantity > 0 and <= 1.", "-a", true);
 
     parser.add("encoder_type",

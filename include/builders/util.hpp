@@ -37,7 +37,7 @@ struct build_timings {
 
 struct build_configuration {
     build_configuration()
-        : c(4.5)
+        : lambda(4.5)
         , alpha(0.98)
         , num_partitions(1)
         , num_buckets(constants::invalid_num_buckets)
@@ -48,8 +48,8 @@ struct build_configuration {
         , minimal_output(false)
         , verbose_output(true) {}
 
-    double c;
-    double alpha;
+    double lambda;  // avg. bucket size
+    double alpha;   // load factor
     uint64_t num_partitions;
     uint64_t num_buckets;
     uint64_t num_threads;
@@ -59,6 +59,10 @@ struct build_configuration {
     bool minimal_output;
     bool verbose_output;
 };
+
+uint64_t compute_num_buckets(const uint64_t num_keys, const double avg_bucket_size) {
+    return std::ceil(static_cast<double>(num_keys) / avg_bucket_size);
+}
 
 struct seed_runtime_error : public std::runtime_error {
     seed_runtime_error() : std::runtime_error("seed did not work") {}

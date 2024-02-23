@@ -25,17 +25,17 @@ void test_internal_memory_partitioned_mphf(Iterator keys, uint64_t num_keys) {
     config.seed = random_value();
 
     std::vector<uint64_t> num_partitions{1, 16, 32, 64};
-    std::vector<double> C{4.0, 4.5, 5.0, 5.5, 6.0};
+    std::vector<double> L{4.0, 4.5, 5.0, 5.5, 6.0};
     std::vector<double> A{1.0, 0.99, 0.98, 0.97, 0.96};
-    for (auto c : C) {
-        config.c = c;
+    for (auto lambda : L) {
+        config.lambda = lambda;
         for (auto alpha : A) {
             config.alpha = alpha;
 
             for (auto p : num_partitions) {
                 config.num_partitions = p;
 
-                std::cout << "testing with (c=" << c << ";alpha=" << alpha
+                std::cout << "testing with (lambda=" << lambda << ";alpha=" << alpha
                           << ";num_partitions=" << p << ")..." << std::endl;
 
                 builder_64.build_from_keys(keys, num_keys, config);

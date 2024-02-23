@@ -66,8 +66,7 @@ struct internal_memory_builder_partitioned_phf {
 
         auto partition_config = config;
         partition_config.seed = m_seed;
-        const uint64_t num_buckets_single_phf =
-            std::ceil((config.c * num_keys) / std::log2(num_keys));
+        const uint64_t num_buckets_single_phf = compute_num_buckets(num_keys, config.lambda);
         partition_config.num_buckets = static_cast<double>(num_buckets_single_phf) / num_partitions;
         partition_config.verbose_output = false;
         partition_config.num_threads = 1;

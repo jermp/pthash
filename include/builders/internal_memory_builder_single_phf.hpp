@@ -51,9 +51,9 @@ struct internal_memory_builder_single_phf {
 
         uint64_t table_size = static_cast<double>(num_keys) / config.alpha;
         if ((table_size & (table_size - 1)) == 0) table_size += 1;
-        uint64_t num_buckets = (config.num_buckets == constants::invalid_num_buckets)
-                                   ? (std::ceil((config.c * num_keys) / std::log2(num_keys)))
-                                   : config.num_buckets;
+        const uint64_t num_buckets = (config.num_buckets == constants::invalid_num_buckets)
+                                         ? compute_num_buckets(num_keys, config.lambda)
+                                         : config.num_buckets;
 
         m_num_keys = num_keys;
         m_table_size = table_size;
@@ -61,8 +61,8 @@ struct internal_memory_builder_single_phf {
         m_bucketer.init(m_num_buckets);
 
         if (config.verbose_output) {
-            std::cout << "c = " << config.c << std::endl;
-            std::cout << "alpha = " << config.alpha << std::endl;
+            std::cout << "lambda (avg. bucket size) = " << config.lambda << std::endl;
+            std::cout << "alpha (load factor) = " << config.alpha << std::endl;
             std::cout << "num_keys = " << num_keys << std::endl;
             std::cout << "table_size = " << table_size << std::endl;
             std::cout << "num_buckets = " << num_buckets << std::endl;
@@ -167,7 +167,7 @@ struct internal_memory_builder_single_phf {
         uint64_t table_size = static_cast<double>(num_keys) / config.alpha;
         if ((table_size & (table_size - 1)) == 0) table_size += 1;
         uint64_t num_buckets = (config.num_buckets == constants::invalid_num_buckets)
-                                   ? (std::ceil((config.c * num_keys) / std::log2(num_keys)))
+                                   ? compute_num_buckets(num_keys, config.lambda)
                                    : config.num_buckets;
 
         uint64_t num_bytes_for_map = num_keys * sizeof(bucket_payload_pair)          // pairs
