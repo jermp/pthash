@@ -7,6 +7,7 @@
 #include "compact_vector.hpp"
 #include "ef_sequence.hpp"
 #include "sdc_sequence.hpp"
+#include "golomb_sequence.hpp"
 #include "utils/bucketers.hpp"
 
 namespace pthash {
@@ -15,6 +16,10 @@ struct compact {
     template <typename Iterator>
     void encode(Iterator begin, uint64_t n) {
         m_values.build(begin, n);
+    }
+
+    static std::string name() {
+        return "C";
     }
 
     size_t size() const {
@@ -70,6 +75,10 @@ struct partitioned_compact {
             begin_partition = end_partition;
         }
         m_values.build(&bvb);
+    }
+
+    static std::string name() {
+        return "PC";
     }
 
     size_t size() const {
@@ -145,6 +154,10 @@ struct dictionary {
         m_dict.build(dict.begin(), dict.size());
     }
 
+    static std::string name() {
+        return "D";
+    }
+
     size_t size() const {
         return m_ranks.size();
     }
@@ -173,6 +186,10 @@ struct elias_fano {
     template <typename Iterator>
     void encode(Iterator begin, uint64_t n) {
         m_values.encode(begin, n);
+    }
+
+    static std::string name() {
+        return "EF";
     }
 
     size_t size() const {
@@ -205,12 +222,16 @@ struct sdc {
         m_dict.build(dict.begin(), dict.size());
     }
 
+    static std::string name() {
+        return "SDC";
+    }
+
     size_t size() const {
         return m_ranks.size();
     }
 
     size_t num_bits() const {
-        return (m_ranks.bytes() + m_dict.bytes()) * 8;
+        return m_ranks.num_bits() + m_dict.bytes() * 8;
     }
 
     uint64_t access(uint64_t i) const {
@@ -229,6 +250,37 @@ private:
     compact_vector m_dict;
 };
 
+struct golomb {
+    template <typename Iterator>
+    void encode(Iterator begin, uint64_t n) {
+        m_values.encode(begin, n);
+    }
+
+    static std::string name() {
+        return "G";
+    }
+
+    size_t size() const {
+        return m_values.size();
+    }
+
+    size_t num_bits() const {
+        return m_values.num_bits();
+    }
+
+    uint64_t access(uint64_t i) const {
+        return m_values.access(i);
+    }
+
+    template <typename Visitor>
+    void visit(Visitor& visitor) {
+        visitor.visit(m_values);
+    }
+
+private:
+    golomb_sequence m_values;
+};
+
 template <typename Front, typename Back>
 struct dual {
     template <typename Iterator>
@@ -236,6 +288,10 @@ struct dual {
         size_t front_size = n * skew_bucketer::b;
         m_front.encode(begin, front_size);
         m_back.encode(begin + front_size, n - front_size);
+    }
+
+    static std::string name() {
+        return Front::name() + "-" + Back::name();
     }
 
     size_t num_bits() const {
@@ -259,6 +315,7 @@ private:
 };
 
 /* dual encoders */
+typedef dual<golomb, golomb> golomb_golomb;
 typedef dual<compact, compact> compact_compact;
 typedef dual<dictionary, dictionary> dictionary_dictionary;
 typedef dual<dictionary, elias_fano> dictionary_elias_fano;
@@ -317,6 +374,10 @@ struct mono_interleaved {
         m_encoder.encode(begin, num_partitions * num_buckets_per_partition);
     }
 
+    static std::string name() {
+        return Encoder::name();
+    }
+
     size_t size() const {
         return m_encoder.size();
     }
@@ -352,6 +413,10 @@ struct multi_interleaved {
         for (uint64_t i = 0; i != num_buckets_per_partition; ++i) {
             m_encoders[i].encode(begin + i * num_partitions, num_partitions);
         }
+    }
+
+    static std::string name() {
+        return "multi-" + Encoder::name();
     }
 
     inline uint64_t access(const uint64_t partition, const uint64_t bucket) const {

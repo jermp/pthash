@@ -60,7 +60,7 @@ void build_benchmark(Builder& builder, build_timings const& timings,
         }
     }
 
-    double nanosec_per_key = 0;
+    double nanosec_per_key = -1.0;
     if (params.lookup) {
         if (config.verbose_output) essentials::logger("measuring lookup time...");
         nanosec_per_key = perf(params.keys, params.num_keys, f);
@@ -72,7 +72,7 @@ void build_benchmark(Builder& builder, build_timings const& timings,
     result.add("n", params.num_keys);
     result.add("lambda", config.lambda);
     result.add("alpha", config.alpha);
-    result.add("encoder_type", params.encoder_type.c_str());
+    result.add("encoder_type", Function::encoder_type::name().c_str());
     result.add("bucketer_type", params.bucketer_type.c_str());
     result.add("num_partitions", config.num_partitions);
     if (config.seed != constants::invalid_seed) result.add("seed", config.seed);
@@ -86,7 +86,11 @@ void build_benchmark(Builder& builder, build_timings const& timings,
     result.add("pt_bits_per_key", pt_bits_per_key);
     result.add("mapper_bits_per_key", mapper_bits_per_key);
     result.add("bits_per_key", bits_per_key);
-    result.add("nanosec_per_key", nanosec_per_key);
+    if (nanosec_per_key == -1.0) {
+        result.add("nanosec_per_key", "---");
+    } else {
+        result.add("nanosec_per_key", nanosec_per_key);
+    }
     result.print_line();
 
     if (params.output_filename != "") {
@@ -102,37 +106,44 @@ void choose_encoder(build_parameters<Iterator> const& params, build_configuratio
 
     Builder builder;
     build_timings timings = builder.build_from_keys(params.keys, params.num_keys, config);
-
     bool encode_all = (params.encoder_type == "all");
 
-    // if (t == phf_type::single)  //
-    // {
-    //     if (encode_all or params.encoder_type == "C") {
-    //         build_benchmark<single_phf<typename Builder::hasher_type,
-    //                                    typename Builder::bucketer_type, partitioned_compact,
-    //                                    true>>(
-    //             builder, timings, params, config);
-    //     }
-    //     if (encode_all or params.encoder_type == "D") {
-    //         build_benchmark<
-    //             single_phf<typename Builder::hasher_type, typename Builder::bucketer_type,
-    //                        dictionary_dictionary, true>>(builder, timings, params, config);
-    //     }
-    //     if (encode_all or params.encoder_type == "EF") {
-    //         build_benchmark<single_phf<typename Builder::hasher_type,
-    //                                    typename Builder::bucketer_type, elias_fano, true>>(
-    //             builder, timings, params, config);
-    //     }
-    // }                                     //
-    // else
-    if (t == phf_type::partitioned)  //
+    if constexpr (t == phf_type::single)  //
     {
-        if (encode_all or params.encoder_type == "C") {
+        if (encode_all or params.encoder_type == "G-G") {
+            build_benchmark<single_phf<typename Builder::hasher_type,
+                                       typename Builder::bucketer_type, golomb_golomb, true>>(
+                builder, timings, params, config);
+        }
+        if (encode_all or params.encoder_type == "PC") {
+            build_benchmark<single_phf<typename Builder::hasher_type,
+                                       typename Builder::bucketer_type, partitioned_compact, true>>(
+                builder, timings, params, config);
+        }
+        if (encode_all or params.encoder_type == "D-D") {
+            build_benchmark<
+                single_phf<typename Builder::hasher_type, typename Builder::bucketer_type,
+                           dictionary_dictionary, true>>(builder, timings, params, config);
+        }
+        if (encode_all or params.encoder_type == "EF") {
+            build_benchmark<single_phf<typename Builder::hasher_type,
+                                       typename Builder::bucketer_type, elias_fano, true>>(
+                builder, timings, params, config);
+        }
+    }                                               //
+    else if constexpr (t == phf_type::partitioned)  //
+    {
+        if (encode_all or params.encoder_type == "G-G") {
+            build_benchmark<partitioned_phf<typename Builder::hasher_type,
+                                            typename Builder::bucketer_type, golomb_golomb, true>>(
+                builder, timings, params, config);
+        }
+        if (encode_all or params.encoder_type == "PC") {
             build_benchmark<
                 partitioned_phf<typename Builder::hasher_type, typename Builder::bucketer_type,
                                 partitioned_compact, true>>(builder, timings, params, config);
         }
-        if (encode_all or params.encoder_type == "D") {
+        if (encode_all or params.encoder_type == "D-D") {
             build_benchmark<
                 partitioned_phf<typename Builder::hasher_type, typename Builder::bucketer_type,
                                 dictionary_dictionary, true>>(builder, timings, params, config);
@@ -142,10 +153,22 @@ void choose_encoder(build_parameters<Iterator> const& params, build_configuratio
                                             typename Builder::bucketer_type, elias_fano, true>>(
                 builder, timings, params, config);
         }
-    }                                           //
-    else if (t == phf_type::dense_partitioned)  //
+    }                                                     //
+    else if constexpr (t == phf_type::dense_partitioned)  //
     {
-        if (encode_all or params.encoder_type == "C") {
+        if (encode_all or params.encoder_type == "mono_G") {
+            build_benchmark<dense_partitioned_phf<typename Builder::hasher_type,
+                                                  typename Builder::bucketer_type,
+                                                  mono_interleaved<golomb>, true>>(builder, timings,
+                                                                                   params, config);
+        }
+        if (encode_all or params.encoder_type == "multi_G") {
+            build_benchmark<dense_partitioned_phf<typename Builder::hasher_type,
+                                                  typename Builder::bucketer_type,
+                                                  multi_interleaved<golomb>, true>>(
+                builder, timings, params, config);
+        }
+        if (encode_all or params.encoder_type == "mono_C") {
             build_benchmark<dense_partitioned_phf<typename Builder::hasher_type,
                                                   typename Builder::bucketer_type,
                                                   mono_interleaved<compact>, true>>(
@@ -157,7 +180,7 @@ void choose_encoder(build_parameters<Iterator> const& params, build_configuratio
                                                   multi_interleaved<compact>, true>>(
                 builder, timings, params, config);
         }
-        if (encode_all or params.encoder_type == "D") {
+        if (encode_all or params.encoder_type == "mono_D") {
             build_benchmark<dense_partitioned_phf<typename Builder::hasher_type,
                                                   typename Builder::bucketer_type,
                                                   mono_interleaved<dictionary>, true>>(
@@ -169,7 +192,7 @@ void choose_encoder(build_parameters<Iterator> const& params, build_configuratio
                                                   multi_interleaved<dictionary>, true>>(
                 builder, timings, params, config);
         }
-        if (encode_all or params.encoder_type == "EF") {
+        if (encode_all or params.encoder_type == "mono_EF") {
             build_benchmark<dense_partitioned_phf<typename Builder::hasher_type,
                                                   typename Builder::bucketer_type,
                                                   mono_interleaved<elias_fano>, true>>(
@@ -198,11 +221,10 @@ void choose_builder(build_parameters<Iterator> const& params, build_configuratio
                            internal_memory_builder_partitioned_phf<Hasher, Bucketer>>(params,
                                                                                       config);
         }
+    } else {
+        choose_encoder<phf_type::single, internal_memory_builder_single_phf<Hasher, Bucketer>>(
+            params, config);
     }
-    // else {
-    //     choose_encoder<phf_type::single, internal_memory_builder_single_phf<Hasher, Bucketer>>(
-    //         params, config);
-    // }
 }
 
 template <typename Hasher, typename Iterator>
@@ -237,12 +259,13 @@ void build(cmd_line_parser::parser const& parser, Iterator keys, uint64_t num_ke
     params.bucketer_type = parser.get<std::string>("bucketer_type");
     {
         std::unordered_set<std::string> encoders({
-            // TODO: add Golomb
-            "C",                               // actually PC, partitioned compact
-            "D",                               // actually D-D, dual dictionary
-            "EF",                              //
-            "multi_C", "multi_D", "multi_EF",  // only for dense partitioning
-            "all"                              //
+            "G-G",                                        // dual Golomb
+            "PC",                                         // partitioned compact
+            "D-D",                                        // dual dictionary
+            "EF",                                         //
+            "mono_G", "mono_C", "mono_D", "mono_EF",      // only for dense partitioning
+            "multi_G", "multi_C", "multi_D", "multi_EF",  // only for dense partitioning
+            "all"                                         //
         });
         if (encoders.find(params.encoder_type) == encoders.end()) {
             std::cerr << "unknown encoder type" << std::endl;
@@ -302,16 +325,9 @@ int main(int argc, char** argv) {
 
     parser.add("encoder_type",
                "The encoder type. Possibile values are: "
-#ifdef PTHASH_ENABLE_ALL_ENCODERS
-               "'compact', 'partitioned_compact', 'compact_compact', 'dictionary', "
-               "'dictionary_dictionary', 'elias_fano', 'dictionary_elias_fano', 'sdc', "
-               "'all'.\n\t"
-#else
-               "'partitioned_compact', 'dictionary_dictionary', 'elias_fano', "
-               "'all'.\n\t"
-               "(For more encoders, compile again with 'cmake .. -D "
-               "PTHASH_ENABLE_ALL_ENCODERS=On').\n\t"
-#endif
+               "'G-G', 'PC', 'D-D', 'EF', "
+               "'mono_G', 'mono_C', 'mono_D', 'mono_EF', "
+               "'multi_G', 'multi_C', 'multi_D', 'multi_EF', 'all'.\n\t"
                "The 'all' type will just benchmark all encoders. (Useful for benchmarking "
                "purposes.)",
                "-e", true);

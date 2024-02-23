@@ -266,7 +266,7 @@ struct compact_vector {
         return m_bits;
     }
 
-    size_t bytes() const {
+    uint64_t bytes() const {
         return sizeof(m_size) + sizeof(m_width) + sizeof(m_mask) + essentials::vec_bytes(m_bits);
     }
 

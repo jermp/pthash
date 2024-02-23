@@ -47,8 +47,8 @@ struct sdc_sequence {
         return m_size;
     }
 
-    uint64_t bytes() const {
-        return sizeof(m_size) + m_codewords.bytes() + m_index.num_bits() / 8;
+    uint64_t num_bits() const {
+        return 8 * (sizeof(m_size) + m_codewords.bytes()) + m_index.num_bits();
     }
 
     template <typename Visitor>
