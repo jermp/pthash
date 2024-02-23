@@ -14,7 +14,7 @@ struct ef_sequence {
     void encode(Iterator begin, uint64_t n) {
         if (n == 0) return;
 
-        uint64_t u = *(begin + n - 1);
+        uint64_t u = *(begin + (n - 1));
         if constexpr (encode_prefix_sum) {
             u = std::accumulate(begin, begin + n, static_cast<uint64_t>(0));
             n = n + 1;  // because I will add a zero at the beginning

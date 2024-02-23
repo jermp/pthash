@@ -15,8 +15,7 @@ typedef uint32_t bucket_id_type;
 #endif
 typedef uint8_t bucket_size_type;
 
-// constexpr bucket_size_type MAX_BUCKET_SIZE = 100;
-constexpr bucket_size_type MAX_BUCKET_SIZE = 255;
+constexpr bucket_size_type MAX_BUCKET_SIZE = 255;  // 100
 
 static inline std::string get_tmp_builder_filename(std::string const& dir_name, uint64_t id) {
     return dir_name + "/pthash.temp." + std::to_string(id) + ".builder";
@@ -45,7 +44,8 @@ struct build_configuration {
         , seed(constants::invalid_seed)
         , ram(static_cast<double>(constants::available_ram) * 0.75)
         , tmp_dir(constants::default_tmp_dirname)
-        , minimal_output(false)
+        , dense_partitioning(false)
+        , minimal_output(true)
         , verbose_output(true) {}
 
     double lambda;  // avg. bucket size
@@ -56,6 +56,7 @@ struct build_configuration {
     uint64_t seed;
     uint64_t ram;
     std::string tmp_dir;
+    bool dense_partitioning;
     bool minimal_output;
     bool verbose_output;
 };

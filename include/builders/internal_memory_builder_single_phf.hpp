@@ -18,7 +18,7 @@ struct internal_memory_builder_single_phf {
                                   build_configuration const& config) {
         if (config.seed == constants::invalid_seed) {
             for (auto attempt = 0; attempt < 10; ++attempt) {
-                m_seed = random_value();
+                set_seed(random_value());
                 try {
                     return build_from_hashes(hash_generator<RandomAccessIterator>(keys, m_seed),
                                              num_keys, config);
@@ -28,7 +28,7 @@ struct internal_memory_builder_single_phf {
             }
             throw seed_runtime_error();
         }
-        m_seed = config.seed;
+        set_seed(config.seed);
         return build_from_hashes(hash_generator<RandomAccessIterator>(keys, m_seed), num_keys,
                                  config);
     }
@@ -115,6 +115,10 @@ struct internal_memory_builder_single_phf {
         }
 
         return time;
+    }
+
+    void set_seed(const uint64_t seed) {
+        m_seed = seed;
     }
 
     uint64_t seed() const {

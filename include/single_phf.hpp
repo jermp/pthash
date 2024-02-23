@@ -43,10 +43,10 @@ struct single_phf {
     }
 
     uint64_t position(typename Hasher::hash_type hash) const {
-        uint64_t bucket = m_bucketer.bucket(hash.first());
-        uint64_t pilot = m_pilots.access(bucket);
-        uint64_t hashed_pilot = default_hash64(pilot, m_seed);
-        uint64_t p = fastmod::fastmod_u64(hash.second() ^ hashed_pilot, m_M, m_table_size);
+        const uint64_t bucket = m_bucketer.bucket(hash.first());
+        const uint64_t pilot = m_pilots.access(bucket);
+        const uint64_t hashed_pilot = default_hash64(pilot, m_seed);
+        const uint64_t p = fastmod::fastmod_u64(hash.second() ^ hashed_pilot, m_M, m_table_size);
         if constexpr (Minimal) {
             if (PTHASH_LIKELY(p < num_keys())) return p;
             return m_free_slots.access(p - num_keys());

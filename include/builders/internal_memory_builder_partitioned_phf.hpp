@@ -29,7 +29,7 @@ struct internal_memory_builder_partitioned_phf {
         m_table_size = 0;
         m_num_partitions = num_partitions;
         m_bucketer.init(num_partitions);
-        m_offsets.resize(num_partitions);
+        m_offsets.resize(num_partitions + 1);
         m_builders.resize(num_partitions);
 
         double average_partition_size = static_cast<double>(num_keys) / num_partitions;
@@ -49,25 +49,33 @@ struct internal_memory_builder_partitioned_phf {
         }
         logger.finalize();
 
-        for (uint64_t i = 0, cumulative_size = 0; i != num_partitions; ++i) {
+        uint64_t cumulative_size = 0;
+        for (uint64_t i = 0; i != num_partitions; ++i) {
             auto const& partition = partitions[i];
-
-            uint64_t table_size = static_cast<double>(partition.size()) / config.alpha;
-            if ((table_size & (table_size - 1)) == 0) table_size += 1;
-            m_table_size += table_size;
-
             if (partition.size() <= 1) {
                 throw std::runtime_error(
                     "each partition must contain more than one key: use less partitions");
             }
+            uint64_t table_size = static_cast<double>(partition.size()) / config.alpha;
+            if ((table_size & (table_size - 1)) == 0) table_size += 1;
+            m_table_size += table_size;
             m_offsets[i] = cumulative_size;
             cumulative_size += config.minimal_output ? partition.size() : table_size;
         }
+        m_offsets[num_partitions] = cumulative_size;
 
         auto partition_config = config;
         partition_config.seed = m_seed;
+
         const uint64_t num_buckets_single_phf = compute_num_buckets(num_keys, config.lambda);
-        partition_config.num_buckets = static_cast<double>(num_buckets_single_phf) / num_partitions;
+        const uint64_t num_buckets_per_partition =
+            std::ceil(static_cast<double>(num_buckets_single_phf) / num_partitions);
+        m_num_buckets_per_partition = num_buckets_per_partition;
+        partition_config.num_buckets = num_buckets_per_partition;
+        if (config.verbose_output) {
+            std::cout << "num_buckets_per_partition = " << partition_config.num_buckets
+                      << std::endl;
+        }
         partition_config.verbose_output = false;
         partition_config.num_threads = 1;
 
@@ -96,6 +104,7 @@ struct internal_memory_builder_partitioned_phf {
             auto exe = [&](uint64_t i, uint64_t begin, uint64_t end) {
                 for (; begin != end; ++begin) {
                     auto const& partition = partitions[begin];
+                    builders[begin].set_seed(config.seed);
                     auto t = builders[begin].build_from_hashes(partition.begin(), partition.size(),
                                                                config);
                     thread_timings[i].mapping_ordering_seconds += t.mapping_ordering_seconds;
@@ -125,6 +134,7 @@ struct internal_memory_builder_partitioned_phf {
         } else {  // sequential
             for (uint64_t i = 0; i != num_partitions; ++i) {
                 auto const& partition = partitions[i];
+                builders[i].set_seed(config.seed);
                 auto t = builders[i].build_from_hashes(partition.begin(), partition.size(), config);
                 timings.mapping_ordering_seconds += t.mapping_ordering_seconds;
                 timings.searching_seconds += t.searching_seconds;
@@ -149,6 +159,10 @@ struct internal_memory_builder_partitioned_phf {
         return m_num_partitions;
     }
 
+    uint64_t num_buckets_per_partition() const {
+        return m_num_buckets_per_partition;
+    }
+
     uniform_bucketer bucketer() const {
         return m_bucketer;
     }
@@ -162,11 +176,63 @@ struct internal_memory_builder_partitioned_phf {
         return m_builders;
     }
 
+    struct interleaving_pilots_iterator {
+        interleaving_pilots_iterator(
+            std::vector<internal_memory_builder_single_phf<hasher_type, bucketer_type>> const&
+                builders,
+            uint64_t m_curr_partition = 0, uint64_t curr_bucket_in_partition = 0)
+            : m_builders(builders)
+            , m_curr_partition(m_curr_partition)
+            , m_curr_bucket_in_partition(curr_bucket_in_partition)
+            , m_num_partitions(builders.size()) {}
+
+        uint64_t operator*() const {
+            auto const& pilots_of_partition = m_builders[m_curr_partition].pilots();
+            return pilots_of_partition[m_curr_bucket_in_partition];
+        }
+
+        void operator++() {
+            m_curr_partition += 1;
+            if (m_curr_partition == m_num_partitions) {
+                m_curr_partition = 0;
+                m_curr_bucket_in_partition += 1;
+            }
+        }
+
+        bool operator==(interleaving_pilots_iterator const& rhs) const {
+            return m_curr_partition == rhs.m_curr_partition and
+                   m_curr_bucket_in_partition == rhs.m_curr_bucket_in_partition and
+                   m_num_partitions == rhs.m_num_partitions;
+        }
+
+        bool operator!=(interleaving_pilots_iterator const& rhs) const {
+            return !(*this == rhs);
+        }
+
+        interleaving_pilots_iterator operator+(const uint64_t n) const {
+            uint64_t bucket = n / m_num_partitions + m_curr_bucket_in_partition;
+            uint64_t partition = n % m_num_partitions + m_curr_partition;
+            return interleaving_pilots_iterator(m_builders, partition, bucket);
+        }
+
+    private:
+        std::vector<internal_memory_builder_single_phf<hasher_type, bucketer_type>> const&
+            m_builders;
+        uint64_t m_curr_partition;
+        uint64_t m_curr_bucket_in_partition;
+        uint64_t m_num_partitions;
+    };
+
+    interleaving_pilots_iterator interleaving_pilots_iterator_begin() const {
+        return interleaving_pilots_iterator(m_builders);
+    }
+
 private:
     uint64_t m_seed;
     uint64_t m_num_keys;
     uint64_t m_table_size;
     uint64_t m_num_partitions;
+    uint64_t m_num_buckets_per_partition;
     uniform_bucketer m_bucketer;
     std::vector<uint64_t> m_offsets;
     std::vector<internal_memory_builder_single_phf<hasher_type, bucketer_type>> m_builders;

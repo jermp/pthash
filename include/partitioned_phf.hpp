@@ -37,17 +37,18 @@ public:
     template <typename Builder>
     double build(Builder& builder, build_configuration const& config) {
         auto start = clock_type::now();
-        uint64_t num_partitions = builder.num_partitions();
+        const uint64_t num_partitions = builder.num_partitions();
 
         m_seed = builder.seed();
         m_num_keys = builder.num_keys();
         m_table_size = builder.table_size();
-        m_bucketer = builder.bucketer();
+        m_partitioner = builder.bucketer();
         m_partitions.resize(num_partitions);
 
         auto const& offsets = builder.offsets();
         auto const& builders = builder.builders();
-        uint64_t num_threads = config.num_threads;
+
+        const uint64_t num_threads = config.num_threads;
 
         if (num_threads > 1) {
             std::vector<std::thread> threads(num_threads);
@@ -58,7 +59,8 @@ public:
                 }
             };
 
-            uint64_t num_partitions_per_thread = (num_partitions + num_threads - 1) / num_threads;
+            const uint64_t num_partitions_per_thread =
+                (num_partitions + num_threads - 1) / num_threads;
             for (uint64_t t = 0, begin = 0; t != num_threads; ++t) {
                 uint64_t end = begin + num_partitions_per_thread;
                 if (end > num_partitions) end = num_partitions;
@@ -83,13 +85,13 @@ public:
     template <typename T>
     uint64_t operator()(T const& key) const {
         auto hash = Hasher::hash(key, m_seed);
-        auto bucket_id = m_bucketer.bucket(hash.mix());
-        auto const& partition = m_partitions[bucket_id];
+        const uint64_t p = m_partitioner.bucket(hash.mix());
+        auto const& partition = m_partitions[p];
         return partition.offset + partition.f.position(hash);
     }
 
     size_t num_bits_for_pilots() const {
-        size_t bits = 8 * (sizeof(m_seed) + sizeof(m_num_keys)) + m_bucketer.num_bits();
+        size_t bits = 8 * (sizeof(m_seed) + sizeof(m_num_keys)) + m_partitioner.num_bits();
         for (auto const& p : m_partitions) bits += 8 * sizeof(p.offset) + p.f.num_bits_for_pilots();
         return bits;
     }
@@ -117,7 +119,7 @@ public:
         visitor.visit(m_seed);
         visitor.visit(m_num_keys);
         visitor.visit(m_table_size);
-        visitor.visit(m_bucketer);
+        visitor.visit(m_partitioner);
         visitor.visit(m_partitions);
     }
 
@@ -125,7 +127,7 @@ private:
     uint64_t m_seed;
     uint64_t m_num_keys;
     uint64_t m_table_size;
-    uniform_bucketer m_bucketer;
+    uniform_bucketer m_partitioner;
     std::vector<partition> m_partitions;
 };
 
