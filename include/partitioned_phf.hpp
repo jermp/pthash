@@ -26,7 +26,7 @@ public:
     static constexpr bool minimal = Minimal;
 
     template <typename Iterator>
-    build_timings build_in_internal_memory(Iterator keys, uint64_t num_keys,
+    build_timings build_in_internal_memory(Iterator keys, const uint64_t num_keys,
                                            build_configuration const& config) {
         internal_memory_builder_partitioned_phf<Hasher, Bucketer> builder;
         auto timings = builder.build_from_keys(keys, num_keys, config);
@@ -83,9 +83,9 @@ public:
     template <typename T>
     uint64_t operator()(T const& key) const {
         auto hash = Hasher::hash(key, m_seed);
-        auto b = m_bucketer.bucket(hash.mix());
-        auto const& p = m_partitions[b];
-        return p.offset + p.f.position(hash);
+        auto bucket_id = m_bucketer.bucket(hash.mix());
+        auto const& partition = m_partitions[bucket_id];
+        return partition.offset + partition.f.position(hash);
     }
 
     size_t num_bits_for_pilots() const {

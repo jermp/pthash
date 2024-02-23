@@ -7,11 +7,11 @@ namespace pthash {
 struct opt_bucketer {
     opt_bucketer() {}
 
-    void init(uint64_t num_buckets) {
+    void init(const uint64_t num_buckets) {
         m_num_buckets = num_buckets;
     }
 
-    inline uint64_t bucket(uint64_t hash) const {
+    inline uint64_t bucket(const uint64_t hash) const {
         double normalized_hash = static_cast<double>(hash) / double(~0ul);
         constexpr double c = 0.08;
         double normalized_bucket =
@@ -41,17 +41,20 @@ private:
 };
 
 struct skew_bucketer {
+    static constexpr float a = 0.6;  // p1=n*a keys are placed in
+    static constexpr float b = 0.3;  // p2=m*b buckets
+
     skew_bucketer() {}
 
-    void init(uint64_t num_buckets) {
-        m_num_dense_buckets = constants::b * num_buckets;
+    void init(const uint64_t num_buckets) {
+        m_num_dense_buckets = b * num_buckets;
         m_num_sparse_buckets = num_buckets - m_num_dense_buckets;
         m_M_num_dense_buckets = fastmod::computeM_u64(m_num_dense_buckets);
         m_M_num_sparse_buckets = fastmod::computeM_u64(m_num_sparse_buckets);
     }
 
-    inline uint64_t bucket(uint64_t hash) const {
-        static const uint64_t T = constants::a * UINT64_MAX;
+    inline uint64_t bucket(const uint64_t hash) const {
+        static const uint64_t T = a * UINT64_MAX;
         return (hash < T) ? fastmod::fastmod_u64(hash, m_M_num_dense_buckets, m_num_dense_buckets)
                           : m_num_dense_buckets + fastmod::fastmod_u64(hash, m_M_num_sparse_buckets,
                                                                        m_num_sparse_buckets);
@@ -89,12 +92,12 @@ private:
 struct uniform_bucketer {
     uniform_bucketer() {}
 
-    void init(uint64_t num_buckets) {
+    void init(const uint64_t num_buckets) {
         m_num_buckets = num_buckets;
         m_M_num_buckets = fastmod::computeM_u64(m_num_buckets);
     }
 
-    inline uint64_t bucket(uint64_t hash) const {
+    inline uint64_t bucket(const uint64_t hash) const {
         return fastmod::fastmod_u64(hash, m_M_num_buckets, m_num_buckets);
     }
 

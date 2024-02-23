@@ -11,20 +11,18 @@ struct internal_memory_builder_partitioned_phf {
     typedef Bucketer bucketer_type;
 
     template <typename Iterator>
-    build_timings build_from_keys(Iterator keys, uint64_t num_keys,
+    build_timings build_from_keys(Iterator keys, const uint64_t num_keys,
                                   build_configuration const& config) {
         assert(num_keys > 1);
         util::check_hash_collision_probability<Hasher>(num_keys);
 
-        if (config.num_partitions == 0) {
-            throw std::invalid_argument("number of partitions must be > 0");
-        }
+        const uint64_t num_partitions = config.num_partitions;
+        if (config.verbose_output) std::cout << "num_partitions " << num_partitions << std::endl;
+        if (num_partitions == 0) throw std::invalid_argument("number of partitions must be > 0");
 
         auto start = clock_type::now();
 
         build_timings timings;
-        uint64_t num_partitions = config.num_partitions;
-        if (config.verbose_output) std::cout << "num_partitions " << num_partitions << std::endl;
 
         m_seed = config.seed == constants::invalid_seed ? random_value() : config.seed;
         m_num_keys = num_keys;
@@ -68,7 +66,8 @@ struct internal_memory_builder_partitioned_phf {
 
         auto partition_config = config;
         partition_config.seed = m_seed;
-        uint64_t num_buckets_single_phf = std::ceil((config.c * num_keys) / std::log2(num_keys));
+        const uint64_t num_buckets_single_phf =
+            std::ceil((config.c * num_keys) / std::log2(num_keys));
         partition_config.num_buckets = static_cast<double>(num_buckets_single_phf) / num_partitions;
         partition_config.verbose_output = false;
         partition_config.num_threads = 1;
@@ -85,9 +84,10 @@ struct internal_memory_builder_partitioned_phf {
 
     template <typename PartitionsIterator, typename BuildersIterator>
     static build_timings build_partitions(PartitionsIterator partitions, BuildersIterator builders,
-                                          build_configuration const& config, uint64_t num_threads) {
+                                          build_configuration const& config,
+                                          const uint64_t num_threads) {
         build_timings timings;
-        uint64_t num_partitions = config.num_partitions;
+        const uint64_t num_partitions = config.num_partitions;
         assert(config.num_threads == 1);
 
         if (num_threads > 1) {  // parallel
@@ -104,7 +104,8 @@ struct internal_memory_builder_partitioned_phf {
                 }
             };
 
-            uint64_t num_partitions_per_thread = (num_partitions + num_threads - 1) / num_threads;
+            const uint64_t num_partitions_per_thread =
+                (num_partitions + num_threads - 1) / num_threads;
             for (uint64_t i = 0, begin = 0; i != num_threads; ++i) {
                 uint64_t end = begin + num_partitions_per_thread;
                 if (end > num_partitions) end = num_partitions;

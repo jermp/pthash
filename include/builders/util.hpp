@@ -22,16 +22,6 @@ static inline std::string get_tmp_builder_filename(std::string const& dir_name, 
     return dir_name + "/pthash.temp." + std::to_string(id) + ".builder";
 }
 
-/*
-    Evaluate Poisson probability mass function (pmf) in the log_e domain.
-    P(k,lambda) = e^-lambda * lambda^k / k! = e^-lambda * lambda^k / gamma(k+1) =
-                = e^(log_e(e^-lambda * lambda^k / gamma(k+1))) =
-                = e^(k * log_e(lambda) - log_e(gamma(k+1)) - lambda)
-*/
-static inline double poisson_pmf(double k, double lambda) {
-    return exp(k * log(lambda) - lgamma(k + 1.0) - lambda);
-}
-
 struct build_timings {
     build_timings()
         : partitioning_seconds(0.0)

@@ -100,8 +100,9 @@ private:
 };
 
 template <typename BucketsIterator, typename PilotsBuffer>
-void search_sequential(uint64_t num_keys, uint64_t num_buckets, uint64_t num_non_empty_buckets,
-                       uint64_t seed, build_configuration const& config, BucketsIterator& buckets,
+void search_sequential(const uint64_t num_keys, const uint64_t num_buckets,
+                       const uint64_t num_non_empty_buckets, const uint64_t seed,
+                       build_configuration const& config, BucketsIterator& buckets,
                        bit_vector_builder& taken, PilotsBuffer& pilots) {
     uint64_t max_bucket_size = (*buckets).size();
     uint64_t table_size = taken.size();
@@ -160,8 +161,9 @@ void search_sequential(uint64_t num_keys, uint64_t num_buckets, uint64_t num_non
 }
 
 template <typename BucketsIterator, typename PilotsBuffer>
-void search_parallel(uint64_t num_keys, uint64_t num_buckets, uint64_t num_non_empty_buckets,
-                     uint64_t seed, build_configuration const& config, BucketsIterator& buckets,
+void search_parallel(const uint64_t num_keys, const uint64_t num_buckets,
+                     const uint64_t num_non_empty_buckets, const uint64_t seed,
+                     build_configuration const& config, BucketsIterator& buckets,
                      bit_vector_builder& taken, PilotsBuffer& pilots) {
     uint64_t max_bucket_size = (*buckets).size();
     uint64_t table_size = taken.size();
@@ -283,7 +285,8 @@ void search_parallel(uint64_t num_keys, uint64_t num_buckets, uint64_t num_non_e
 }
 
 template <typename BucketsIterator, typename PilotsBuffer>
-void search(uint64_t num_keys, uint64_t num_buckets, uint64_t num_non_empty_buckets, uint64_t seed,
+void search(const uint64_t num_keys, const uint64_t num_buckets,
+            const uint64_t num_non_empty_buckets, const uint64_t seed,
             build_configuration const& config, BucketsIterator& buckets, bit_vector_builder& taken,
             PilotsBuffer& pilots) {
     if (config.num_threads > 1) {

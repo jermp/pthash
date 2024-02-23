@@ -20,11 +20,6 @@ static const uint64_t min_partition_size = 10000;
 
 static const std::string default_tmp_dirname(".");
 
-/* p1=n*a keys are placed in p2=m*b buckets */
-constexpr float a = 0.6;
-constexpr float b = 0.3;
-/****************************************/
-
 }  // namespace constants
 
 static inline uint64_t random_value() {

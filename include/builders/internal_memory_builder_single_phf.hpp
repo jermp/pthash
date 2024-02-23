@@ -14,7 +14,7 @@ struct internal_memory_builder_single_phf {
     typedef Bucketer bucketer_type;
 
     template <typename RandomAccessIterator>
-    build_timings build_from_keys(RandomAccessIterator keys, uint64_t num_keys,
+    build_timings build_from_keys(RandomAccessIterator keys, const uint64_t num_keys,
                                   build_configuration const& config) {
         if (config.seed == constants::invalid_seed) {
             for (auto attempt = 0; attempt < 10; ++attempt) {
@@ -34,7 +34,7 @@ struct internal_memory_builder_single_phf {
     }
 
     template <typename RandomAccessIterator>
-    build_timings build_from_hashes(RandomAccessIterator hashes, uint64_t num_keys,
+    build_timings build_from_hashes(RandomAccessIterator hashes, const uint64_t num_keys,
                                     build_configuration const& config) {
         assert(num_keys > 1);
         util::check_hash_collision_probability<Hasher>(num_keys);
@@ -91,20 +91,7 @@ struct internal_memory_builder_single_phf {
         if (config.verbose_output) {
             std::cout << " == mapping+ordering took " << time.mapping_ordering_seconds
                       << " seconds " << std::endl;
-            uint64_t max_bucket_size = (*buckets_iterator).size();
-            std::cout << " == max bucket size = " << max_bucket_size << std::endl;
-
-            // avg. bucket size
-            double lambda = std::log2(num_keys) / config.c;
-            // avg. bucket size in first p2=b*m buckets containing p1=a*n keys
-            double lambda_1 = constants::a / constants::b * lambda;
-            // avg. bucket size in the other m-p2=(1-b)*m buckets containing n-p1=(1-a)*n keys
-            double lambda_2 = (1 - constants::a) / (1 - constants::b) * lambda;
-            std::cout << " == lambda = " << lambda << std::endl;
-            std::cout << " == lambda_1 = " << lambda_1 << std::endl;
-            std::cout << " == lambda_2 = " << lambda_2 << std::endl;
-            buckets.print_bucket_size_distribution(max_bucket_size, num_buckets, lambda_1,
-                                                   lambda_2);
+            buckets.print_bucket_size_distribution(num_keys, config);
         }
 
         start = clock_type::now();
@@ -175,7 +162,7 @@ struct internal_memory_builder_single_phf {
         visitor.visit(m_free_slots);
     }
 
-    static uint64_t estimate_num_bytes_for_construction(uint64_t num_keys,
+    static uint64_t estimate_num_bytes_for_construction(const uint64_t num_keys,
                                                         build_configuration const& config) {
         uint64_t table_size = static_cast<double>(num_keys) / config.alpha;
         if ((table_size & (table_size - 1)) == 0) table_size += 1;
@@ -285,18 +272,44 @@ private:
             return buckets_iterator_t(m_buffers);
         }
 
-        void print_bucket_size_distribution(uint64_t max_bucket_size, uint64_t num_buckets,
-                                            double lambda_1, double lambda_2) {
+        void print_bucket_size_distribution(const uint64_t /* num_keys */,
+                                            build_configuration const& /* config */) {
+            // NOTE: commented code here is specific to the skew bucketer.
+            /*
+                Evaluate Poisson probability mass function (pmf) in the log_e domain.
+                P(k,lambda) = e^-lambda * lambda^k / k! = e^-lambda * lambda^k / gamma(k+1) =
+                            = e^(log_e(e^-lambda * lambda^k / gamma(k+1))) =
+                            = e^(k * log_e(lambda) - log_e(gamma(k+1)) - lambda)
+            */
+            // auto poisson_pmf = [](double k, double lambda) -> double {
+            //     return exp(k * log(lambda) - lgamma(k + 1.0) - lambda);
+            // };
+
+            // // avg. bucket size
+            // double lambda = std::log2(num_keys) / config.c;
+            // // avg. bucket size in first p2=b*m buckets containing p1=a*n keys
+            // double lambda_1 = constants::a / constants::b * lambda;
+            // // avg. bucket size in the other m-p2=(1-b)*m buckets containing n-p1=(1-a)*n keys
+            // double lambda_2 = (1 - constants::a) / (1 - constants::b) * lambda;
+            // std::cout << " == lambda = " << lambda << std::endl;
+            // std::cout << " == lambda_1 = " << lambda_1 << std::endl;
+            // std::cout << " == lambda_2 = " << lambda_2 << std::endl;
+
+            uint64_t max_bucket_size = (*(begin())).size();
+            std::cout << " == max bucket size = " << max_bucket_size << std::endl;
+
             for (int64_t i = max_bucket_size - 1; i >= 0; --i) {
                 uint64_t t = i + 1;
                 uint64_t num_buckets_of_size_t = m_buffers[i].size() / (t + 1);
-                uint64_t estimated_num_buckets_of_size_t =
-                    (constants::b * poisson_pmf(t, lambda_1) +
-                     (1 - constants::b) * poisson_pmf(t, lambda_2)) *
-                    num_buckets;
+                // uint64_t estimated_num_buckets_of_size_t =
+                //     (constants::b * poisson_pmf(t, lambda_1) +
+                //      (1 - constants::b) * poisson_pmf(t, lambda_2)) *
+                //     m_num_buckets;
                 std::cout << " == num_buckets of size " << t << " = " << num_buckets_of_size_t
-                          << " (estimated with Poisson = " << estimated_num_buckets_of_size_t << ")"
                           << std::endl;
+                // std::cout << " (estimated with Poisson = " << estimated_num_buckets_of_size_t <<
+                // ")"
+                //           << std::endl;
             }
         }
 
