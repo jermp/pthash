@@ -57,7 +57,11 @@ struct internal_memory_builder_partitioned_phf {
                     "each partition must contain more than one key: use less partitions");
             }
             uint64_t table_size = static_cast<double>(partition.size()) / config.alpha;
-            if ((table_size & (table_size - 1)) == 0) table_size += 1;
+            if ((table_size & (table_size - 1)) == 0) {
+                std::cerr << "Warning: table_size = " << table_size << ", a power of 2..."
+                          << std::endl;
+                table_size += 1;
+            }
             m_table_size += table_size;
             m_offsets[i] = cumulative_size;
             cumulative_size += config.minimal_output ? partition.size() : table_size;
