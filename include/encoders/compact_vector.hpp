@@ -104,7 +104,6 @@ struct compact_vector {
         }
 
         void set(uint64_t i, uint64_t v) {
-            assert(m_width);
             assert(i < m_size);
             if (i == m_size - 1) m_back = v;
 
@@ -123,7 +122,6 @@ struct compact_vector {
         }
 
         void push_back(uint64_t v) {
-            assert(m_width);
             m_back = v;
             m_bits[m_cur_block] &= ~(m_mask << m_cur_shift);
             m_bits[m_cur_block] |= v << m_cur_shift;

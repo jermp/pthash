@@ -7,7 +7,7 @@
 #include "compact_vector.hpp"
 #include "ef_sequence.hpp"
 #include "sdc_sequence.hpp"
-#include "golomb_sequence.hpp"
+#include "rice_sequence.hpp"
 #include "utils/bucketers.hpp"
 
 namespace pthash {
@@ -250,14 +250,14 @@ private:
     compact_vector m_dict;
 };
 
-struct golomb {
+struct rice {
     template <typename Iterator>
     void encode(Iterator begin, uint64_t n) {
         m_values.encode(begin, n);
     }
 
     static std::string name() {
-        return "G";
+        return "R";
     }
 
     size_t size() const {
@@ -278,7 +278,7 @@ struct golomb {
     }
 
 private:
-    golomb_sequence m_values;
+    rice_sequence m_values;
 };
 
 template <typename Front, typename Back>
@@ -315,7 +315,7 @@ private:
 };
 
 /* dual encoders */
-typedef dual<golomb, golomb> golomb_golomb;
+typedef dual<rice, rice> rice_rice;
 typedef dual<compact, compact> compact_compact;
 typedef dual<dictionary, dictionary> dictionary_dictionary;
 typedef dual<dictionary, elias_fano> dictionary_elias_fano;
@@ -375,7 +375,7 @@ struct mono_interleaved {
     }
 
     static std::string name() {
-        return Encoder::name();
+        return "mono-" + Encoder::name();
     }
 
     size_t size() const {
