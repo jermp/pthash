@@ -12,9 +12,6 @@ struct dense_partitioned_phf {
     template <typename Iterator>
     build_timings build_in_internal_memory(Iterator keys, const uint64_t num_keys,
                                            build_configuration const& config) {
-        if (config.alpha != 1.0) {
-            throw std::runtime_error("alpha must be 1.0 for dense partitioning");
-        }
         internal_memory_builder_partitioned_phf<Hasher, Bucketer> builder;
         auto timings = builder.build_from_keys(keys, num_keys, config);
         timings.encoding_seconds = build(builder, config);

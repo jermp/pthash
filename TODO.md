@@ -1,7 +1,15 @@
 TODO
 ----
 
+### Primary
+
+- optimize optimal bucketing with lookup table
+
 - secondary sorting
+
+- introduce the free array also for the dense partitioned variant
+
+### Secondary
 
 - additive displacement vs. XOR-based displacement ?
 

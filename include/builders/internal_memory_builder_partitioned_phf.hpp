@@ -20,6 +20,10 @@ struct internal_memory_builder_partitioned_phf {
         if (config.verbose_output) std::cout << "num_partitions " << num_partitions << std::endl;
         if (num_partitions == 0) throw std::invalid_argument("number of partitions must be > 0");
 
+        if (config.alpha != 1.0 and config.dense_partitioning) {
+            throw std::runtime_error("alpha must be 1.0 for dense partitioning");
+        }
+
         auto start = clock_type::now();
 
         build_timings timings;
