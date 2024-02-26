@@ -25,11 +25,6 @@ if(NOT TARGET PTHASH)
     target_compile_options(PTHASH INTERFACE -mbmi2 -msse4.2) # for hardware popcount and pdep
   endif()
 
-  if (PTHASH_ENABLE_ALL_ENCODERS)
-    MESSAGE(STATUS "compiling with all encoders")
-    target_compile_options(PTHASH INTERFACE -DPTHASH_ENABLE_ALL_ENCODERS)
-  endif()
-
   if (PTHASH_ENABLE_LARGE_BUCKET_ID_TYPE)
     MESSAGE(STATUS "bucket_id_type is uint64_t")
     target_compile_options(PTHASH INTERFACE -DPTHASH_ENABLE_LARGE_BUCKET_ID_TYPE)

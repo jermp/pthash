@@ -81,16 +81,6 @@ For a testing environment, use the following instead:
 
 (NOTE: Beware that the software will result in a much slower execution when running in debug mode and using sanitizers. Use this only for debug purposes, not to run performance tests.)
 
-### Enable All Encoders
-By default, you can choose between three encoders to compress the PTHash
-data structure: `partitioned_compact`, `dictionary_dictionary`, and `elias_fano`, respectively
-indicated with PC, D-D, and EF in our papers.
-
-If you want to test all the encoders we tested in the SIGIR paper [1],
-you can compile with
-
-	cmake .. -D PTHASH_ENABLE_ALL_ENCODERS=On
-
 ### Enable Large Bucket-Id Type
 By default, PTHash assumes there are less than $2^{32}$ buckets, hence 32-bit integers are used
 for bucket ids. To overcome this, you can either lower the value of `c` or recompile with
