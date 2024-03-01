@@ -287,6 +287,7 @@ void build(cmd_line_parser::parser const& parser, Iterator keys, uint64_t num_ke
     config.lambda = parser.get<double>("lambda");
     config.alpha = parser.get<double>("alpha");
     config.minimal_output = true;
+    config.secondary_sort = parser.get<bool>("secondary_sort");
     config.dense_partitioning = parser.get<bool>("dense_partitioning");
     config.verbose_output = parser.get<bool>("verbose_output");
 
@@ -349,6 +350,8 @@ int main(int argc, char** argv) {
                "-i", false);
     parser.add("output_filename", "Output file name where the function will be serialized.", "-o",
                false);
+    parser.add("secondary_sort", "Sort buckets secondarily by increasing expected size.", "--sort",
+               false, true);
     parser.add("dense_partitioning", "Activate dense partitioning.", "--dense", false, true);
     parser.add("verbose_output", "Verbose output during construction.", "--verbose", false, true);
     parser.add("check", "Check correctness after construction.", "--check", false, true);

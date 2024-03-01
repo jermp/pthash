@@ -3,8 +3,6 @@ TODO
 
 ### Primary
 
-- secondary sorting
-
 - introduce the free array also for the dense partitioned variant
 
 ### Secondary

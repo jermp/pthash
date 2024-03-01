@@ -44,6 +44,7 @@ struct build_configuration {
         , seed(constants::invalid_seed)
         , ram(static_cast<double>(constants::available_ram) * 0.75)
         , tmp_dir(constants::default_tmp_dirname)
+        , secondary_sort(false)
         , dense_partitioning(false)
         , minimal_output(true)
         , verbose_output(true) {}
@@ -56,6 +57,7 @@ struct build_configuration {
     uint64_t seed;
     uint64_t ram;
     std::string tmp_dir;
+    bool secondary_sort;
     bool dense_partitioning;
     bool minimal_output;
     bool verbose_output;

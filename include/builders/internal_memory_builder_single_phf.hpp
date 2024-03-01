@@ -335,7 +335,8 @@ private:
 
     template <typename RandomAccessIterator>
     void map_sequential(RandomAccessIterator hashes, uint64_t num_keys,
-                        std::vector<pairs_t>& pairs_blocks, build_configuration const&) const {
+                        std::vector<pairs_t>& pairs_blocks,
+                        build_configuration const& config) const {
         pairs_t pairs(num_keys);
         RandomAccessIterator begin = hashes;
         for (uint64_t i = 0; i != num_keys; ++i, ++begin) {
@@ -343,7 +344,11 @@ private:
             auto bucket_id = m_bucketer.bucket(hash.first());
             pairs[i] = {static_cast<bucket_id_type>(bucket_id), hash.second()};
         }
-        std::sort(pairs.begin(), pairs.end());
+        std::sort(pairs.begin(), pairs.end(), [&](auto const& x, auto const& y) {
+            return (config.secondary_sort ? x.bucket_id > y.bucket_id
+                                          : x.bucket_id < y.bucket_id) or
+                   (x.bucket_id == y.bucket_id and x.payload < y.payload);
+        });
         pairs_blocks.resize(1);
         pairs_blocks.front().swap(pairs);
     }
@@ -367,7 +372,11 @@ private:
                 auto bucket_id = m_bucketer.bucket(hash.first());
                 local_pairs[local_i] = {static_cast<bucket_id_type>(bucket_id), hash.second()};
             }
-            std::sort(local_pairs.begin(), local_pairs.end());
+            std::sort(local_pairs.begin(), local_pairs.end(), [&](auto const& x, auto const& y) {
+                return (config.secondary_sort ? x.bucket_id > y.bucket_id
+                                              : x.bucket_id < y.bucket_id) or
+                       (x.bucket_id == y.bucket_id and x.payload < y.payload);
+            });
         };
 
         std::vector<std::thread> threads(config.num_threads);
