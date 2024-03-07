@@ -38,7 +38,6 @@ if(NOT TARGET PTHASH)
   if (UNIX)
     MESSAGE(STATUS "Compiling with flags: -std=c++17 -ggdb -pthread -Wall -Wextra -Wno-missing-braces -Wno-unknown-attributes -Wno-unused-function")
 
-    target_compile_options(PTHASH INTERFACE -std=c++17)
     target_compile_options(PTHASH INTERFACE -pthread)
     target_compile_options(PTHASH INTERFACE -ggdb)
     target_compile_options(PTHASH INTERFACE -Wall -Wextra -Wno-missing-braces -Wno-unknown-attributes -Wno-unused-function)
