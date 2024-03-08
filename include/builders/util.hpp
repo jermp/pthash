@@ -23,15 +23,15 @@ static inline std::string get_tmp_builder_filename(std::string const& dir_name, 
 
 struct build_timings {
     build_timings()
-        : partitioning_seconds(0.0)
-        , mapping_ordering_seconds(0.0)
-        , searching_seconds(0.0)
-        , encoding_seconds(0.0) {}
+        : partitioning_microseconds(0.0)
+        , mapping_ordering_microseconds(0.0)
+        , searching_microseconds(0.0)
+        , encoding_microseconds(0.0) {}
 
-    double partitioning_seconds;
-    double mapping_ordering_seconds;
-    double searching_seconds;
-    double encoding_seconds;
+    double partitioning_microseconds;
+    double mapping_ordering_microseconds;
+    double searching_microseconds;
+    double encoding_microseconds;
 };
 
 struct build_configuration {

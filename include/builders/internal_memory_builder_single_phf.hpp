@@ -73,24 +73,27 @@ struct internal_memory_builder_single_phf {
             auto start = clock_type::now();
             std::vector<pairs_t> pairs_blocks;
             map(hashes, num_keys, pairs_blocks, config);
-            auto elapsed = seconds(clock_type::now() - start);
+            auto elapsed = to_microseconds(clock_type::now() - start);
             if (config.verbose_output) {
-                std::cout << " == map+sort took: " << elapsed << " seconds" << std::endl;
+                std::cout << " == map+sort took: " << elapsed / 1000000 << " seconds" << std::endl;
             }
 
             start = clock_type::now();
             merge(pairs_blocks, buckets, config.verbose_output);
-            elapsed = seconds(clock_type::now() - start);
+            elapsed = to_microseconds(clock_type::now() - start);
             if (config.verbose_output) {
-                std::cout << " == merge+check took: " << elapsed << " seconds" << std::endl;
+                std::cout << " == merge+check took: " << elapsed / 1000000 << " seconds"
+                          << std::endl;
             }
         }
 
         auto buckets_iterator = buckets.begin();
-        time.mapping_ordering_seconds = seconds(clock_type::now() - start);
+        // time.mapping_ordering_seconds = seconds(clock_type::now() - start);
+        time.mapping_ordering_microseconds = to_microseconds(clock_type::now() - start);
+
         if (config.verbose_output) {
-            std::cout << " == mapping+ordering took " << time.mapping_ordering_seconds
-                      << " seconds " << std::endl;
+            std::cout << " == mapping+ordering took "
+                      << time.mapping_ordering_microseconds / 1000000 << " seconds " << std::endl;
             buckets.print_bucket_size_distribution(num_keys, config);
         }
 
@@ -109,9 +112,12 @@ struct internal_memory_builder_single_phf {
                 fill_free_slots(taken, num_keys, m_free_slots);
             }
         }
-        time.searching_seconds = seconds(clock_type::now() - start);
+        // time.searching_seconds = seconds(clock_type::now() - start);
+        time.searching_microseconds = to_microseconds(clock_type::now() - start);
+
         if (config.verbose_output) {
-            std::cout << " == search took " << time.searching_seconds << " seconds" << std::endl;
+            std::cout << " == search took " << time.searching_microseconds / 1000000 << " seconds"
+                      << std::endl;
         }
 
         return time;

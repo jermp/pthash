@@ -26,18 +26,21 @@ template <typename Function, typename Builder, typename Iterator>
 void build_benchmark(Builder& builder, build_timings const& timings,
                      build_parameters<Iterator> const& params, build_configuration const& config) {
     Function f;
-    double encoding_seconds = f.build(builder, config);
+    double encoding_microseconds = f.build(builder, config);
 
     // timings breakdown
-    double total_seconds = timings.partitioning_seconds + timings.mapping_ordering_seconds +
-                           timings.searching_seconds + encoding_seconds;
+    double total_microseconds = timings.partitioning_microseconds +
+                                timings.mapping_ordering_microseconds +
+                                timings.searching_microseconds + encoding_microseconds;
     if (config.verbose_output) {
-        std::cout << "partitioning: " << timings.partitioning_seconds << " [sec]" << std::endl;
-        std::cout << "mapping+ordering: " << timings.mapping_ordering_seconds << " [sec]"
+        std::cout << "partitioning: " << timings.partitioning_microseconds / 1000000 << " [sec]"
                   << std::endl;
-        std::cout << "searching: " << timings.searching_seconds << " [sec]" << std::endl;
-        std::cout << "encoding: " << encoding_seconds << " [sec]" << std::endl;
-        std::cout << "total: " << total_seconds << " [sec]" << std::endl;
+        std::cout << "mapping+ordering: " << timings.mapping_ordering_microseconds / 1000000
+                  << " [sec]" << std::endl;
+        std::cout << "searching: " << timings.searching_microseconds / 1000000 << " [sec]"
+                  << std::endl;
+        std::cout << "encoding: " << encoding_microseconds / 1000000 << " [sec]" << std::endl;
+        std::cout << "total: " << total_microseconds / 1000000 << " [sec]" << std::endl;
     }
 
     // space breakdown
@@ -78,11 +81,11 @@ void build_benchmark(Builder& builder, build_timings const& timings,
     if (config.seed != constants::invalid_seed) result.add("seed", config.seed);
     result.add("num_threads", config.num_threads);
 
-    result.add("partitioning_seconds", timings.partitioning_seconds);
-    result.add("mapping_ordering_seconds", timings.mapping_ordering_seconds);
-    result.add("searching_seconds", timings.searching_seconds);
-    result.add("encoding_seconds", encoding_seconds);
-    result.add("total_seconds", total_seconds);
+    result.add("partitioning_seconds", timings.partitioning_microseconds / 1000000);
+    result.add("mapping_ordering_seconds", timings.mapping_ordering_microseconds / 1000000);
+    result.add("searching_seconds", timings.searching_microseconds / 1000000);
+    result.add("encoding_seconds", encoding_microseconds / 1000000);
+    result.add("total_seconds", total_microseconds / 1000000);
     result.add("pt_bits_per_key", pt_bits_per_key);
     result.add("mapper_bits_per_key", mapper_bits_per_key);
     result.add("bits_per_key", bits_per_key);

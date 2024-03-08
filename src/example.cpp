@@ -42,11 +42,12 @@ int main() {
     auto start = clock_type::now();
     auto timings = f.build_in_internal_memory(keys.begin(), keys.size(), config);
     // auto timings = f.build_in_external_memory(keys.begin(), keys.size(), config);
-    double total_seconds = timings.partitioning_seconds + timings.mapping_ordering_seconds +
-                           timings.searching_seconds + timings.encoding_seconds;
-    std::cout << "function built in " << seconds(clock_type::now() - start) << " seconds"
-              << std::endl;
-    std::cout << "computed: " << total_seconds << " seconds" << std::endl;
+    double total_microseconds = timings.partitioning_microseconds +
+                                timings.mapping_ordering_microseconds +
+                                timings.searching_microseconds + timings.encoding_microseconds;
+    std::cout << "function built in " << to_microseconds(clock_type::now() - start) / 1000000
+              << " seconds" << std::endl;
+    std::cout << "computed: " << total_microseconds / 1000000 << " seconds" << std::endl;
     /* Compute and print the number of bits spent per key. */
     double bits_per_key = static_cast<double>(f.num_bits()) / f.num_keys();
     std::cout << "function uses " << bits_per_key << " [bits/key]" << std::endl;
