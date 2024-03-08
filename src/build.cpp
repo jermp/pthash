@@ -104,8 +104,22 @@ template <phf_type t, typename Builder, typename Iterator>
 void choose_encoder(build_parameters<Iterator> const& params, build_configuration const& config) {
     if (config.verbose_output) essentials::logger("construction starts");
 
+    auto start = std::chrono::steady_clock::now();
+    essentials::timer_type T;  // microseconds
+    T.start();
     Builder builder;
     build_timings timings = builder.build_from_keys(params.keys, params.num_keys, config);
+    T.stop();
+    auto stop = std::chrono::steady_clock::now();
+    auto elapsed =
+        static_cast<double>(
+            std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count()) /
+        1000;
+    std::cout << "elapsed time = " << T.elapsed() / 1000000 << " [sec] (essentials)" << std::endl;
+    std::cout << "elapsed time = " << elapsed << " [sec]" << std::endl;
+
+    if (config.verbose_output) essentials::logger("construction ends (no encoding)");
+
     bool encode_all = (params.encoder_type == "all");
 
     if constexpr (t == phf_type::single)  //
