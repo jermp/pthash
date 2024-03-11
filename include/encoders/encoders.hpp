@@ -14,7 +14,7 @@ namespace pthash {
 
 struct compact {
     template <typename Iterator>
-    void encode(Iterator begin, uint64_t n) {
+    void encode(Iterator begin, const uint64_t n) {
         m_values.build(begin, n);
     }
 
@@ -48,7 +48,7 @@ struct partitioned_compact {
     static_assert(partition_size > 0);
 
     template <typename Iterator>
-    void encode(Iterator begin, uint64_t n) {
+    void encode(Iterator begin, const uint64_t n) {
         uint64_t num_partitions = (n + partition_size - 1) / partition_size;
         bit_vector_builder bvb;
         bvb.reserve(32 * n);
@@ -113,8 +113,9 @@ private:
 };
 
 template <typename Iterator>
-std::pair<std::vector<uint64_t>, std::vector<uint64_t>> compute_ranks_and_dictionary(Iterator begin,
-                                                                                     uint64_t n) {
+std::pair<std::vector<uint64_t>, std::vector<uint64_t>> compute_ranks_and_dictionary(
+    Iterator begin, const uint64_t n)  //
+{
     // accumulate frequencies
     std::unordered_map<uint64_t, uint64_t> distinct;
     for (auto it = begin, end = begin + n; it != end; ++it) {
@@ -148,7 +149,7 @@ std::pair<std::vector<uint64_t>, std::vector<uint64_t>> compute_ranks_and_dictio
 
 struct dictionary {
     template <typename Iterator>
-    void encode(Iterator begin, uint64_t n) {
+    void encode(Iterator begin, const uint64_t n) {
         auto [ranks, dict] = compute_ranks_and_dictionary(begin, n);
         m_ranks.build(ranks.begin(), ranks.size());
         m_dict.build(dict.begin(), dict.size());
@@ -184,7 +185,7 @@ private:
 
 struct elias_fano {
     template <typename Iterator>
-    void encode(Iterator begin, uint64_t n) {
+    void encode(Iterator begin, const uint64_t n) {
         m_values.encode(begin, n);
     }
 
@@ -216,7 +217,7 @@ private:
 
 struct sdc {
     template <typename Iterator>
-    void encode(Iterator begin, uint64_t n) {
+    void encode(Iterator begin, const uint64_t n) {
         auto [ranks, dict] = compute_ranks_and_dictionary(begin, n);
         m_ranks.build(ranks.begin(), ranks.size());
         m_dict.build(dict.begin(), dict.size());
@@ -252,7 +253,7 @@ private:
 
 struct rice {
     template <typename Iterator>
-    void encode(Iterator begin, uint64_t n) {
+    void encode(Iterator begin, const uint64_t n) {
         m_values.encode(begin, n);
     }
 
@@ -284,7 +285,7 @@ private:
 template <typename Front, typename Back>
 struct dual {
     template <typename Iterator>
-    void encode(Iterator begin, uint64_t n) {
+    void encode(Iterator begin, const uint64_t n) {
         size_t front_size = n * skew_bucketer::b;
         m_front.encode(begin, front_size);
         m_back.encode(begin + front_size, n - front_size);
@@ -319,124 +320,5 @@ typedef dual<rice, rice> rice_rice;
 typedef dual<compact, compact> compact_compact;
 typedef dual<dictionary, dictionary> dictionary_dictionary;
 typedef dual<dictionary, elias_fano> dictionary_elias_fano;
-
-template <typename Encoder>
-struct diff {
-    template <typename Iterator>
-    void encode(Iterator begin, const uint64_t size, const uint64_t increment) {
-        m_increment = increment;
-        std::vector<uint64_t> diff_values;
-        diff_values.reserve(size);
-        int64_t expected = 0;
-        for (uint64_t i = 0; i != size; ++i, ++begin) {
-            int64_t to_encode = *begin - expected;
-            uint64_t abs_to_encode = abs(to_encode);
-            diff_values.push_back((abs_to_encode << 1) | uint64_t(to_encode > 0));
-            expected += increment;
-        }
-        m_encoder.encode(diff_values.begin(), size);
-    }
-
-    size_t size() const {
-        return m_encoder.size();
-    }
-
-    size_t num_bits() const {
-        return sizeof(m_increment) + m_encoder.num_bits();
-    }
-
-    inline uint64_t access(uint64_t i) const {
-        const uint64_t value = m_encoder.access(i);
-        const uint64_t expected = i * m_increment;
-        int64_t diff = ((value & 1) * 2 - 1) * int64_t(value >> 1);
-        return expected + diff;
-    }
-
-    template <typename Visitor>
-    void visit(Visitor& visitor) {
-        visitor.visit(m_increment);
-        visitor.visit(m_encoder);
-    }
-
-private:
-    uint64_t m_increment;
-    Encoder m_encoder;
-};
-
-template <typename Encoder>
-struct mono_interleaved {
-    template <typename Iterator>
-    void encode(Iterator begin,                            //
-                const uint64_t num_partitions,             //
-                const uint64_t num_buckets_per_partition)  //
-    {
-        m_num_partitions = num_partitions;
-        m_encoder.encode(begin, num_partitions * num_buckets_per_partition);
-    }
-
-    static std::string name() {
-        return "mono-" + Encoder::name();
-    }
-
-    size_t size() const {
-        return m_encoder.size();
-    }
-
-    size_t num_bits() const {
-        return m_encoder.num_bits();
-    }
-
-    inline uint64_t access(const uint64_t partition, const uint64_t bucket) const {
-        assert(m_num_partitions * bucket + partition < size());
-        return m_encoder.access(m_num_partitions * bucket + partition);
-    }
-
-    template <typename Visitor>
-    void visit(Visitor& visitor) {
-        visitor.visit(m_num_partitions);
-        visitor.visit(m_encoder);
-    }
-
-private:
-    uint64_t m_num_partitions;
-    Encoder m_encoder;
-};
-
-template <typename Encoder>
-struct multi_interleaved {
-    template <typename Iterator>
-    void encode(Iterator begin,                            //
-                const uint64_t num_partitions,             //
-                const uint64_t num_buckets_per_partition)  //
-    {
-        m_encoders.resize(num_buckets_per_partition);
-        for (uint64_t i = 0; i != num_buckets_per_partition; ++i) {
-            m_encoders[i].encode(begin + i * num_partitions, num_partitions);
-        }
-    }
-
-    static std::string name() {
-        return "multi-" + Encoder::name();
-    }
-
-    inline uint64_t access(const uint64_t partition, const uint64_t bucket) const {
-        assert(bucket < m_encoders.size());
-        return m_encoders[bucket].access(partition);
-    }
-
-    uint64_t num_bits() const {
-        uint64_t sum = 0;
-        for (auto const& e : m_encoders) sum += e.num_bits();
-        return sum;
-    }
-
-    template <typename Visitor>
-    void visit(Visitor& visitor) {
-        for (auto& e : m_encoders) e.visit(visitor);
-    }
-
-private:
-    std::vector<Encoder> m_encoders;
-};
 
 }  // namespace pthash

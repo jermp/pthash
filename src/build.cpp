@@ -179,52 +179,69 @@ void choose_encoder(build_parameters<Iterator> const& params, build_configuratio
     {
         if (encode_all or params.encoder_type == "mono-R") {
             build_benchmark<dense_partitioned_phf<typename Builder::hasher_type,
-                                                  typename Builder::bucketer_type,
-                                                  mono_interleaved<rice>, true>>(builder, timings,
-                                                                                 params, config);
+                                                  typename Builder::bucketer_type, mono_R, true>>(
+                builder, timings, params, config);
         }
         if (encode_all or params.encoder_type == "multi-R") {
             build_benchmark<dense_partitioned_phf<typename Builder::hasher_type,
-                                                  typename Builder::bucketer_type,
-                                                  multi_interleaved<rice>, true>>(builder, timings,
-                                                                                  params, config);
+                                                  typename Builder::bucketer_type, multi_R, true>>(
+                builder, timings, params, config);
         }
         if (encode_all or params.encoder_type == "mono-C") {
             build_benchmark<dense_partitioned_phf<typename Builder::hasher_type,
-                                                  typename Builder::bucketer_type,
-                                                  mono_interleaved<compact>, true>>(
+                                                  typename Builder::bucketer_type, mono_C, true>>(
                 builder, timings, params, config);
         }
         if (encode_all or params.encoder_type == "multi-C") {
             build_benchmark<dense_partitioned_phf<typename Builder::hasher_type,
-                                                  typename Builder::bucketer_type,
-                                                  multi_interleaved<compact>, true>>(
+                                                  typename Builder::bucketer_type, multi_C, true>>(
                 builder, timings, params, config);
         }
         if (encode_all or params.encoder_type == "mono-D") {
             build_benchmark<dense_partitioned_phf<typename Builder::hasher_type,
-                                                  typename Builder::bucketer_type,
-                                                  mono_interleaved<dictionary>, true>>(
+                                                  typename Builder::bucketer_type, mono_D, true>>(
                 builder, timings, params, config);
         }
         if (encode_all or params.encoder_type == "multi-D") {
             build_benchmark<dense_partitioned_phf<typename Builder::hasher_type,
-                                                  typename Builder::bucketer_type,
-                                                  multi_interleaved<dictionary>, true>>(
+                                                  typename Builder::bucketer_type, multi_D, true>>(
                 builder, timings, params, config);
         }
         if (encode_all or params.encoder_type == "mono-EF") {
             build_benchmark<dense_partitioned_phf<typename Builder::hasher_type,
-                                                  typename Builder::bucketer_type,
-                                                  mono_interleaved<elias_fano>, true>>(
+                                                  typename Builder::bucketer_type, mono_EF, true>>(
                 builder, timings, params, config);
         }
         if (encode_all or params.encoder_type == "multi-EF") {
             build_benchmark<dense_partitioned_phf<typename Builder::hasher_type,
-                                                  typename Builder::bucketer_type,
-                                                  multi_interleaved<elias_fano>, true>>(
+                                                  typename Builder::bucketer_type, multi_EF, true>>(
                 builder, timings, params, config);
         }
+        if (encode_all or params.encoder_type == "mono-C-mono-R") {
+            build_benchmark<
+                dense_partitioned_phf<typename Builder::hasher_type,
+                                      typename Builder::bucketer_type, mono_C_mono_R, true>>(
+                builder, timings, params, config);
+        }
+        if (encode_all or params.encoder_type == "multi-C-multi-R") {
+            build_benchmark<
+                dense_partitioned_phf<typename Builder::hasher_type,
+                                      typename Builder::bucketer_type, multi_C_multi_R, true>>(
+                builder, timings, params, config);
+        }
+        if (encode_all or params.encoder_type == "mono-D-mono-R") {
+            build_benchmark<
+                dense_partitioned_phf<typename Builder::hasher_type,
+                                      typename Builder::bucketer_type, mono_D_mono_R, true>>(
+                builder, timings, params, config);
+        }
+        if (encode_all or params.encoder_type == "multi-D-multi-R") {
+            build_benchmark<
+                dense_partitioned_phf<typename Builder::hasher_type,
+                                      typename Builder::bucketer_type, multi_D_multi_R, true>>(
+                builder, timings, params, config);
+        }
+
     } else {
         std::cerr << "unknown phf type" << std::endl;
     }
@@ -282,13 +299,19 @@ void build(cmd_line_parser::parser const& parser, Iterator keys, uint64_t num_ke
     params.bucketer_type = parser.get<std::string>("bucketer_type");
     {
         std::unordered_set<std::string> encoders({
-            "R-R",                                        // dual Golomb
-            "PC",                                         // partitioned compact
-            "D-D",                                        // dual dictionary
-            "EF",                                         //
-            "mono-R", "mono-C", "mono-D", "mono-EF",      // only for dense partitioning
-            "multi-R", "multi-C", "multi-D", "multi-EF",  // only for dense partitioning
-            "all"                                         //
+            //
+            "R-R",  // dual Rice
+            "PC",   // partitioned compact
+            "D-D",  // dual dictionary
+            "EF",   // Elias-Fano
+
+            /* only for dense partitioning  */
+            "mono-R", "mono-C", "mono-D", "mono-EF",                                 // mono
+            "multi-R", "multi-C", "multi-D", "multi-EF",                             // multi
+            "mono-C-mono-R", "multi-C-multi-R", "mono-D-mono-R", "multi-D-multi-R",  // dual
+
+            /**/
+            "all"  //
         });
         if (encoders.find(params.encoder_type) == encoders.end()) {
             std::cerr << "unknown encoder type" << std::endl;
@@ -351,7 +374,9 @@ int main(int argc, char** argv) {
                "The encoder type. Possibile values are: "
                "'R-R', 'PC', 'D-D', 'EF', "
                "'mono-R', 'mono-C', 'mono-D', 'mono-EF', "
-               "'multi-R', 'multi-C', 'multi-D', 'multi-EF', 'all'.\n\t"
+               "'multi-R', 'multi-C', 'multi-D', 'multi-EF', "
+               "'mono-C-mono-R', 'multi-C-multi-R', 'mono-D-mono-R', 'multi-D-multi-R', "
+               "'all'.\n\t"
                "The 'all' type will just benchmark all encoders. (Useful for benchmarking "
                "purposes.)",
                "-e", true);
