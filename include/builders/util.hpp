@@ -38,7 +38,7 @@ struct build_configuration {
     build_configuration()
         : lambda(4.5)
         , alpha(0.98)
-        , num_partitions(1)
+        , avg_partition_size(0)  // not partitioned
         , num_buckets(constants::invalid_num_buckets)
         , num_threads(1)
         , seed(constants::invalid_seed)
@@ -51,7 +51,7 @@ struct build_configuration {
 
     double lambda;  // avg. bucket size
     double alpha;   // load factor
-    uint64_t num_partitions;
+    uint64_t avg_partition_size;
     uint64_t num_buckets;
     uint64_t num_threads;
     uint64_t seed;
@@ -65,6 +65,10 @@ struct build_configuration {
 
 uint64_t compute_num_buckets(const uint64_t num_keys, const double avg_bucket_size) {
     return std::ceil(static_cast<double>(num_keys) / avg_bucket_size);
+}
+
+uint64_t compute_num_partitions(const uint64_t num_keys, const uint64_t avg_partition_size) {
+    return std::ceil(static_cast<double>(num_keys) / avg_partition_size);
 }
 
 struct seed_runtime_error : public std::runtime_error {

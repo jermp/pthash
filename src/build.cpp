@@ -77,8 +77,12 @@ void build_benchmark(Builder& builder, build_timings const& timings,
     result.add("alpha", config.alpha);
     result.add("encoder_type", Function::encoder_type::name().c_str());
     result.add("bucketer_type", params.bucketer_type.c_str());
-    result.add("num_partitions", config.num_partitions);
+    result.add("avg_partition_size", config.avg_partition_size);
+    result.add("num_partitions",
+               compute_num_partitions(params.num_keys, config.avg_partition_size));
+
     if (config.seed != constants::invalid_seed) result.add("seed", config.seed);
+
     result.add("num_threads", config.num_threads);
 
     result.add("partitioning_seconds", timings.partitioning_microseconds / 1000000);
@@ -228,7 +232,7 @@ void choose_encoder(build_parameters<Iterator> const& params, build_configuratio
 
 template <typename Hasher, typename Bucketer, typename Iterator>
 void choose_builder(build_parameters<Iterator> const& params, build_configuration const& config) {
-    if (config.num_partitions > 1) {
+    if (config.avg_partition_size != 0) {
         if (config.dense_partitioning) {
             choose_encoder<phf_type::dense_partitioned,
                            internal_memory_builder_partitioned_phf<Hasher, Bucketer>>(params,
@@ -308,9 +312,9 @@ void build(cmd_line_parser::parser const& parser, Iterator keys, uint64_t num_ke
     config.dense_partitioning = parser.get<bool>("dense_partitioning");
     config.verbose_output = parser.get<bool>("verbose_output");
 
-    config.num_partitions = 1;
-    if (parser.parsed("num_partitions")) {
-        config.num_partitions = parser.get<uint64_t>("num_partitions");
+    config.avg_partition_size = 0;
+    if (parser.parsed("avg_partition_size")) {
+        config.avg_partition_size = parser.get<uint64_t>("avg_partition_size");
     }
 
     if (parser.parsed("num_threads")) {
@@ -357,7 +361,7 @@ int main(int argc, char** argv) {
                true);
 
     /* Optional arguments. */
-    parser.add("num_partitions", "Number of partitions.", "-p", false);
+    parser.add("avg_partition_size", "Average partition size.", "-p", false);
     parser.add("seed", "Seed to use for construction.", "-s", false);
     parser.add("num_threads", "Number of threads to use for construction.", "-t", false);
     parser.add("input_filename",

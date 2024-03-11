@@ -24,7 +24,7 @@ void test_internal_memory_partitioned_mphf(Iterator keys, uint64_t num_keys) {
     config.verbose_output = false;
     config.seed = random_value();
 
-    std::vector<uint64_t> num_partitions{1, 16, 32, 64};
+    std::vector<uint64_t> avg_partition_size{1000, 10000, 100000, 1000000};
     std::vector<double> L{4.0, 4.5, 5.0, 5.5, 6.0};
     std::vector<double> A{1.0, 0.99, 0.98, 0.97, 0.96};
     for (auto lambda : L) {
@@ -32,11 +32,13 @@ void test_internal_memory_partitioned_mphf(Iterator keys, uint64_t num_keys) {
         for (auto alpha : A) {
             config.alpha = alpha;
 
-            for (auto p : num_partitions) {
-                config.num_partitions = p;
+            for (auto p : avg_partition_size) {
+                config.avg_partition_size = p;
 
-                std::cout << "testing with (lambda=" << lambda << ";alpha=" << alpha
-                          << ";num_partitions=" << p << ")..." << std::endl;
+                std::cout << "testing with (lambda=" << lambda << "; alpha=" << alpha
+                          << "; num_partitions="
+                          << compute_num_partitions(num_keys, config.avg_partition_size) << ")..."
+                          << std::endl;
 
                 builder_64.build_from_keys(keys, num_keys, config);
                 test_encoder<compact>(builder_64, config, keys, num_keys);

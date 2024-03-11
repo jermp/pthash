@@ -16,9 +16,13 @@ struct internal_memory_builder_partitioned_phf {
         assert(num_keys > 1);
         util::check_hash_collision_probability<Hasher>(num_keys);
 
-        const uint64_t num_partitions = config.num_partitions;
+        const uint64_t num_partitions = compute_num_partitions(num_keys, config.avg_partition_size);
         if (config.verbose_output) std::cout << "num_partitions " << num_partitions << std::endl;
         if (num_partitions == 0) throw std::invalid_argument("number of partitions must be > 0");
+
+        if (config.avg_partition_size < constants::min_partition_size and num_partitions > 1) {
+            throw std::runtime_error("average partition size is too small: use less partitions");
+        }
 
         if (config.alpha != 1.0 and config.dense_partitioning) {
             throw std::runtime_error("alpha must be 1.0 for dense partitioning");
@@ -36,12 +40,8 @@ struct internal_memory_builder_partitioned_phf {
         m_offsets.resize(num_partitions + 1);
         m_builders.resize(num_partitions);
 
-        double average_partition_size = static_cast<double>(num_keys) / num_partitions;
-        if (average_partition_size < constants::min_partition_size and num_partitions > 1) {
-            throw std::runtime_error("average partition size is too small: use less partitions");
-        }
         std::vector<std::vector<typename hasher_type::hash_type>> partitions(num_partitions);
-        for (auto& partition : partitions) partition.reserve(1.5 * average_partition_size);
+        for (auto& partition : partitions) partition.reserve(1.5 * config.avg_partition_size);
 
         progress_logger logger(num_keys, " == partitioned ", " keys", config.verbose_output);
         for (uint64_t i = 0; i != num_keys; ++i, ++keys) {
@@ -90,7 +90,7 @@ struct internal_memory_builder_partitioned_phf {
         timings.partitioning_microseconds = to_microseconds(clock_type::now() - start);
 
         auto t = build_partitions(partitions.begin(), m_builders.begin(), partition_config,
-                                  config.num_threads);
+                                  config.num_threads, num_partitions);
         timings.mapping_ordering_microseconds = t.mapping_ordering_microseconds;
         timings.searching_microseconds = t.searching_microseconds;
 
@@ -100,9 +100,9 @@ struct internal_memory_builder_partitioned_phf {
     template <typename PartitionsIterator, typename BuildersIterator>
     static build_timings build_partitions(PartitionsIterator partitions, BuildersIterator builders,
                                           build_configuration const& config,
-                                          const uint64_t num_threads) {
+                                          const uint64_t num_threads,
+                                          const uint64_t num_partitions) {
         build_timings timings;
-        const uint64_t num_partitions = config.num_partitions;
         assert(config.num_threads == 1);
 
         if (num_threads > 1) {  // parallel
