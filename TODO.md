@@ -3,9 +3,7 @@ TODO
 
 ### Primary
 
-- introduce the free array also for the dense partitioned variant
-
-- additive displacement vs. XOR-based displacement ?
+- additive displacement vs. XOR-based displacement
 
 ### Secondary
 

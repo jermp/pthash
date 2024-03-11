@@ -88,31 +88,29 @@ struct internal_memory_builder_single_phf {
         }
 
         auto buckets_iterator = buckets.begin();
-        // time.mapping_ordering_seconds = seconds(clock_type::now() - start);
         time.mapping_ordering_microseconds = to_microseconds(clock_type::now() - start);
 
         if (config.verbose_output) {
             std::cout << " == mapping+ordering took "
                       << time.mapping_ordering_microseconds / 1000000 << " seconds " << std::endl;
-            buckets.print_bucket_size_distribution(num_keys, config);
+            buckets.print_bucket_size_distribution();
         }
 
         start = clock_type::now();
         {
             m_pilots.resize(num_buckets);
             std::fill(m_pilots.begin(), m_pilots.end(), 0);
-            bit_vector_builder taken(m_table_size);
+            m_taken.initialize(m_table_size);
             uint64_t num_non_empty_buckets = buckets.num_buckets();
             pilots_wrapper_t pilots_wrapper(m_pilots);
             search(m_num_keys, m_num_buckets, num_non_empty_buckets, m_seed, config,
-                   buckets_iterator, taken, pilots_wrapper);
-            if (config.minimal_output) {
+                   buckets_iterator, m_taken, pilots_wrapper);
+            if (config.minimal_output and !config.dense_partitioning) {
                 m_free_slots.clear();
-                m_free_slots.reserve(taken.size() - num_keys);
-                fill_free_slots(taken, num_keys, m_free_slots);
+                m_free_slots.reserve(m_taken.size() - num_keys);
+                fill_free_slots(m_taken, num_keys, m_free_slots);
             }
         }
-        // time.searching_seconds = seconds(clock_type::now() - start);
         time.searching_microseconds = to_microseconds(clock_type::now() - start);
 
         if (config.verbose_output) {
@@ -147,6 +145,10 @@ struct internal_memory_builder_single_phf {
         return m_pilots;
     }
 
+    bit_vector_builder const& taken() const {
+        return m_taken;
+    }
+
     std::vector<uint64_t> const& free_slots() const {
         return m_free_slots;
     }
@@ -161,45 +163,13 @@ struct internal_memory_builder_single_phf {
         m_free_slots.swap(other.m_free_slots);
     }
 
-    template <typename Visitor>
-    void visit(Visitor& visitor) {
-        visitor.visit(m_seed);
-        visitor.visit(m_num_keys);
-        visitor.visit(m_num_buckets);
-        visitor.visit(m_table_size);
-        visitor.visit(m_bucketer);
-        visitor.visit(m_pilots);
-        visitor.visit(m_free_slots);
-    }
-
-    static uint64_t estimate_num_bytes_for_construction(const uint64_t num_keys,
-                                                        build_configuration const& config) {
-        uint64_t table_size = static_cast<double>(num_keys) / config.alpha;
-        if ((table_size & (table_size - 1)) == 0) table_size += 1;
-        uint64_t num_buckets = (config.num_buckets == constants::invalid_num_buckets)
-                                   ? compute_num_buckets(num_keys, config.lambda)
-                                   : config.num_buckets;
-
-        uint64_t num_bytes_for_map = num_keys * sizeof(bucket_payload_pair)          // pairs
-                                     + (num_keys + num_buckets) * sizeof(uint64_t);  // buckets
-
-        uint64_t num_bytes_for_search =
-            num_buckets * sizeof(uint64_t)    // pilots
-            + num_buckets * sizeof(uint64_t)  // buckets
-            +
-            (config.minimal_output ? (table_size - num_keys) * sizeof(uint64_t) : 0)  // free_slots
-            + num_keys * sizeof(uint64_t)                                             // hashes
-            + table_size / 8;  // bitmap taken
-
-        return std::max<uint64_t>(num_bytes_for_map, num_bytes_for_search);
-    }
-
 private:
     uint64_t m_seed;
     uint64_t m_num_keys;
     uint64_t m_num_buckets;
     uint64_t m_table_size;
     Bucketer m_bucketer;
+    bit_vector_builder m_taken;
     std::vector<uint64_t> m_pilots;
     std::vector<uint64_t> m_free_slots;
 
@@ -282,44 +252,14 @@ private:
             return buckets_iterator_t(m_buffers);
         }
 
-        void print_bucket_size_distribution(const uint64_t /* num_keys */,
-                                            build_configuration const& /* config */) {
-            // NOTE: commented code here is specific to the skew bucketer.
-            /*
-                Evaluate Poisson probability mass function (pmf) in the log_e domain.
-                P(k,lambda) = e^-lambda * lambda^k / k! = e^-lambda * lambda^k / gamma(k+1) =
-                            = e^(log_e(e^-lambda * lambda^k / gamma(k+1))) =
-                            = e^(k * log_e(lambda) - log_e(gamma(k+1)) - lambda)
-            */
-            // auto poisson_pmf = [](double k, double lambda) -> double {
-            //     return exp(k * log(lambda) - lgamma(k + 1.0) - lambda);
-            // };
-
-            // // avg. bucket size
-            // double lambda = std::log2(num_keys) / config.c;
-            // // avg. bucket size in first p2=b*m buckets containing p1=a*n keys
-            // double lambda_1 = constants::a / constants::b * lambda;
-            // // avg. bucket size in the other m-p2=(1-b)*m buckets containing n-p1=(1-a)*n keys
-            // double lambda_2 = (1 - constants::a) / (1 - constants::b) * lambda;
-            // std::cout << " == lambda = " << lambda << std::endl;
-            // std::cout << " == lambda_1 = " << lambda_1 << std::endl;
-            // std::cout << " == lambda_2 = " << lambda_2 << std::endl;
-
+        void print_bucket_size_distribution() {
             uint64_t max_bucket_size = (*(begin())).size();
             std::cout << " == max bucket size = " << max_bucket_size << std::endl;
-
             for (int64_t i = max_bucket_size - 1; i >= 0; --i) {
                 uint64_t t = i + 1;
                 uint64_t num_buckets_of_size_t = m_buffers[i].size() / (t + 1);
-                // uint64_t estimated_num_buckets_of_size_t =
-                //     (constants::b * poisson_pmf(t, lambda_1) +
-                //      (1 - constants::b) * poisson_pmf(t, lambda_2)) *
-                //     m_num_buckets;
                 std::cout << " == num_buckets of size " << t << " = " << num_buckets_of_size_t
                           << std::endl;
-                // std::cout << " (estimated with Poisson = " << estimated_num_buckets_of_size_t <<
-                // ")"
-                //           << std::endl;
             }
         }
 

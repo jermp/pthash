@@ -24,10 +24,6 @@ struct internal_memory_builder_partitioned_phf {
             throw std::runtime_error("average partition size is too small: use less partitions");
         }
 
-        if (config.alpha != 1.0 and config.dense_partitioning) {
-            throw std::runtime_error("alpha must be 1.0 for dense partitioning");
-        }
-
         auto start = clock_type::now();
 
         build_timings timings;
@@ -61,14 +57,14 @@ struct internal_memory_builder_partitioned_phf {
                     "each partition must contain more than one key: use less partitions");
             }
             uint64_t table_size = static_cast<double>(partition.size()) / config.alpha;
-            if ((table_size & (table_size - 1)) == 0) {
-                std::cerr << "Warning: table_size = " << table_size << ", a power of 2..."
-                          << std::endl;
-                table_size += 1;
-            }
+            if ((table_size & (table_size - 1)) == 0) table_size += 1;
             m_table_size += table_size;
             m_offsets[i] = cumulative_size;
-            cumulative_size += config.minimal_output ? partition.size() : table_size;
+            if (config.dense_partitioning) {
+                cumulative_size += table_size;
+            } else {
+                cumulative_size += config.minimal_output ? partition.size() : table_size;
+            }
         }
         m_offsets[num_partitions] = cumulative_size;
 
@@ -93,6 +89,17 @@ struct internal_memory_builder_partitioned_phf {
                                   config.num_threads, num_partitions);
         timings.mapping_ordering_microseconds = t.mapping_ordering_microseconds;
         timings.searching_microseconds = t.searching_microseconds;
+
+        /* fill free slots for dense partitioning */
+        if (config.dense_partitioning) {
+            auto start = clock_type::now();
+            m_free_slots.clear();
+            taken t(m_builders);
+            m_free_slots.reserve(t.size() - num_keys);
+            fill_free_slots(t, num_keys, m_free_slots);
+            auto stop = clock_type::now();
+            timings.searching_microseconds += to_microseconds(stop - start);
+        }
 
         return timings;
     }
@@ -181,6 +188,10 @@ struct internal_memory_builder_partitioned_phf {
         return m_offsets;
     }
 
+    std::vector<uint64_t> const& free_slots() const {
+        return m_free_slots;
+    }
+
     std::vector<internal_memory_builder_single_phf<hasher_type, bucketer_type>> const& builders()
         const {
         return m_builders;
@@ -233,6 +244,71 @@ struct internal_memory_builder_partitioned_phf {
         uint64_t m_num_partitions;
     };
 
+    /*
+        Logically aggregate all "taken" bitmaps from all partitions.
+    */
+    struct taken {
+        taken(std::vector<internal_memory_builder_single_phf<hasher_type, bucketer_type>> const&
+                  builders)
+            : m_builders(builders), m_size(0) {
+            for (auto const& b : m_builders) m_size += b.taken().size();
+        }
+
+        struct iterator {
+            iterator(taken const* taken, const uint64_t pos = 0)
+                : m_taken(taken)
+                , m_curr_pos(pos)
+                , m_curr_offset(0)
+                , m_curr_partition(0)  //
+            {
+                while (m_curr_pos >=
+                       m_curr_offset + m_taken->m_builders[m_curr_partition].taken().size()) {
+                    m_curr_offset += m_taken->m_builders[m_curr_partition].taken().size();
+                    m_curr_partition += 1;
+                }
+                assert(m_curr_partition < m_taken->m_builders.size());
+            }
+
+            bool operator*() {
+                assert(m_curr_pos < m_taken->size());
+                assert(m_curr_pos >= m_curr_offset);
+                uint64_t offset = m_curr_pos - m_curr_offset;
+                if (offset == m_taken->m_builders[m_curr_partition].taken().size()) {
+                    m_curr_offset += m_taken->m_builders[m_curr_partition].taken().size();
+                    m_curr_partition += 1;
+                    offset = 0;
+                }
+                assert(m_curr_partition < m_taken->m_builders.size());
+                auto const& t = m_taken->m_builders[m_curr_partition].taken();
+                assert(offset < t.size());
+                return t.get(offset);
+            }
+
+            void operator++() {
+                m_curr_pos += 1;
+            }
+
+        private:
+            taken const* m_taken;
+            uint64_t m_curr_pos;
+            uint64_t m_curr_offset;
+            uint64_t m_curr_partition;
+        };
+
+        iterator at(const uint64_t pos) {
+            return iterator(this, pos);
+        }
+
+        uint64_t size() const {
+            return m_size;
+        }
+
+    private:
+        std::vector<internal_memory_builder_single_phf<hasher_type, bucketer_type>> const&
+            m_builders;
+        uint64_t m_size;
+    };
+
     interleaving_pilots_iterator interleaving_pilots_iterator_begin() const {
         return interleaving_pilots_iterator(m_builders);
     }
@@ -245,6 +321,7 @@ private:
     uint64_t m_num_buckets_per_partition;
     uniform_bucketer m_bucketer;
     std::vector<uint64_t> m_offsets;
+    std::vector<uint64_t> m_free_slots;  // for dense partitioning
     std::vector<internal_memory_builder_single_phf<hasher_type, bucketer_type>> m_builders;
 };
 

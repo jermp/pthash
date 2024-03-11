@@ -9,12 +9,17 @@
 namespace pthash {
 
 struct bit_vector_builder {
-    bit_vector_builder(uint64_t size = 0, bool init = 0) : m_size(size) {
+    bit_vector_builder(uint64_t size = 0, bool init = 0) {
+        initialize(size, init);
+    }
+
+    void initialize(uint64_t size = 0, bool init = 0) {
+        m_size = size;
         m_bits.resize(essentials::words_for(size), uint64_t(-init));
         if (size) {
             m_cur_word = &m_bits.back();
             // clear padding bits
-            if (init && (size & 63)) { *m_cur_word >>= 64 - (size & 63); }
+            if (init && (size & 63)) *m_cur_word >>= 64 - (size & 63);
         }
     }
 
@@ -139,6 +144,27 @@ struct bit_vector_builder {
 
     uint64_t size() const {
         return m_size;
+    }
+
+    struct iterator {
+        iterator(bit_vector_builder const* bvb, const uint64_t pos = 0)
+            : m_bvb(bvb), m_curr_pos(pos) {}
+
+        bool operator*() const {
+            return m_bvb->get(m_curr_pos);
+        }
+
+        void operator++() {
+            m_curr_pos += 1;
+        }
+
+    private:
+        bit_vector_builder const* m_bvb;
+        uint64_t m_curr_pos;
+    };
+
+    iterator at(const uint64_t pos) {
+        return iterator(this, pos);
     }
 
 private:

@@ -35,10 +35,14 @@ struct dense_partitioned_phf {
         auto const& builders = builder.builders();
         m_bucketer = builders.front().bucketer();
 
-        const uint64_t increment = m_num_keys / num_partitions;
+        const uint64_t increment = m_table_size / num_partitions;
         m_offsets.encode(offsets.begin(), offsets.size(), increment);
         m_pilots.encode(builder.interleaving_pilots_iterator_begin(), num_partitions,
                         num_buckets_per_partition);
+        if (Minimal and m_num_keys < m_table_size) {
+            assert(builder.free_slots().size() == m_table_size - m_num_keys);
+            m_free_slots.encode(builder.free_slots().data(), m_table_size - m_num_keys);
+        }
 
         auto stop = clock_type::now();
 
@@ -53,6 +57,10 @@ struct dense_partitioned_phf {
         const uint64_t partition_offset = m_offsets.access(partition);
         const uint64_t partition_size = m_offsets.access(partition + 1) - partition_offset;
         const uint64_t p = partition_offset + position(hash, partition, partition_size);
+        if constexpr (Minimal) {
+            if (PTHASH_LIKELY(p < num_keys())) return p;
+            return m_free_slots.access(p - num_keys());
+        }
         return p;
     }
 
@@ -64,17 +72,17 @@ struct dense_partitioned_phf {
         const uint64_t pilot = m_pilots.access(partition, bucket);
         const uint64_t hashed_pilot = default_hash64(pilot, m_seed);
         const __uint128_t M = fastmod::computeM_u64(partition_size);
-        const uint64_t p = fastmod::fastmod_u64(hash.second() ^ hashed_pilot, M, partition_size);
-        return p;
+        return fastmod::fastmod_u64(hash.second() ^ hashed_pilot, M, partition_size);
     }
 
     size_t num_bits_for_pilots() const {
-        return m_pilots.num_bits();
+        return 8 * (sizeof(m_seed) + sizeof(m_num_keys) + sizeof(m_table_size)) +
+               m_pilots.num_bits();
     }
 
     size_t num_bits_for_mapper() const {
-        return 8 * (sizeof(m_seed) + sizeof(m_num_keys) + sizeof(m_table_size)) +
-               m_partitioner.num_bits() + m_bucketer.num_bits() + m_offsets.num_bits();
+        return m_partitioner.num_bits() + m_bucketer.num_bits() + m_offsets.num_bits() +
+               m_free_slots.num_bits();
     }
 
     size_t num_bits() const {
@@ -98,6 +106,7 @@ struct dense_partitioned_phf {
         visitor.visit(m_bucketer);
         visitor.visit(m_pilots);
         visitor.visit(m_offsets);
+        visitor.visit(m_free_slots);
     }
 
 private:
@@ -108,6 +117,7 @@ private:
     Bucketer m_bucketer;
     Encoder m_pilots;
     diff<compact> m_offsets;
+    ef_sequence<false> m_free_slots;
 };
 
 }  // namespace pthash

@@ -56,11 +56,11 @@ struct single_phf {
 
     size_t num_bits_for_pilots() const {
         return 8 * (sizeof(m_seed) + sizeof(m_num_keys) + sizeof(m_table_size) + sizeof(m_M)) +
-               m_bucketer.num_bits() + m_pilots.num_bits();
+               m_pilots.num_bits();
     }
 
     size_t num_bits_for_mapper() const {
-        return m_free_slots.num_bits();
+        return m_bucketer.num_bits() + m_free_slots.num_bits();
     }
 
     size_t num_bits() const {

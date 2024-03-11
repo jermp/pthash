@@ -254,25 +254,35 @@ void merge(std::vector<Pairs> const& pairs_blocks, Merger& merger, bool verbose)
     }
 }
 
-template <typename FreeSlots>
-void fill_free_slots(bit_vector_builder const& taken, uint64_t num_keys, FreeSlots& free_slots) {
-    uint64_t table_size = taken.size();
+template <typename Taken, typename FreeSlots>
+void fill_free_slots(Taken& taken, const uint64_t num_keys,
+                     FreeSlots& free_slots)  //
+{
+    const uint64_t table_size = taken.size();
     if (table_size <= num_keys) return;
 
     uint64_t next_used_slot = num_keys;
     uint64_t last_free_slot = 0, last_valid_free_slot = 0;
 
+    auto last_free_slot_iter = taken.at(last_free_slot);
+    auto next_used_slot_iter = taken.at(next_used_slot);
+
     while (true) {
         // find the next free slot (on the left)
-        while (last_free_slot < num_keys && taken.get(last_free_slot)) ++last_free_slot;
-        // exit condition
+        while (last_free_slot < num_keys && *last_free_slot_iter) {
+            ++last_free_slot;
+            ++last_free_slot_iter;
+        }
+
         if (last_free_slot == num_keys) break;
+
         // fill with the last free slot (on the left) until I find a new used slot (on the right)
         // note: since I found a free slot on the left, there must be an used slot on the right
         assert(next_used_slot < table_size);
-        while (!taken.get(next_used_slot)) {
+        while (!*next_used_slot_iter) {
             free_slots.emplace_back(last_free_slot);
             ++next_used_slot;
+            ++next_used_slot_iter;
         }
         assert(next_used_slot < table_size);
         // fill the used slot (on the right) with the last free slot and advance all cursors
@@ -280,6 +290,8 @@ void fill_free_slots(bit_vector_builder const& taken, uint64_t num_keys, FreeSlo
         last_valid_free_slot = last_free_slot;
         ++next_used_slot;
         ++last_free_slot;
+        ++last_free_slot_iter;
+        ++next_used_slot_iter;
     }
     // fill the tail with the last valid slot that I found
     while (next_used_slot != table_size) {
