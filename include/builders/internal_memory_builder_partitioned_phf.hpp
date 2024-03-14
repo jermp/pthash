@@ -32,7 +32,7 @@ struct internal_memory_builder_partitioned_phf {
         m_num_keys = num_keys;
         m_table_size = 0;
         m_num_partitions = num_partitions;
-        m_bucketer.init(num_partitions);
+        m_bucketer.init(num_partitions, 0, 0, 0.0);
         m_offsets.resize(num_partitions + 1);
         m_builders.resize(num_partitions);
 
