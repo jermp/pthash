@@ -17,6 +17,7 @@ struct build_parameters {
     bool check, lookup;
     std::string bucketer_type;
     std::string encoder_type;
+    double dual_encoder_tradeoff;
     std::string output_filename;
 };
 
@@ -76,6 +77,7 @@ void build_benchmark(Builder& builder, build_timings const& timings,
     result.add("lambda", config.lambda);
     result.add("alpha", config.alpha);
     result.add("encoder_type", Function::encoder_type::name().c_str());
+    result.add("dual_encoder_tradeoff", params.dual_encoder_tradeoff);
     result.add("bucketer_type", params.bucketer_type.c_str());
     result.add("avg_partition_size", config.avg_partition_size);
     result.add("num_partitions",
@@ -104,6 +106,20 @@ void build_benchmark(Builder& builder, build_timings const& timings,
         essentials::logger("saving data structure to disk...");
         essentials::save(f, params.output_filename.c_str());
         essentials::logger("DONE");
+    }
+}
+
+constexpr uint64_t granularity = 15;
+template <typename Builder, typename BaseEncoder1, typename BaseEncoder2, typename Iterator, uint64_t tradeoff = granularity>
+void choose_dual_encoder_tradeoff(build_parameters<Iterator> const& params, build_configuration const& config, Builder const& builder, build_timings const& timings) {
+    if(tradeoff == uint64_t(std::round(params.dual_encoder_tradeoff * granularity))) {
+        build_benchmark<
+        dense_partitioned_phf<typename Builder::hasher_type,
+        typename Builder::bucketer_type, dual_interleaved<BaseEncoder1, BaseEncoder2, tradeoff, granularity>, true>>(
+                builder, timings, params, config);
+    }
+    if constexpr (tradeoff>0) {
+        choose_dual_encoder_tradeoff<Builder, BaseEncoder1, BaseEncoder2, Iterator, tradeoff - 1>(params, config, builder, timings);
     }
 }
 
@@ -218,28 +234,16 @@ void choose_encoder(build_parameters<Iterator> const& params, build_configuratio
                 builder, timings, params, config);
         }
         if (encode_all or params.encoder_type == "mono-C-mono-R") {
-            build_benchmark<
-                dense_partitioned_phf<typename Builder::hasher_type,
-                                      typename Builder::bucketer_type, mono_C_mono_R, true>>(
-                builder, timings, params, config);
+            choose_dual_encoder_tradeoff<Builder, mono_C, mono_R>(params, config, builder,timings);
         }
         if (encode_all or params.encoder_type == "multi-C-multi-R") {
-            build_benchmark<
-                dense_partitioned_phf<typename Builder::hasher_type,
-                                      typename Builder::bucketer_type, multi_C_multi_R, true>>(
-                builder, timings, params, config);
+            choose_dual_encoder_tradeoff<Builder, multi_C , multi_R>(params, config, builder,timings);
         }
         if (encode_all or params.encoder_type == "mono-D-mono-R") {
-            build_benchmark<
-                dense_partitioned_phf<typename Builder::hasher_type,
-                                      typename Builder::bucketer_type, mono_D_mono_R, true>>(
-                builder, timings, params, config);
+            choose_dual_encoder_tradeoff<Builder, mono_D, mono_R>(params, config, builder,timings);
         }
         if (encode_all or params.encoder_type == "multi-D-multi-R") {
-            build_benchmark<
-                dense_partitioned_phf<typename Builder::hasher_type,
-                                      typename Builder::bucketer_type, multi_D_multi_R, true>>(
-                builder, timings, params, config);
+            choose_dual_encoder_tradeoff<Builder, multi_D, multi_R>(params, config, builder,timings);
         }
 
     } else {
@@ -294,6 +298,11 @@ void build(cmd_line_parser::parser const& parser, Iterator keys, uint64_t num_ke
     build_parameters<Iterator> params(keys, num_keys);
     params.check = parser.get<bool>("check");
     params.lookup = parser.get<bool>("lookup");
+    params.dual_encoder_tradeoff = parser.get<double>("dual_encoder_tradeoff");
+
+    if(params.dual_encoder_tradeoff<0.0 || params.dual_encoder_tradeoff>1.0) {
+        std::cerr << "invalid tradeoff" << std::endl;
+    }
 
     params.encoder_type = parser.get<std::string>("encoder_type");
     params.bucketer_type = parser.get<std::string>("bucketer_type");
@@ -386,6 +395,7 @@ int main(int argc, char** argv) {
                true);
 
     /* Optional arguments. */
+    parser.add("dual_encoder_tradeoff", "Encoder tradeoff when using dual encoding", "-d", false);
     parser.add("avg_partition_size", "Average partition size.", "-p", false);
     parser.add("seed", "Seed to use for construction.", "-s", false);
     parser.add("num_threads", "Number of threads to use for construction.", "-t", false);
