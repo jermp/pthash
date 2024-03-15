@@ -6,8 +6,8 @@
 int main() {
     using namespace pthash;
 
-    /* Generate 10M random 64-bit keys as input data. */
-    static const uint64_t num_keys = 10000000;
+    /* Generate 1M random 64-bit keys as input data. */
+    static const uint64_t num_keys = 1000000;
     static const uint64_t seed = 1234567890;
     std::cout << "generating input data..." << std::endl;
     std::vector<uint64_t> keys = distinct_keys<uint64_t>(num_keys, seed);
@@ -15,25 +15,26 @@ int main() {
 
     /* Set up a build configuration. */
     build_configuration config;
-    config.lambda = 4.0;
-    config.alpha = 0.94;
+    config.seed = 0;
+    config.lambda = 6;
+    config.alpha = 0.97;
+    config.dense_partitioning = true;
+    config.avg_partition_size = 3000;
     config.minimal_output = true;  // mphf
     config.verbose_output = true;
 
     /* Declare the PTHash function. */
-    typedef single_phf<murmurhash2_64,         // base hasher
-                       skew_bucketer,          // bucketer type
-                       dictionary_dictionary,  // encoder type
-                       true                    // minimal
-                       >
+    // typedef single_phf<murmurhash2_64,         // base hasher
+    //                    skew_bucketer,          // bucketer type
+    //                    dictionary_dictionary,  // encoder type
+    //                    true                    // minimal
+    //                    >
+    typedef dense_partitioned_phf<murmurhash2_64,  // base hasher
+                                  opt_bucketer,    // bucketer type
+                                  mono_EF,         // encoder type
+                                  true             // minimal
+                                  >
         pthash_type;
-
-    // config.num_partitions = 50;
-    // config.num_threads = 4;
-    // typedef partitioned_mphf<murmurhash2_64,        // base hasher
-    //                          dictionary_dictionary  // encoder type
-    //                          >
-    //     pthash_type;
 
     pthash_type f;
 
@@ -41,7 +42,6 @@ int main() {
     std::cout << "building the function..." << std::endl;
     auto start = clock_type::now();
     auto timings = f.build_in_internal_memory(keys.begin(), keys.size(), config);
-    // auto timings = f.build_in_external_memory(keys.begin(), keys.size(), config);
     double total_microseconds = timings.partitioning_microseconds +
                                 timings.mapping_ordering_microseconds +
                                 timings.searching_microseconds + timings.encoding_microseconds;

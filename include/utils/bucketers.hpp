@@ -9,15 +9,20 @@ namespace pthash {
 struct opt_bucketer {
     opt_bucketer() {}
 
-    void init(const uint64_t num_buckets, const double lambda, const uint64_t tableSize, double alpha) {
-        constexpr double localCollisionFactor = 0.5;
+    void init(const uint64_t num_buckets,                      //
+              const double lambda, const uint64_t table_size)  //
+    {
+        constexpr double local_collision_factor = 0.5;
         m_num_buckets = num_buckets;
-        slope = std::max(0.05, std::min(1.0, localCollisionFactor * lambda / std::sqrt((double) tableSize)));
+        slope = std::max(
+            0.05, std::min(1.0, local_collision_factor * lambda / std::sqrt((double)table_size)));
     }
 
     inline uint64_t bucket(const uint64_t hash) const {
         double normalized_hash = double(hash) / double(~0ul);
-        double normalized_bucket = std::max(normalized_hash + (1 - normalized_hash) * std::log(1 - normalized_hash), slope * normalized_hash);
+        double normalized_bucket =
+            std::max(normalized_hash + (1 - normalized_hash) * std::log(1 - normalized_hash),
+                     slope * normalized_hash);
         uint64_t bucket_id =
             std::min(uint64_t(normalized_bucket * m_num_buckets), m_num_buckets - 1);
         assert(bucket_id < num_buckets());
@@ -49,7 +54,9 @@ struct skew_bucketer {
 
     skew_bucketer() {}
 
-    void init(const uint64_t num_buckets, const double lambda, const uint64_t tableSize, double alpha) {
+    void init(const uint64_t num_buckets,               //
+              const double /* lambda */, const uint64_t /* table_size */
+    ) {
         m_num_dense_buckets = b * num_buckets;
         m_num_sparse_buckets = num_buckets - m_num_dense_buckets;
         m_M_num_dense_buckets = fastmod::computeM_u64(m_num_dense_buckets);
@@ -95,7 +102,9 @@ private:
 struct uniform_bucketer {
     uniform_bucketer() {}
 
-    void init(const uint64_t num_buckets, const double lambda, const uint64_t tableSize, double alpha) {
+    void init(const uint64_t num_buckets,                                  //
+              const double /* lambda */, const uint64_t /* table_size */)  //
+    {
         m_num_buckets = num_buckets;
         m_M_num_buckets = fastmod::computeM_u64(m_num_buckets);
     }

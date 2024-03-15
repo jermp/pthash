@@ -110,16 +110,20 @@ void build_benchmark(Builder& builder, build_timings const& timings,
 }
 
 constexpr uint64_t granularity = 15;
-template <typename Builder, typename BaseEncoder1, typename BaseEncoder2, typename Iterator, uint64_t tradeoff = granularity>
-void choose_dual_encoder_tradeoff(build_parameters<Iterator> const& params, build_configuration const& config, Builder const& builder, build_timings const& timings) {
-    if(tradeoff == uint64_t(std::round(params.dual_encoder_tradeoff * granularity))) {
-        build_benchmark<
-        dense_partitioned_phf<typename Builder::hasher_type,
-        typename Builder::bucketer_type, dual_interleaved<BaseEncoder1, BaseEncoder2, tradeoff, granularity>, true>>(
-                builder, timings, params, config);
+template <typename Builder, typename BaseEncoder1, typename BaseEncoder2, typename Iterator,
+          uint64_t tradeoff = granularity>
+void choose_dual_encoder_tradeoff(build_parameters<Iterator> const& params,
+                                  build_configuration const& config, Builder const& builder,
+                                  build_timings const& timings) {
+    if (tradeoff == uint64_t(std::round(params.dual_encoder_tradeoff * granularity))) {
+        build_benchmark<dense_partitioned_phf<
+            typename Builder::hasher_type, typename Builder::bucketer_type,
+            dual_interleaved<BaseEncoder1, BaseEncoder2, tradeoff, granularity>, true>>(
+            builder, timings, params, config);
     }
-    if constexpr (tradeoff>0) {
-        choose_dual_encoder_tradeoff<Builder, BaseEncoder1, BaseEncoder2, Iterator, tradeoff - 1>(params, config, builder, timings);
+    if constexpr (tradeoff > 0) {
+        choose_dual_encoder_tradeoff<Builder, BaseEncoder1, BaseEncoder2, Iterator, tradeoff - 1>(
+            params, config, builder, timings);
     }
 }
 
@@ -127,19 +131,12 @@ template <phf_type t, typename Builder, typename Iterator>
 void choose_encoder(build_parameters<Iterator> const& params, build_configuration const& config) {
     if (config.verbose_output) essentials::logger("construction starts");
 
-    auto start = std::chrono::steady_clock::now();
     essentials::timer_type T;  // microseconds
     T.start();
     Builder builder;
     build_timings timings = builder.build_from_keys(params.keys, params.num_keys, config);
     T.stop();
-    auto stop = std::chrono::steady_clock::now();
-    auto elapsed =
-        static_cast<double>(
-            std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count()) /
-        1000;
-    std::cout << "elapsed time = " << T.elapsed() / 1000000 << " [sec] (essentials)" << std::endl;
-    std::cout << "elapsed time = " << elapsed << " [sec]" << std::endl;
+    std::cout << "elapsed time = " << T.elapsed() / 1000000 << " [sec]" << std::endl;
 
     if (config.verbose_output) essentials::logger("construction ends (no encoding)");
 
@@ -234,16 +231,18 @@ void choose_encoder(build_parameters<Iterator> const& params, build_configuratio
                 builder, timings, params, config);
         }
         if (encode_all or params.encoder_type == "mono-C-mono-R") {
-            choose_dual_encoder_tradeoff<Builder, mono_C, mono_R>(params, config, builder,timings);
+            choose_dual_encoder_tradeoff<Builder, mono_C, mono_R>(params, config, builder, timings);
         }
         if (encode_all or params.encoder_type == "multi-C-multi-R") {
-            choose_dual_encoder_tradeoff<Builder, multi_C , multi_R>(params, config, builder,timings);
+            choose_dual_encoder_tradeoff<Builder, multi_C, multi_R>(params, config, builder,
+                                                                    timings);
         }
         if (encode_all or params.encoder_type == "mono-D-mono-R") {
-            choose_dual_encoder_tradeoff<Builder, mono_D, mono_R>(params, config, builder,timings);
+            choose_dual_encoder_tradeoff<Builder, mono_D, mono_R>(params, config, builder, timings);
         }
         if (encode_all or params.encoder_type == "multi-D-multi-R") {
-            choose_dual_encoder_tradeoff<Builder, multi_D, multi_R>(params, config, builder,timings);
+            choose_dual_encoder_tradeoff<Builder, multi_D, multi_R>(params, config, builder,
+                                                                    timings);
         }
 
     } else {
@@ -298,7 +297,7 @@ void build(cmd_line_parser::parser const& parser, Iterator keys, uint64_t num_ke
     params.lookup = parser.get<bool>("lookup");
     params.dual_encoder_tradeoff = parser.get<double>("dual_encoder_tradeoff");
 
-    if(params.dual_encoder_tradeoff<0.0 || params.dual_encoder_tradeoff>1.0) {
+    if (params.dual_encoder_tradeoff < 0.0 || params.dual_encoder_tradeoff > 1.0) {
         std::cerr << "invalid tradeoff" << std::endl;
     }
 
@@ -388,9 +387,8 @@ int main(int argc, char** argv) {
                "purposes.)",
                "-e", true);
 
-    parser.add("bucketer_type",
-               "The bucketer type. Possible values are: 'uniform', 'skew', 'opt'.", "-b",
-               true);
+    parser.add("bucketer_type", "The bucketer type. Possible values are: 'uniform', 'skew', 'opt'.",
+               "-b", true);
 
     /* Optional arguments. */
     parser.add("dual_encoder_tradeoff", "Encoder tradeoff when using dual encoding", "-d", false);

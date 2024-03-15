@@ -58,7 +58,8 @@ struct internal_memory_builder_single_phf {
         m_num_keys = num_keys;
         m_table_size = table_size;
         m_num_buckets = num_buckets;
-        m_bucketer.init(m_num_buckets, config.lambda, static_cast<double>(m_num_buckets) * config.lambda / config.alpha, config.alpha);
+        m_bucketer.init(m_num_buckets, config.lambda,
+                        static_cast<double>(m_num_buckets) * config.lambda / config.alpha);
 
         if (config.verbose_output) {
             std::cout << "lambda (avg. bucket size) = " << config.lambda << std::endl;
