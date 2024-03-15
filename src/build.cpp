@@ -95,6 +95,7 @@ void build_benchmark(Builder& builder, build_timings const& timings,
     result.add("pt_bits_per_key", pt_bits_per_key);
     result.add("mapper_bits_per_key", mapper_bits_per_key);
     result.add("bits_per_key", bits_per_key);
+    result.add("secondary_sort", config.secondary_sort);
     if (nanosec_per_key == -1.0) {
         result.add("nanosec_per_key", "---");
     } else {
