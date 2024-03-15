@@ -428,7 +428,7 @@ int main(int argc, char** argv) {
         }
         build(parser, keys.begin(), keys.size());
     } else {  // use num_keys random 64-bit keys
-        std::vector<uint64_t> keys = distinct_keys<uint64_t>(num_keys, seed);
+        std::vector<uint64_t> keys = distinct_keys<uint64_t>(num_keys, ~seed);
         build(parser, keys.begin(), keys.size());
     }
 
