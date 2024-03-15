@@ -275,10 +275,8 @@ void choose_bucketer(build_parameters<Iterator> const& params, build_configurati
         choose_builder<Hasher, uniform_bucketer>(params, config);
     } else if (params.bucketer_type == "skew") {
         choose_builder<Hasher, skew_bucketer>(params, config);
-    } else if (params.bucketer_type == "opt1") {
-        choose_builder<Hasher, opt1_bucketer>(params, config);
-    } else if (params.bucketer_type == "opt2") {
-        choose_builder<Hasher, opt2_bucketer>(params, config);
+    } else if (params.bucketer_type == "opt") {
+        choose_builder<Hasher, opt_bucketer>(params, config);
     } else {
         assert(false);
     }
@@ -326,7 +324,7 @@ void build(cmd_line_parser::parser const& parser, Iterator keys, uint64_t num_ke
             std::cerr << "unknown encoder type" << std::endl;
             return;
         }
-        std::unordered_set<std::string> bucketers({"uniform", "skew", "opt1", "opt2"});
+        std::unordered_set<std::string> bucketers({"uniform", "skew", "opt"});
         if (bucketers.find(params.bucketer_type) == bucketers.end()) {
             std::cerr << "unknown bucketer type" << std::endl;
             return;
@@ -391,7 +389,7 @@ int main(int argc, char** argv) {
                "-e", true);
 
     parser.add("bucketer_type",
-               "The bucketer type. Possible values are: 'uniform', 'skew', 'opt1', 'opt2'.", "-b",
+               "The bucketer type. Possible values are: 'uniform', 'skew', 'opt'.", "-b",
                true);
 
     /* Optional arguments. */

@@ -3,108 +3,21 @@
 #include <sstream>
 
 #include "util.hpp"
-#include "external/spline/src/spline.h"
 
 namespace pthash {
 
-struct opt2_bucketer {
-    static constexpr uint64_t FULCS_INTER = 1024;
+struct opt_bucketer {
+    opt_bucketer() {}
 
-    /* util */
-    struct csv_buckter {
-        csv_buckter(std::string const& path) {
-            std::ifstream file(path);
-            if (!file.is_open()) throw std::runtime_error("error in opening the file");
-
-            std::vector<double> x;
-            std::vector<double> y;
-
-            std::string line;
-            while (std::getline(file, line)) {
-                std::stringstream ss(line);
-                std::string cell;
-                // Read the first column
-                if (std::getline(ss, cell, ',')) {
-                    x.push_back(std::stod(cell));
-                } else {
-                    std::cerr << "Error reading the first column." << std::endl;
-                }
-                // Read the second column
-                if (std::getline(ss, cell, ',')) {
-                    y.push_back(std::stod(cell));
-                } else {
-                    std::cerr << "Error reading the second column." << std::endl;
-                }
-            }
-            m_spline = tk::spline(x, y);
-        }
-
-        double spline(const double x) const {
-            if (x > 0.9999) return 1.0;
-            if (x < 0.0001) return 0.0;
-            return m_spline(x);
-        }
-
-    private:
-        tk::spline m_spline;
-    };
-
-    void init(const uint64_t num_buckets) {
+    void init(const uint64_t num_buckets, const double lambda, const uint64_t tableSize, double alpha) {
+        constexpr double localCollisionFactor = 0.5;
         m_num_buckets = num_buckets;
-        csv_buckter bucketer("../bucket_mappings/optimizedBucketMapping.csv");
-        m_fulcrums.reserve(FULCS_INTER);
-        for (uint64_t xi = 0; xi != FULCS_INTER; ++xi) {
-            double x = double(xi) / double(FULCS_INTER - 1);
-            double y = bucketer.spline(x);
-            uint32_t fulcV = uint32_t(y * double(m_num_buckets) * double(1 << 16));
-            m_fulcrums.push_back(fulcV);
-        }
-    }
-
-    inline uint64_t bucket(const uint64_t hash) const {
-        uint64_t z = (hash >> 32) * uint64_t(FULCS_INTER - 1);
-        uint64_t index = z >> 32;
-        assert(index + 1 < m_fulcrums.size());
-        uint64_t part = z & 0xFFFFFFFF;
-        uint64_t v1 = (m_fulcrums[index + 0] * part) >> 32;
-        uint64_t v2 = (m_fulcrums[index + 1] * (0xFFFFFFFF - part)) >> 32;
-        uint64_t bucket_id = (v1 + v2) >> 16;
-        assert(bucket_id < num_buckets());
-        return bucket_id;
-    }
-
-    uint64_t num_buckets() const {
-        return m_num_buckets;
-    }
-
-    size_t num_bits() const {
-        return 8 * (sizeof(m_num_buckets) + essentials::vec_bytes(m_fulcrums));
-    }
-
-    template <typename Visitor>
-    void visit(Visitor& visitor) {
-        visitor.visit(m_num_buckets);
-        visitor.visit(m_fulcrums);
-    }
-
-private:
-    uint64_t m_num_buckets;
-    std::vector<uint32_t> m_fulcrums;
-};
-
-struct opt1_bucketer {
-    opt1_bucketer() {}
-
-    void init(const uint64_t num_buckets) {
-        m_num_buckets = num_buckets;
+        slope = std::max(0.05, std::min(1.0, localCollisionFactor * lambda / std::sqrt((double) tableSize)));
     }
 
     inline uint64_t bucket(const uint64_t hash) const {
         double normalized_hash = double(hash) / double(~0ul);
-        constexpr double c = 0.08;
-        double normalized_bucket =
-            (normalized_hash + (1 - normalized_hash) * std::log(1 - normalized_hash)) * (1 - c) +
-            normalized_hash * c;
+        double normalized_bucket = std::max(normalized_hash + (1 - normalized_hash) * std::log(1 - normalized_hash), slope * normalized_hash);
         uint64_t bucket_id =
             std::min(uint64_t(normalized_bucket * m_num_buckets), m_num_buckets - 1);
         assert(bucket_id < num_buckets());
@@ -116,15 +29,17 @@ struct opt1_bucketer {
     }
 
     size_t num_bits() const {
-        return 8 * sizeof(m_num_buckets);
+        return 8 * sizeof(m_num_buckets) + 8 * sizeof(slope);
     }
 
     template <typename Visitor>
     void visit(Visitor& visitor) {
         visitor.visit(m_num_buckets);
+        visitor.visit(slope);
     }
 
 private:
+    double slope;
     uint64_t m_num_buckets;
 };
 
@@ -134,7 +49,7 @@ struct skew_bucketer {
 
     skew_bucketer() {}
 
-    void init(const uint64_t num_buckets) {
+    void init(const uint64_t num_buckets, const double lambda, const uint64_t tableSize, double alpha) {
         m_num_dense_buckets = b * num_buckets;
         m_num_sparse_buckets = num_buckets - m_num_dense_buckets;
         m_M_num_dense_buckets = fastmod::computeM_u64(m_num_dense_buckets);
@@ -180,7 +95,7 @@ private:
 struct uniform_bucketer {
     uniform_bucketer() {}
 
-    void init(const uint64_t num_buckets) {
+    void init(const uint64_t num_buckets, const double lambda, const uint64_t tableSize, double alpha) {
         m_num_buckets = num_buckets;
         m_M_num_buckets = fastmod::computeM_u64(m_num_buckets);
     }
