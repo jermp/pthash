@@ -99,20 +99,21 @@ private:
     }
 };
 
+// this uses additive displacement
 template <typename BucketsIterator, typename PilotsBuffer>
 void search_sequential(const uint64_t num_keys, const uint64_t num_buckets,
                        const uint64_t num_non_empty_buckets, const uint64_t seed,
                        build_configuration const& config, BucketsIterator& buckets,
                        bit_vector_builder& taken, PilotsBuffer& pilots) {
-    uint64_t max_bucket_size = (*buckets).size();
-    uint64_t table_size = taken.size();
+    const uint64_t max_bucket_size = (*buckets).size();
+    const uint64_t table_size = taken.size();
     std::vector<uint64_t> positions;
     positions.reserve(max_bucket_size);
-    __uint128_t M = fastmod::computeM_u64(table_size);
+    const __uint128_t M = fastmod::computeM_u64(table_size);
 
-    std::vector<uint64_t> hashed_pilots_cache(search_cache_size);
-    for (uint64_t pilot = 0; pilot != search_cache_size; ++pilot) {
-        hashed_pilots_cache[pilot] = default_hash64(pilot, seed);
+    std::vector<uint64_t> hashed_seed_cache(search_cache_size);
+    for (uint64_t s = 0; s != search_cache_size; ++s) {
+        hashed_seed_cache[s] = default_hash64(s, seed);
     }
 
     search_logger log(num_keys, table_size, num_buckets);
@@ -123,42 +124,121 @@ void search_sequential(const uint64_t num_keys, const uint64_t num_buckets,
         auto const& bucket = *buckets;
         assert(bucket.size() > 0);
 
-        for (uint64_t pilot = 0; true; ++pilot) {
-            uint64_t hashed_pilot = PTHASH_LIKELY(pilot < search_cache_size)
-                                        ? hashed_pilots_cache[pilot]
-                                        : default_hash64(pilot, seed);
-
+        for (uint64_t s = 0; true; ++s)  //
+        {
             positions.clear();
+            uint64_t hashed_s = PTHASH_LIKELY(s < search_cache_size) ? hashed_seed_cache[s]
+                                                                     : default_hash64(s, seed);
 
             auto bucket_begin = bucket.begin(), bucket_end = bucket.end();
             for (; bucket_begin != bucket_end; ++bucket_begin) {
                 uint64_t hash = *bucket_begin;
-                uint64_t p = fastmod::fastmod_u64(hash ^ hashed_pilot, M, table_size);
-                if (taken.get(p)) break;
-                positions.push_back(p);
+                uint64_t initial_position = fastmod::fastmod_u64(hash ^ hashed_s, M, table_size);
+                positions.push_back(initial_position);
             }
 
-            if (bucket_begin == bucket_end) {  // all keys do not have collisions with taken
+            // check for in-bucket collisions
+            std::sort(positions.begin(), positions.end());
+            auto it = std::adjacent_find(positions.begin(), positions.end());
+            if (it != positions.end()) continue;
 
-                // check for in-bucket collisions
-                std::sort(positions.begin(), positions.end());
-                auto it = std::adjacent_find(positions.begin(), positions.end());
-                if (it != positions.end())
-                    continue;  // in-bucket collision detected, try next pilot
-
-                pilots.emplace_back(bucket.id(), pilot);
-                for (auto p : positions) {
-                    assert(taken.get(p) == false);
-                    taken.set(p, true);
+            bool pilot_found = false;
+            for (uint64_t d = 0; d != table_size; ++d)  //
+            {
+                uint64_t i = 0;
+                uint64_t final_position = 0;
+                for (; i != positions.size(); ++i) {
+                    uint64_t initial_position = positions[i];
+                    final_position = initial_position + d;
+                    if (final_position >= table_size or taken.get(final_position)) break;
                 }
-                if (config.verbose_output) log.update(processed_buckets, bucket.size(), pilot);
-                break;
+
+                if (final_position >= table_size) break;
+
+                if (i == positions.size()) {  // all keys do not have collisions with taken
+                    const uint64_t pilot = s * table_size + d;
+                    pilots.emplace_back(bucket.id(), pilot);
+                    for (auto initial_position : positions) {
+                        uint64_t final_position = initial_position + d;
+                        assert(taken.get(final_position) == false);
+                        taken.set(final_position, true);
+                    }
+                    if (config.verbose_output) {
+                        log.update(processed_buckets, bucket.size(), pilot);
+                    }
+                    pilot_found = true;
+                    break;
+                }
             }
+
+            if (pilot_found) break;
         }
     }
 
     if (config.verbose_output) log.finalize(processed_buckets);
 }
+
+// this uses xor-based displacement
+// template <typename BucketsIterator, typename PilotsBuffer>
+// void search_sequential(const uint64_t num_keys, const uint64_t num_buckets,
+//                        const uint64_t num_non_empty_buckets, const uint64_t seed,
+//                        build_configuration const& config, BucketsIterator& buckets,
+//                        bit_vector_builder& taken, PilotsBuffer& pilots) {
+//     const uint64_t max_bucket_size = (*buckets).size();
+//     const uint64_t table_size = taken.size();
+//     std::vector<uint64_t> positions;
+//     positions.reserve(max_bucket_size);
+//     const __uint128_t M = fastmod::computeM_u64(table_size);
+
+//     std::vector<uint64_t> hashed_pilots_cache(search_cache_size);
+//     for (uint64_t pilot = 0; pilot != search_cache_size; ++pilot) {
+//         hashed_pilots_cache[pilot] = default_hash64(pilot, seed);
+//     }
+
+//     search_logger log(num_keys, table_size, num_buckets);
+//     if (config.verbose_output) log.init();
+
+//     uint64_t processed_buckets = 0;
+//     for (; processed_buckets < num_non_empty_buckets; ++processed_buckets, ++buckets) {
+//         auto const& bucket = *buckets;
+//         assert(bucket.size() > 0);
+
+//         for (uint64_t pilot = 0; true; ++pilot) {
+//             uint64_t hashed_pilot = PTHASH_LIKELY(pilot < search_cache_size)
+//                                         ? hashed_pilots_cache[pilot]
+//                                         : default_hash64(pilot, seed);
+
+//             positions.clear();
+
+//             auto bucket_begin = bucket.begin(), bucket_end = bucket.end();
+//             for (; bucket_begin != bucket_end; ++bucket_begin) {
+//                 uint64_t hash = *bucket_begin;
+//                 uint64_t p = fastmod::fastmod_u64(hash ^ hashed_pilot, M, table_size);
+//                 if (taken.get(p)) break;
+//                 positions.push_back(p);
+//             }
+
+//             if (bucket_begin == bucket_end) {  // all keys do not have collisions with taken
+
+//                 // check for in-bucket collisions
+//                 std::sort(positions.begin(), positions.end());
+//                 auto it = std::adjacent_find(positions.begin(), positions.end());
+//                 if (it != positions.end())
+//                     continue;  // in-bucket collision detected, try next pilot
+
+//                 pilots.emplace_back(bucket.id(), pilot);
+//                 for (auto p : positions) {
+//                     assert(taken.get(p) == false);
+//                     taken.set(p, true);
+//                 }
+//                 if (config.verbose_output) log.update(processed_buckets, bucket.size(), pilot);
+//                 break;
+//             }
+//         }
+//     }
+
+//     if (config.verbose_output) log.finalize(processed_buckets);
+// }
 
 template <typename BucketsIterator, typename PilotsBuffer>
 void search_parallel(const uint64_t num_keys, const uint64_t num_buckets,

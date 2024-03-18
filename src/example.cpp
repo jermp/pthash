@@ -10,7 +10,7 @@ int main() {
     static const uint64_t num_keys = 1000000;
     static const uint64_t seed = 1234567890;
     std::cout << "generating input data..." << std::endl;
-    std::vector<uint64_t> keys = distinct_keys<uint64_t>(num_keys, ~seed);
+    std::vector<uint64_t> keys = distinct_keys<uint64_t>(num_keys, default_hash64(seed, seed));
     assert(keys.size() == num_keys);
 
     /* Set up a build configuration. */

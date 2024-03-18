@@ -284,11 +284,11 @@ void choose_bucketer(build_parameters<Iterator> const& params, build_configurati
 
 template <typename Iterator>
 void choose_hasher(build_parameters<Iterator> const& params, build_configuration const& config) {
-    if (params.num_keys <= (uint64_t(1) << 30)) {
-        choose_bucketer<murmurhash2_64>(params, config);
-    } else {
-        choose_bucketer<murmurhash2_128>(params, config);
-    }
+    // if (params.num_keys <= (uint64_t(1) << 30)) {
+    //     choose_bucketer<murmurhash2_64>(params, config);
+    // } else {
+    choose_bucketer<murmurhash2_128>(params, config);
+    // }
 }
 
 template <typename Iterator>
@@ -429,7 +429,7 @@ int main(int argc, char** argv) {
         }
         build(parser, keys.begin(), keys.size());
     } else {  // use num_keys random 64-bit keys
-        std::vector<uint64_t> keys = distinct_keys<uint64_t>(num_keys, ~seed);
+        std::vector<uint64_t> keys = distinct_keys<uint64_t>(num_keys, default_hash64(seed, seed));
         build(parser, keys.begin(), keys.size());
     }
 

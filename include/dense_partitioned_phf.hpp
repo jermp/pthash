@@ -68,11 +68,20 @@ struct dense_partitioned_phf {
                       const uint64_t partition,             //
                       const uint64_t partition_size) const  //
     {
+        const __uint128_t M = fastmod::computeM_u64(partition_size);
         const uint64_t bucket = m_bucketer.bucket(hash.first());
         const uint64_t pilot = m_pilots.access(partition, bucket);
-        const uint64_t hashed_pilot = default_hash64(pilot, m_seed);
-        const __uint128_t M = fastmod::computeM_u64(partition_size);
-        return fastmod::fastmod_u64(hash.second() ^ hashed_pilot, M, partition_size);
+
+        // xor displacement
+        // const uint64_t hashed_pilot = default_hash64(pilot, m_seed);
+        // return fastmod::fastmod_u64(hash.second() ^ hashed_pilot, M, partition_size);
+
+        // additive displacement
+        const uint64_t s = pilot / partition_size;
+        const uint64_t d = pilot - s * partition_size;
+        assert(d < partition_size);
+        return fastmod::fastmod_u64(hash.second() ^ default_hash64(s, m_seed), M, partition_size) +
+               d;
     }
 
     size_t num_bits_for_pilots() const {
