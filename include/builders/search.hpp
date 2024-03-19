@@ -146,14 +146,15 @@ void search_sequential(const uint64_t num_keys, const uint64_t num_buckets,
             for (uint64_t d = 0; d != table_size; ++d)  //
             {
                 uint64_t i = 0;
-                uint64_t final_position = 0;
                 for (; i != positions.size(); ++i) {
                     uint64_t initial_position = positions[i];
-                    final_position = initial_position + d;
-                    if (final_position >= table_size or taken.get(final_position)) break;
+                    uint64_t final_position = initial_position + d;
+                    if(final_position >= table_size) {
+                        final_position -= table_size;
+                        positions[i]-=table_size;
+                    }
+                    if (taken.get(final_position)) break;
                 }
-
-                if (final_position >= table_size) break;
 
                 if (i == positions.size()) {  // all keys do not have collisions with taken
                     const uint64_t pilot = s * table_size + d;
