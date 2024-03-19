@@ -80,7 +80,8 @@ struct dense_partitioned_phf {
         const uint64_t s = pilot / partition_size;
         const uint64_t d = pilot - s * partition_size;
         assert(d < partition_size);
-        return fastmod::fastmod_u64((hash.second() ^ default_hash64(s, m_seed)) + d, M, partition_size);
+        return fastmod::fastmod_u64((hash.second() ^ default_hash64(s, m_seed)) + d, M,
+                                    partition_size);
     }
 
     size_t num_bits_for_pilots() const {

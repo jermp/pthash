@@ -149,9 +149,9 @@ void search_sequential(const uint64_t num_keys, const uint64_t num_buckets,
                 for (; i != positions.size(); ++i) {
                     uint64_t initial_position = positions[i];
                     uint64_t final_position = initial_position + d;
-                    if(final_position >= table_size) {
+                    if (final_position >= table_size) {
                         final_position -= table_size;
-                        positions[i]-=table_size;
+                        positions[i] -= table_size;
                     }
                     if (taken.get(final_position)) break;
                 }
