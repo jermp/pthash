@@ -15,7 +15,9 @@ typedef uint32_t bucket_id_type;
 #endif
 typedef uint8_t bucket_size_type;
 
-constexpr bucket_size_type MAX_BUCKET_SIZE = 255;  // 100
+constexpr bucket_size_type MAX_BUCKET_SIZE = 255;
+
+enum pthash_search_type { xor_displacement, add_displacement };
 
 static inline std::string get_tmp_builder_filename(std::string const& dir_name, uint64_t id) {
     return dir_name + "/pthash.temp." + std::to_string(id) + ".builder";
@@ -38,6 +40,7 @@ struct build_configuration {
     build_configuration()
         : lambda(4.5)
         , alpha(0.98)
+        , search(pthash_search_type::xor_displacement)
         , avg_partition_size(0)  // not partitioned
         , num_buckets(constants::invalid_num_buckets)
         , num_threads(1)
@@ -51,6 +54,7 @@ struct build_configuration {
 
     double lambda;  // avg. bucket size
     double alpha;   // load factor
+    pthash_search_type search;
     uint64_t avg_partition_size;
     uint64_t num_buckets;
     uint64_t num_threads;

@@ -7,7 +7,8 @@
 
 namespace pthash {
 
-template <typename Hasher, typename Bucketer, typename Encoder, bool Minimal>
+template <typename Hasher, typename Bucketer, typename Encoder, bool Minimal,
+          pthash_search_type Search>
 struct partitioned_phf {
 private:
     struct partition {
@@ -18,7 +19,7 @@ private:
         }
 
         uint64_t offset;
-        single_phf<Hasher, Bucketer, Encoder, Minimal> f;
+        single_phf<Hasher, Bucketer, Encoder, Minimal, Search> f;
     };
 
 public:

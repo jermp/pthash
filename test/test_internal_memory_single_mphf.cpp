@@ -6,10 +6,12 @@ using bucketer_type = skew_bucketer;
 template <typename Encoder, typename Builder, typename Iterator>
 void test_encoder(Builder const& builder, build_configuration const& config, Iterator keys,
                   uint64_t num_keys) {
-    single_phf<typename Builder::hasher_type, bucketer_type, Encoder, true> f;
-    f.build(builder, config);
-    testing::require_equal(f.num_keys(), num_keys);
-    check(keys, f);
+    single_phf<typename Builder::hasher_type, bucketer_type, Encoder, true,
+               pthash_search_type::xor_displacement>
+        f_xor;
+    f_xor.build(builder, config);
+    testing::require_equal(f_xor.num_keys(), num_keys);
+    check(keys, f_xor);
 }
 
 template <typename Iterator>
@@ -20,6 +22,7 @@ void test_internal_memory_single_mphf(Iterator keys, uint64_t num_keys) {
     internal_memory_builder_single_phf<murmurhash2_128, bucketer_type> builder_128;
 
     build_configuration config;
+    config.search = pthash_search_type::xor_displacement;
     config.minimal_output = true;  // mphf
     config.verbose_output = false;
     config.seed = random_value();

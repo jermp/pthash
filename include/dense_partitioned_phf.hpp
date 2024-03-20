@@ -4,7 +4,8 @@
 
 namespace pthash {
 
-template <typename Hasher, typename Bucketer, typename Encoder, bool Minimal>
+template <typename Hasher, typename Bucketer, typename Encoder, bool Minimal,
+          pthash_search_type Search>
 struct dense_partitioned_phf {
     typedef Encoder encoder_type;
     static constexpr bool minimal = Minimal;
@@ -72,16 +73,18 @@ struct dense_partitioned_phf {
         const uint64_t bucket = m_bucketer.bucket(hash.first());
         const uint64_t pilot = m_pilots.access(partition, bucket);
 
-        // xor displacement
-        // const uint64_t hashed_pilot = default_hash64(pilot, m_seed);
-        // return fastmod::fastmod_u64(hash.second() ^ hashed_pilot, M, partition_size);
+        /* xor displacement */
+        if constexpr (Search == pthash_search_type::xor_displacement) {
+            const uint64_t hashed_pilot = default_hash64(pilot, m_seed);
+            return fastmod::fastmod_u64(hash.second() ^ hashed_pilot, M, partition_size);
+        }
 
-        // additive displacement
+        /* additive displacement */
         const uint64_t s = pilot / partition_size;
         const uint64_t d = pilot - s * partition_size;
         assert(d < partition_size);
-        return fastmod::fastmod_u64((hash.second() ^ default_hash64(s, m_seed)) + d, M,
-                                    partition_size);
+        const uint64_t hashed_s = default_hash64(s, m_seed);
+        return fastmod::fastmod_u64((hash.second() ^ hashed_s) + d, M, partition_size);
     }
 
     size_t num_bits_for_pilots() const {
