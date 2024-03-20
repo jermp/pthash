@@ -16,9 +16,10 @@ void search_sequential_xor(const uint64_t num_keys, const uint64_t num_buckets,
                            bit_vector_builder& taken, PilotsBuffer& pilots) {
     const uint64_t max_bucket_size = (*buckets).size();
     const uint64_t table_size = taken.size();
+    const __uint128_t M = fastmod::computeM_u64(table_size);
+
     std::vector<uint64_t> positions;
     positions.reserve(max_bucket_size);
-    const __uint128_t M = fastmod::computeM_u64(table_size);
 
     std::vector<uint64_t> hashed_pilots_cache(search_cache_size);
     for (uint64_t pilot = 0; pilot != search_cache_size; ++pilot) {
@@ -75,11 +76,11 @@ void search_parallel_xor(const uint64_t num_keys, const uint64_t num_buckets,
                          const uint64_t num_non_empty_buckets, const uint64_t seed,
                          build_configuration const& config, BucketsIterator& buckets,
                          bit_vector_builder& taken, PilotsBuffer& pilots) {
-    uint64_t max_bucket_size = (*buckets).size();
-    uint64_t table_size = taken.size();
-    __uint128_t M = fastmod::computeM_u64(table_size);
-
+    const uint64_t max_bucket_size = (*buckets).size();
+    const uint64_t table_size = taken.size();
+    const __uint128_t M = fastmod::computeM_u64(table_size);
     const uint64_t num_threads = config.num_threads;
+
     std::vector<uint64_t> hashed_pilots_cache(search_cache_size);
     for (uint64_t pilot = 0; pilot != search_cache_size; ++pilot) {
         hashed_pilots_cache[pilot] = default_hash64(pilot, seed);
@@ -136,7 +137,7 @@ void search_parallel_xor(const uint64_t num_keys, const uint64_t num_buckets,
                                 break;
                             }
                         }
-                        // I can stop the pilot search as there are not collisions
+                        // I can stop the pilot search as there are no collisions
                         if (pilot_checked) break;
                     }
                 }
