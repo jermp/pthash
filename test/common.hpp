@@ -2,8 +2,8 @@
 
 #include <iostream>
 
-#include "pthash.hpp"
-#include "utils/util.hpp"
+#include "include/pthash.hpp"
+#include "include/utils/util.hpp"
 #include "src/util.hpp"
 
 namespace pthash::testing {

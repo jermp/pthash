@@ -1,7 +1,7 @@
 #pragma once
 
-#include "util.hpp"
-#include "bit_vector.hpp"
+#include "include/encoders/util.hpp"
+#include "include/encoders/bit_vector.hpp"
 
 namespace pthash {
 namespace detail {

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "util.hpp"
+#include "include/utils/util.hpp"
 
 namespace pthash {
 

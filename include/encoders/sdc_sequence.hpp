@@ -1,7 +1,7 @@
 #pragma once
 
-#include "bit_vector.hpp"
-#include "ef_sequence.hpp"
+#include "include/encoders/bit_vector.hpp"
+#include "include/encoders/ef_sequence.hpp"
 
 namespace pthash {
 

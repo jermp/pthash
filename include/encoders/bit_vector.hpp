@@ -3,7 +3,7 @@
 #include <cstddef>
 #include <vector>
 
-#include "util.hpp"
+#include "include/encoders/util.hpp"
 #include "essentials.hpp"
 
 namespace pthash {

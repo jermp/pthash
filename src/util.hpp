@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include "utils/util.hpp"
+#include "include/utils/util.hpp"
 #include "essentials.hpp"
 
 namespace pthash {
@@ -60,17 +60,6 @@ struct sequential_lines_iterator : std::forward_iterator_tag {
 
     sequential_lines_iterator(std::istream& is)
         : m_pis(&is), m_num_lines(0), m_num_empty_lines(0) {}
-
-    // sequential_lines_iterator(sequential_lines_iterator const& rhs) {
-    //     *this = rhs;
-    // }
-
-    // sequential_lines_iterator& operator=(sequential_lines_iterator const& rhs) {
-    //     m_pis = rhs.m_pis;
-    //     m_num_lines = rhs.m_num_lines;
-    //     m_num_empty_lines = rhs.m_num_empty_lines;
-    //     return *this;
-    // }
 
     std::string operator*()  //
     {

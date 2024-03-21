@@ -1,8 +1,8 @@
 #pragma once
 
-#include "bit_vector.hpp"
-#include "darray.hpp"
-#include "compact_vector.hpp"
+#include "include/encoders/bit_vector.hpp"
+#include "include/encoders/darray.hpp"
+#include "include/encoders/compact_vector.hpp"
 
 namespace pthash {
 

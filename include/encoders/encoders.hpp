@@ -1,8 +1,8 @@
 #pragma once
 
-#include "compact_vector.hpp"
-#include "ef_sequence.hpp"
-#include "sdc_sequence.hpp"
+#include "include/encoders/compact_vector.hpp"
+#include "include/encoders/ef_sequence.hpp"
+#include "include/encoders/sdc_sequence.hpp"
 
 #include <vector>
 #include <unordered_map>

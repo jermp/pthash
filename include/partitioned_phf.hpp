@@ -2,9 +2,9 @@
 
 #include <thread>
 
-#include "single_phf.hpp"
-#include "builders/internal_memory_builder_partitioned_phf.hpp"
-#include "builders/external_memory_builder_partitioned_phf.hpp"
+#include "include/single_phf.hpp"
+#include "include/builders/internal_memory_builder_partitioned_phf.hpp"
+#include "include/builders/external_memory_builder_partitioned_phf.hpp"
 
 namespace pthash {
 

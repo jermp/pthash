@@ -1,7 +1,7 @@
 #include <iostream>
 
-#include "pthash.hpp"
-#include "util.hpp"  // for functions distinct_keys and check
+#include "include/pthash.hpp"
+#include "src/util.hpp"  // for functions distinct_keys and check
 
 int main() {
     using namespace pthash;

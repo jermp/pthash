@@ -2,9 +2,9 @@
 #include <thread>
 #include <unordered_set>
 
-#include "../external/cmd_line_parser/include/parser.hpp"
-#include "pthash.hpp"
-#include "util.hpp"
+#include "external/cmd_line_parser/include/parser.hpp"
+#include "include/pthash.hpp"
+#include "src/util.hpp"
 
 using namespace pthash;
 

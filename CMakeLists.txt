@@ -8,7 +8,6 @@ MESSAGE(STATUS "CMAKE_BUILD_TYPE: " ${CMAKE_BUILD_TYPE})
 
 if(NOT TARGET PTHASH)
   add_library(PTHASH INTERFACE)
-  target_include_directories(PTHASH INTERFACE ./include)
   target_include_directories(PTHASH INTERFACE .)
 
   target_compile_features(PTHASH INTERFACE cxx_std_17)
