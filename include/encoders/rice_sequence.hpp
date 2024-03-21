@@ -69,7 +69,7 @@ private:
         const double gold = (sqrt(5.0) + 1.0) / 2.0;
         // return uint64_t(ceil(log2(-log2(gold) / log2(1 - p))));
         // Eq. (8) from Kiely, "Selecting the Golomb Parameter in Rice Coding", 2004.
-        return std::max<uint64_t>(0, 1 + floor(log2(log(gold - 1) / log(1 - p))));
+        return std::max<int64_t>(0, 1 + floor(log2(log(gold - 1) / log(1 - p))));
     }
 };
 
