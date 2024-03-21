@@ -15,6 +15,8 @@ struct single_phf {
     template <typename Iterator>
     build_timings build_in_internal_memory(Iterator keys, const uint64_t num_keys,
                                            build_configuration const& config) {
+        assert(Minimal == config.minimal_output);
+        assert(Search == config.search);
         internal_memory_builder_single_phf<Hasher, Bucketer> builder;
         auto timings = builder.build_from_keys(keys, num_keys, config);
         timings.encoding_microseconds = build(builder, config);
