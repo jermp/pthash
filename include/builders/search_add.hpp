@@ -21,11 +21,7 @@ void search_sequential_add(const uint64_t num_keys, const uint64_t num_buckets,
     std::vector<uint64_t> positions;
     positions.reserve(max_bucket_size);
 
-    std::vector<uint64_t> hashed_seed_cache(search_cache_size);
-    for (uint64_t s = 0; s != search_cache_size; ++s) {
-        hashed_seed_cache[s] = default_hash64(s, seed);
-    }
-
+    uint64_t start_seed = default_hash64(42, seed);
     search_logger log(num_keys, num_buckets);
     if (config.verbose_output) log.init();
 
@@ -37,13 +33,10 @@ void search_sequential_add(const uint64_t num_keys, const uint64_t num_buckets,
         for (uint64_t s = 0; true; ++s)  //
         {
             positions.clear();
-            uint64_t hashed_s = PTHASH_LIKELY(s < search_cache_size) ? hashed_seed_cache[s]
-                                                                     : default_hash64(s, seed);
-
             auto bucket_begin = bucket.begin(), bucket_end = bucket.end();
             for (; bucket_begin != bucket_end; ++bucket_begin) {
                 uint64_t hash = *bucket_begin;
-                uint64_t initial_position = fastmod::fastmod_u64(hash ^ hashed_s, M, table_size);
+                uint64_t initial_position = fastmod::fastmod_u64(hash64(hash + start_seed + s).mix(), M, table_size);
                 positions.push_back(initial_position);
             }
 
@@ -97,11 +90,7 @@ void search_parallel_add(const uint64_t num_keys, const uint64_t num_buckets,
     const __uint128_t M = fastmod::computeM_u64(table_size);
     const uint64_t num_threads = config.num_threads;
 
-    std::vector<uint64_t> hashed_seed_cache(search_cache_size);
-    for (uint64_t s = 0; s != search_cache_size; ++s) {
-        hashed_seed_cache[s] = default_hash64(s, seed);
-    }
-
+    uint64_t start_seed = default_hash64(42, seed);
     search_logger log(num_keys, num_buckets);
     if (config.verbose_output) log.init();
 
@@ -124,15 +113,11 @@ void search_parallel_add(const uint64_t num_keys, const uint64_t num_buckets,
                         for (uint64_t s = 0; true; ++s)  //
                         {
                             positions.clear();
-                            uint64_t hashed_s = PTHASH_LIKELY(s < search_cache_size)
-                                                    ? hashed_seed_cache[s]
-                                                    : default_hash64(s, seed);
-
                             auto bucket_begin = bucket.begin(), bucket_end = bucket.end();
                             for (; bucket_begin != bucket_end; ++bucket_begin) {
                                 uint64_t hash = *bucket_begin;
                                 uint64_t initial_position =
-                                    fastmod::fastmod_u64(hash ^ hashed_s, M, table_size);
+                                    fastmod::fastmod_u64(hash64(hash + start_seed + s).mix(), M, table_size);
                                 positions.push_back(initial_position);
                             }
 
