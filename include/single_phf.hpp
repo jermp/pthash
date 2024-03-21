@@ -57,8 +57,8 @@ struct single_phf {
             const uint64_t s = pilot / m_table_size;
             const uint64_t d = pilot - s * m_table_size;
             assert(d < m_table_size);
-            const uint64_t hashed_s = default_hash64(s, m_seed);
-            p = fastmod::fastmod_u64((hash.second() ^ hashed_s) + d, m_M, m_table_size);
+            const uint64_t start_seed = default_hash64(42, m_seed);
+            p = fastmod::fastmod_u64((hash64(hash.second() + start_seed + s).mix()) + d, m_M, m_table_size);
         }
 
         if constexpr (Minimal) {
