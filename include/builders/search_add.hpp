@@ -16,12 +16,11 @@ void search_sequential_add(const uint64_t num_keys, const uint64_t num_buckets,
                            bit_vector_builder& taken, PilotsBuffer& pilots) {
     const uint64_t max_bucket_size = (*buckets).size();
     const uint64_t table_size = taken.size();
-    const __uint128_t M = fastmod::computeM_u64(table_size);
+    const uint64_t M = fastmod::computeM_u32(table_size);
 
     std::vector<uint64_t> positions;
     positions.reserve(max_bucket_size);
 
-    uint64_t start_seed = default_hash64(42, seed);
     search_logger log(num_keys, num_buckets);
     if (config.verbose_output) log.init();
 
@@ -36,7 +35,7 @@ void search_sequential_add(const uint64_t num_keys, const uint64_t num_buckets,
             auto bucket_begin = bucket.begin(), bucket_end = bucket.end();
             for (; bucket_begin != bucket_end; ++bucket_begin) {
                 uint64_t hash = *bucket_begin;
-                uint64_t initial_position = fastmod::fastmod_u64(hash64(hash + start_seed + s).mix(), M, table_size);
+                uint64_t initial_position = fastmod::fastmod_u32(hash64(hash + s).mix()>>33, M, table_size);
                 positions.push_back(initial_position);
             }
 

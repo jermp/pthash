@@ -7,3 +7,6 @@
 [submodule "external/mm_file"]
 	path = external/mm_file
 	url = https://github.com/jermp/mm_file.git
+[submodule "external/xxHash"]
+	path = external/xxHash
+	url = https://github.com/Cyan4973/xxHash.git

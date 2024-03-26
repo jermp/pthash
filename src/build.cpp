@@ -300,7 +300,7 @@ void choose_bucketer(build_parameters<Iterator> const& params, build_configurati
     } else if (params.bucketer_type == "skew") {
         choose_builder<Hasher, skew_bucketer>(params, config);
     } else if (params.bucketer_type == "opt") {
-        choose_builder<Hasher, opt_bucketer>(params, config);
+        choose_builder<Hasher, table_bucketer<opt_bucketer>>(params, config);
     } else {
         assert(false);
     }
@@ -311,7 +311,7 @@ void choose_hasher(build_parameters<Iterator> const& params, build_configuration
     // if (params.num_keys <= (uint64_t(1) << 30)) {
     //     choose_bucketer<murmurhash2_64>(params, config);
     // } else {
-    choose_bucketer<murmurhash2_128>(params, config);
+    choose_bucketer<xxhash128>(params, config);
     // }
 }
 
