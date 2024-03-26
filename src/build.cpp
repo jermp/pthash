@@ -355,7 +355,12 @@ int main(int argc, char** argv) {
         }
         build(parser, keys.begin(), keys.size());
     } else {  // use num_keys random 64-bit keys
-        std::vector<uint64_t> keys = distinct_keys<uint64_t>(num_keys, default_hash64(seed, seed));
+        //std::vector<uint64_t> keys = distinct_keys<uint64_t>(num_keys, default_hash64(seed, seed));
+
+        std::vector<std::string> keys;
+        keys.reserve(num_keys);
+        for (size_t i = 0; i < num_keys; ++i) { keys.push_back(std::to_string(i)); }
+
         build(parser, keys.begin(), keys.size());
     }
 
