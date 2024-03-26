@@ -149,6 +149,37 @@ private:
     __uint128_t m_M_num_dense_buckets, m_M_num_sparse_buckets;
 };
 
+struct range_bucketer {
+    range_bucketer() {}
+
+    void init(const uint64_t num_buckets)  //
+    {
+        m_num_buckets = num_buckets;
+    }
+
+    inline uint64_t bucket(const uint64_t hash) const {
+        return ((hash >> 32U) * m_num_buckets) >> 32U;
+    }
+
+    uint64_t num_buckets() const {
+        return m_num_buckets;
+    }
+
+    size_t num_bits() const {
+        return 8 * (sizeof(m_num_buckets) + sizeof(m_M_num_buckets));
+    }
+
+    template <typename Visitor>
+    void visit(Visitor& visitor) {
+        visitor.visit(m_num_buckets);
+        visitor.visit(m_M_num_buckets);
+    }
+
+private:
+    uint64_t m_num_buckets;
+    __uint128_t m_M_num_buckets;
+};
+
 struct uniform_bucketer {
     uniform_bucketer() {}
 

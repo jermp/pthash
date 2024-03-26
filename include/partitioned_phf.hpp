@@ -128,7 +128,7 @@ private:
     uint64_t m_seed;
     uint64_t m_num_keys;
     uint64_t m_table_size;
-    uniform_bucketer m_partitioner;
+    range_bucketer m_partitioner;
     std::vector<partition> m_partitions;
 };
 
