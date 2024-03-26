@@ -82,11 +82,8 @@ struct dense_partitioned_phf {
         }
 
         /* additive displacement */
-        const uint64_t s = pilot / partition_size;
-        const uint64_t d = pilot - s * partition_size;
-        assert(d < partition_size);
-        const uint64_t start_seed = default_hash64(42, m_seed);
-        return fastmod::fastmod_u64((hash64(hash.second() + start_seed + s).mix()) + d, M, partition_size);
+        const uint64_t s = fastmod::fastdiv_u64(pilot, M);
+        return fastmod::fastmod_u64((hash64(hash.second() + s).mix()) + pilot, M, partition_size);
     }
 
     size_t num_bits_for_pilots() const {

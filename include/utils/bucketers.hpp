@@ -6,6 +6,53 @@
 
 namespace pthash {
 
+template<typename Bucketer>
+struct table_bucketer {
+    table_bucketer() : base(Bucketer()) {}
+
+
+    void init(const uint64_t num_buckets,                      //
+              const double lambda, const uint64_t table_size)  //
+    {
+        base.init(num_buckets, lambda, table_size);
+
+        for (size_t xi = 0; xi < FULCS; xi++) {
+            double x = double(xi) / double(FULCS);
+            double y = base.bucketRelative(x);
+            uint64_t fulcV = uint64_t(y * double(num_buckets) * double(1 << 16));
+            fulcrums.push_back(fulcV);
+        }
+    }
+
+    inline uint64_t bucket(const uint64_t hash) const {
+        uint64_t z = (hash & 0xFFFFFFFF) * uint64_t(FULCS - 1);
+        uint64_t index = z >> 32;
+        uint64_t part = z & 0xFFFFFFFF;
+        uint64_t v1 = (fulcrums[index + 0] * part) >> 32;
+        uint64_t v2 = (fulcrums[index + 1] * (0xFFFFFFFF - part)) >> 32;
+        return (v1 + v2) >> 16;
+    }
+
+    uint64_t num_buckets() const {
+        return base.num_buckets();
+    }
+
+    size_t num_bits() const {
+        return base.num_buckets() + fulcrums.size() * 64;
+    }
+
+    template <typename Visitor>
+    void visit(Visitor& visitor) {
+        visitor.visit(fulcrums);
+        visitor.visit(base);
+    }
+
+private:
+    Bucketer base;
+    static const uint64_t FULCS = 2048;
+    std::vector<uint64_t> fulcrums;
+};
+
 struct opt_bucketer {
     opt_bucketer() {}
 
@@ -18,11 +65,14 @@ struct opt_bucketer {
             0.05, std::min(1.0, local_collision_factor * lambda / std::sqrt((double)table_size)));
     }
 
+    inline double bucketRelative(const double normalized_hash) const {
+        return std::max(normalized_hash + (1 - normalized_hash) * std::log(1 - normalized_hash),
+                            slope * normalized_hash);;
+    }
+
     inline uint64_t bucket(const uint64_t hash) const {
         double normalized_hash = double(hash) / double(~0ul);
-        double normalized_bucket =
-            std::max(normalized_hash + (1 - normalized_hash) * std::log(1 - normalized_hash),
-                     slope * normalized_hash);
+        double normalized_bucket = bucketRelative(normalized_hash);
         uint64_t bucket_id =
             std::min(uint64_t(normalized_bucket * m_num_buckets), m_num_buckets - 1);
         assert(bucket_id < num_buckets());
