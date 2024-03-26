@@ -110,7 +110,7 @@ void build_benchmark(Builder& builder, build_timings const& timings,
     }
 }
 
-constexpr uint64_t granularity = 0;
+constexpr uint64_t granularity = 15;
 template <typename Builder, typename BaseEncoder1, typename BaseEncoder2,
           pthash_search_type search_type, uint64_t tradeoff = granularity, typename Iterator>
 void choose_dual_encoder_tradeoff(build_parameters<Iterator> const& params,
@@ -142,14 +142,125 @@ void choose_encoder(build_parameters<Iterator> const& params, build_configuratio
     if (config.verbose_output) essentials::logger("construction ends (no encoding)");
 
     bool encode_all = (params.encoder_type == "all");
-    if constexpr (t == phf_type::dense_partitioned)  //
+
+    if constexpr (t == phf_type::single)  //
     {
+        if (encode_all or params.encoder_type == "R-R") {
+            build_benchmark<
+                single_phf<typename Builder::hasher_type, typename Builder::bucketer_type,
+                           rice_rice, true, search_type>>(builder, timings, params, config);
+        }
+        if (encode_all or params.encoder_type == "PC") {
+            build_benchmark<
+                single_phf<typename Builder::hasher_type, typename Builder::bucketer_type,
+                           partitioned_compact, true, search_type>>(builder, timings, params,
+                                                                    config);
+        }
+        if (encode_all or params.encoder_type == "D-D") {
+            build_benchmark<
+                single_phf<typename Builder::hasher_type, typename Builder::bucketer_type,
+                           dictionary_dictionary, true, search_type>>(builder, timings, params,
+                                                                      config);
+        }
+        if (encode_all or params.encoder_type == "EF") {
+            build_benchmark<
+                single_phf<typename Builder::hasher_type, typename Builder::bucketer_type,
+                           elias_fano, true, search_type>>(builder, timings, params, config);
+        }
+    }                                               //
+    else if constexpr (t == phf_type::partitioned)  //
+    {
+        if (encode_all or params.encoder_type == "R-R") {
+            build_benchmark<
+                partitioned_phf<typename Builder::hasher_type, typename Builder::bucketer_type,
+                                rice_rice, true, search_type>>(builder, timings, params, config);
+        }
+        if (encode_all or params.encoder_type == "PC") {
+            build_benchmark<
+                partitioned_phf<typename Builder::hasher_type, typename Builder::bucketer_type,
+                                partitioned_compact, true, search_type>>(builder, timings, params,
+                                                                         config);
+        }
+        if (encode_all or params.encoder_type == "D-D") {
+            build_benchmark<
+                partitioned_phf<typename Builder::hasher_type, typename Builder::bucketer_type,
+                                dictionary_dictionary, true, search_type>>(builder, timings, params,
+                                                                           config);
+        }
+        if (encode_all or params.encoder_type == "EF") {
+            build_benchmark<
+                partitioned_phf<typename Builder::hasher_type, typename Builder::bucketer_type,
+                                elias_fano, true, search_type>>(builder, timings, params, config);
+        }
+    }                                                     //
+    else if constexpr (t == phf_type::dense_partitioned)  //
+    {
+        if (encode_all or params.encoder_type == "mono-R") {
+            build_benchmark<
+                dense_partitioned_phf<typename Builder::hasher_type,
+                                      typename Builder::bucketer_type, mono_R, true, search_type>>(
+                builder, timings, params, config);
+        }
+        if (encode_all or params.encoder_type == "multi-R") {
+            build_benchmark<
+                dense_partitioned_phf<typename Builder::hasher_type,
+                                      typename Builder::bucketer_type, multi_R, true, search_type>>(
+                builder, timings, params, config);
+        }
         if (encode_all or params.encoder_type == "mono-C") {
             build_benchmark<
                 dense_partitioned_phf<typename Builder::hasher_type,
                                       typename Builder::bucketer_type, mono_C, true, search_type>>(
                 builder, timings, params, config);
         }
+        if (encode_all or params.encoder_type == "multi-C") {
+            build_benchmark<
+                dense_partitioned_phf<typename Builder::hasher_type,
+                                      typename Builder::bucketer_type, multi_C, true, search_type>>(
+                builder, timings, params, config);
+        }
+        if (encode_all or params.encoder_type == "mono-D") {
+            build_benchmark<
+                dense_partitioned_phf<typename Builder::hasher_type,
+                                      typename Builder::bucketer_type, mono_D, true, search_type>>(
+                builder, timings, params, config);
+        }
+        if (encode_all or params.encoder_type == "multi-D") {
+            build_benchmark<
+                dense_partitioned_phf<typename Builder::hasher_type,
+                                      typename Builder::bucketer_type, multi_D, true, search_type>>(
+                builder, timings, params, config);
+        }
+        if (encode_all or params.encoder_type == "mono-EF") {
+            build_benchmark<
+                dense_partitioned_phf<typename Builder::hasher_type,
+                                      typename Builder::bucketer_type, mono_EF, true, search_type>>(
+                builder, timings, params, config);
+        }
+        if (encode_all or params.encoder_type == "multi-EF") {
+            build_benchmark<dense_partitioned_phf<typename Builder::hasher_type,
+                                                  typename Builder::bucketer_type, multi_EF, true,
+                                                  search_type>>(builder, timings, params, config);
+        }
+        if (encode_all or params.encoder_type == "mono-C-mono-R") {
+            choose_dual_encoder_tradeoff<Builder, mono_C, mono_R, search_type>(params, config,
+                                                                               builder, timings);
+        }
+        if (encode_all or params.encoder_type == "multi-C-multi-R") {
+            choose_dual_encoder_tradeoff<Builder, multi_C, multi_R, search_type>(params, config,
+                                                                                 builder, timings);
+        }
+        if (encode_all or params.encoder_type == "mono-D-mono-R") {
+            choose_dual_encoder_tradeoff<Builder, mono_D, mono_R, search_type>(params, config,
+                                                                               builder, timings);
+        }
+        if (encode_all or params.encoder_type == "multi-D-multi-R") {
+            choose_dual_encoder_tradeoff<Builder, multi_D, multi_R, search_type>(params, config,
+                                                                                 builder, timings);
+        }
+
+    } else {
+        std::cerr << "unknown phf type" << std::endl;
     }
 }
 
@@ -355,12 +466,7 @@ int main(int argc, char** argv) {
         }
         build(parser, keys.begin(), keys.size());
     } else {  // use num_keys random 64-bit keys
-        //std::vector<uint64_t> keys = distinct_keys<uint64_t>(num_keys, default_hash64(seed, seed));
-
-        std::vector<std::string> keys;
-        keys.reserve(num_keys);
-        for (size_t i = 0; i < num_keys; ++i) { keys.push_back(std::to_string(i)); }
-
+        std::vector<uint64_t> keys = distinct_keys<uint64_t>(num_keys, default_hash64(seed, seed));
         build(parser, keys.begin(), keys.size());
     }
 
