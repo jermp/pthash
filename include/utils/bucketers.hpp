@@ -16,12 +16,14 @@ struct table_bucketer {
     {
         base.init(num_buckets, lambda, table_size);
 
-        for (size_t xi = 0; xi < FULCS; xi++) {
-            double x = double(xi) / double(FULCS);
+        fulcrums.push_back(0);
+        for (size_t xi = 0; xi < FULCS - 1; xi++) {
+            double x = double(xi) / double(FULCS - 1);
             double y = base.bucketRelative(x);
-            uint64_t fulcV = uint64_t(y * double(num_buckets) * double(1 << 16));
+            auto fulcV = uint64_t(y * double(num_buckets<<16));
             fulcrums.push_back(fulcV);
         }
+        fulcrums.push_back(num_buckets<<16);
     }
 
     inline uint64_t bucket(const uint64_t hash) const {
