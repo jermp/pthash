@@ -14,7 +14,8 @@ struct build_parameters {
 
     Iterator keys;
     uint64_t num_keys;
-    bool check, lookup;
+    bool check;
+    uint64_t queries;
     std::string bucketer_type;
     std::string encoder_type;
     double dual_encoder_tradeoff;
@@ -64,11 +65,29 @@ void build_benchmark(Builder& builder, build_timings const& timings,
         }
     }
 
-    double nanosec_per_key = -1.0;
-    if (params.lookup) {
+
+    std::string benchResult = "---";
+    if (params.queries > 0) {
+
         if (config.verbose_output) essentials::logger("measuring lookup time...");
-        nanosec_per_key = perf(params.keys, params.num_keys, f);
-        if (config.verbose_output) std::cout << nanosec_per_key << " [nanosec/key]" << std::endl;
+        // bench
+        std::random_device rd;
+        std::mt19937_64 gen(rd());
+        std::uniform_int_distribution<uint32_t> dis;
+        std::vector<std::string> queryInputs;
+        queryInputs.reserve(params.queries);
+        for (int i = 0; i < params.queries; ++i) {
+            uint64_t pos = dis(gen) % params.num_keys;
+            queryInputs.push_back(params.keys[pos]);
+        }
+
+        essentials::timer<std::chrono::high_resolution_clock, std::chrono::nanoseconds> t;
+        t.start();
+        for (int i = 0; i < params.queries; ++i) { essentials::do_not_optimize_away(f(queryInputs[i])); }
+        t.stop();
+        double lookup_time = t.elapsed() / static_cast<double>(params.queries);
+        benchResult = std::to_string(lookup_time);
+        if (config.verbose_output) std::cout << lookup_time << " [nanosec/key]" << std::endl;
     }
 
     essentials::json_lines result;
@@ -96,11 +115,7 @@ void build_benchmark(Builder& builder, build_timings const& timings,
     result.add("mapper_bits_per_key", mapper_bits_per_key);
     result.add("bits_per_key", bits_per_key);
     result.add("secondary_sort", config.secondary_sort);
-    if (nanosec_per_key == -1.0) {
-        result.add("nanosec_per_key", "---");
-    } else {
-        result.add("nanosec_per_key", nanosec_per_key);
-    }
+    result.add("query_time", benchResult.c_str());
     result.print_line();
 
     if (params.output_filename != "") {
@@ -264,6 +279,7 @@ void choose_encoder(build_parameters<Iterator> const& params, build_configuratio
     }
 }
 
+
 template <phf_type t, typename Builder, typename Iterator>
 void choose_search(build_parameters<Iterator> const& params, build_configuration const& config) {
     if (config.search == pthash_search_type::xor_displacement) {
@@ -319,7 +335,7 @@ template <typename Iterator>
 void build(cmd_line_parser::parser const& parser, Iterator keys, uint64_t num_keys) {
     build_parameters<Iterator> params(keys, num_keys);
     params.check = parser.get<bool>("check");
-    params.lookup = parser.get<bool>("lookup");
+    params.queries = parser.get<uint64_t>("queries");
     params.dual_encoder_tradeoff = parser.get<double>("dual_encoder_tradeoff");
 
     if (params.dual_encoder_tradeoff < 0.0 || params.dual_encoder_tradeoff > 1.0) {
@@ -427,6 +443,8 @@ int main(int argc, char** argv) {
 
     parser.add("bucketer_type", "The bucketer type. Possible values are: 'uniform', 'skew', 'opt'.",
                "-b", true);
+    parser.add("queries", "Number of queries for benchmarking or 0 for no benchmarking", "-q", true,
+               false);
 
     /* Optional arguments. */
     parser.add("dual_encoder_tradeoff", "Encoder tradeoff when using dual encoding", "-d", false);
@@ -445,8 +463,6 @@ int main(int argc, char** argv) {
     parser.add("dense_partitioning", "Activate dense partitioning.", "--dense", false, true);
     parser.add("verbose_output", "Verbose output during construction.", "--verbose", false, true);
     parser.add("check", "Check correctness after construction.", "--check", false, true);
-    parser.add("lookup", "Measure average lookup time after construction.", "--lookup", false,
-               true);
 
     if (!parser.parse()) return 1;
 
@@ -466,7 +482,9 @@ int main(int argc, char** argv) {
         }
         build(parser, keys.begin(), keys.size());
     } else {  // use num_keys random 64-bit keys
-        std::vector<uint64_t> keys = distinct_keys<uint64_t>(num_keys, default_hash64(seed, seed));
+        std::vector<std::string> keys;
+        keys.reserve(num_keys);
+        for (size_t i = 0; i < num_keys; ++i) { keys.push_back(std::to_string(i)); }
         build(parser, keys.begin(), keys.size());
     }
 
