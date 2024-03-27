@@ -116,8 +116,8 @@ protected:
         cur_block_positions.clear();
     }
 
-    static const size_t block_size = 1024;  // 2048
-    static const size_t subblock_size = 32;
+    static const size_t block_size = 4096;
+    static const size_t subblock_size = 64;
     static const size_t max_in_block_distance = 1 << 16;
 
     size_t m_positions;
