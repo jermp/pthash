@@ -11,7 +11,7 @@ namespace pthash {
 
 template <typename BucketsIterator, typename PilotsBuffer>
 void search_sequential_add(const uint64_t num_keys, const uint64_t num_buckets,
-                           const uint64_t num_non_empty_buckets, const uint64_t seed,
+                           const uint64_t num_non_empty_buckets, const uint64_t /* seed */,
                            build_configuration const& config, BucketsIterator& buckets,
                            bit_vector_builder& taken, PilotsBuffer& pilots) {
     const uint64_t max_bucket_size = (*buckets).size();
@@ -35,7 +35,8 @@ void search_sequential_add(const uint64_t num_keys, const uint64_t num_buckets,
             auto bucket_begin = bucket.begin(), bucket_end = bucket.end();
             for (; bucket_begin != bucket_end; ++bucket_begin) {
                 uint64_t hash = *bucket_begin;
-                uint64_t initial_position = fastmod::fastmod_u32(hash64(hash + s).mix()>>33, M, table_size);
+                uint64_t initial_position =
+                    fastmod::fastmod_u32(hash64(hash + s).mix() >> 33, M, table_size);
                 positions.push_back(initial_position);
             }
 
@@ -115,8 +116,8 @@ void search_parallel_add(const uint64_t num_keys, const uint64_t num_buckets,
                             auto bucket_begin = bucket.begin(), bucket_end = bucket.end();
                             for (; bucket_begin != bucket_end; ++bucket_begin) {
                                 uint64_t hash = *bucket_begin;
-                                uint64_t initial_position =
-                                    fastmod::fastmod_u64(hash64(hash + start_seed + s).mix(), M, table_size);
+                                uint64_t initial_position = fastmod::fastmod_u64(
+                                    hash64(hash + start_seed + s).mix(), M, table_size);
                                 positions.push_back(initial_position);
                             }
 

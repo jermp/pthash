@@ -65,10 +65,8 @@ void build_benchmark(Builder& builder, build_timings const& timings,
         }
     }
 
-
-    std::string benchResult = "---";
+    std::string bench_result = "---";
     if (params.queries > 0) {
-
         if (config.verbose_output) essentials::logger("measuring lookup time...");
         // bench
         std::random_device rd;
@@ -76,17 +74,19 @@ void build_benchmark(Builder& builder, build_timings const& timings,
         std::uniform_int_distribution<uint32_t> dis;
         std::vector<std::string> queryInputs;
         queryInputs.reserve(params.queries);
-        for (int i = 0; i < params.queries; ++i) {
+        for (uint64_t i = 0; i != params.queries; ++i) {
             uint64_t pos = dis(gen) % params.num_keys;
             queryInputs.push_back(params.keys[pos]);
         }
 
         essentials::timer<std::chrono::high_resolution_clock, std::chrono::nanoseconds> t;
         t.start();
-        for (int i = 0; i < params.queries; ++i) { essentials::do_not_optimize_away(f(queryInputs[i])); }
+        for (uint64_t i = 0; i != params.queries; ++i) {
+            essentials::do_not_optimize_away(f(queryInputs[i]));
+        }
         t.stop();
         double lookup_time = t.elapsed() / static_cast<double>(params.queries);
-        benchResult = std::to_string(lookup_time);
+        bench_result = std::to_string(lookup_time);
         if (config.verbose_output) std::cout << lookup_time << " [nanosec/key]" << std::endl;
     }
 
@@ -115,7 +115,7 @@ void build_benchmark(Builder& builder, build_timings const& timings,
     result.add("mapper_bits_per_key", mapper_bits_per_key);
     result.add("bits_per_key", bits_per_key);
     result.add("secondary_sort", config.secondary_sort);
-    result.add("query_time", benchResult.c_str());
+    result.add("query_time", bench_result.c_str());
     result.print_line();
 
     if (params.output_filename != "") {
@@ -157,7 +157,6 @@ void choose_encoder(build_parameters<Iterator> const& params, build_configuratio
     if (config.verbose_output) essentials::logger("construction ends (no encoding)");
 
     bool encode_all = (params.encoder_type == "all");
-
 
     if constexpr (t == phf_type::single)  //
     {
@@ -279,7 +278,6 @@ void choose_encoder(build_parameters<Iterator> const& params, build_configuratio
         std::cerr << "unknown phf type" << std::endl;
     }
 }
-
 
 template <phf_type t, typename Builder, typename Iterator>
 void choose_search(build_parameters<Iterator> const& params, build_configuration const& config) {
@@ -468,8 +466,6 @@ int main(int argc, char** argv) {
     if (!parser.parse()) return 1;
 
     auto num_keys = parser.get<uint64_t>("num_keys");
-    auto seed = (parser.parsed("seed")) ? parser.get<uint64_t>("seed") : constants::invalid_seed;
-
     if (parser.parsed("input_filename")) {
         auto input_filename = parser.get<std::string>("input_filename");
         std::vector<std::string> keys;
