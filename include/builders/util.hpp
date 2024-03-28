@@ -67,11 +67,11 @@ struct build_configuration {
     bool verbose_output;
 };
 
-uint64_t compute_num_buckets(const uint64_t num_keys, const double avg_bucket_size) {
+static uint64_t compute_num_buckets(const uint64_t num_keys, const double avg_bucket_size) {
     return std::ceil(static_cast<double>(num_keys) / avg_bucket_size);
 }
 
-uint64_t compute_num_partitions(const uint64_t num_keys, const uint64_t avg_partition_size) {
+static uint64_t compute_num_partitions(const uint64_t num_keys, const uint64_t avg_partition_size) {
     return std::ceil(static_cast<double>(num_keys) / avg_partition_size);
 }
 
