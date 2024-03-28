@@ -4,16 +4,15 @@
 
 namespace pthash {
 
-template <typename Hasher, typename Bucketer, typename Encoder, bool Minimal,
+template <typename Hasher, typename Bucketer, typename Encoder, bool NeedsFreeArray,
           pthash_search_type Search>
 struct dense_partitioned_phf {
     typedef Encoder encoder_type;
-    static constexpr bool minimal = Minimal;
+    static constexpr bool needsFreeArray = NeedsFreeArray;
 
     template <typename Iterator>
     build_timings build_in_internal_memory(Iterator keys, const uint64_t num_keys,
                                            build_configuration const& config) {
-        assert(Minimal == config.minimal_output);
         assert(Search == config.search);
         internal_memory_builder_partitioned_phf<Hasher, Bucketer> builder;
         auto timings = builder.build_from_keys(keys, num_keys, config);
@@ -42,7 +41,7 @@ struct dense_partitioned_phf {
         m_offsets.encode(offsets.begin(), offsets.size(), increment);
         m_pilots.encode(builder.interleaving_pilots_iterator_begin(), num_partitions,
                         num_buckets_per_partition);
-        if (Minimal and m_num_keys < m_table_size) {
+        if constexpr (needsFreeArray) {
             assert(builder.free_slots().size() == m_table_size - m_num_keys);
             m_free_slots.encode(builder.free_slots().data(), m_table_size - m_num_keys);
         }
@@ -60,7 +59,7 @@ struct dense_partitioned_phf {
         const uint64_t partition_offset = m_offsets.access(partition);
         const uint64_t partition_size = m_offsets.access(partition + 1) - partition_offset;
         const uint64_t p = partition_offset + position(hash, partition, partition_size);
-        if constexpr (Minimal) {
+        if constexpr (needsFreeArray) {
             if (PTHASH_LIKELY(p < num_keys())) return p;
             return m_free_slots.access(p - num_keys());
         }
@@ -71,19 +70,20 @@ struct dense_partitioned_phf {
                       const uint64_t partition,             //
                       const uint64_t partition_size) const  //
     {
-        const uint64_t M = fastmod::computeM_u32(partition_size);
         const uint64_t bucket = m_bucketer.bucket(hash.first());
         const uint64_t pilot = m_pilots.access(partition, bucket);
 
-        /* xor displacement */
         if constexpr (Search == pthash_search_type::xor_displacement) {
+            /* xor displacement */
+            const __uint128_t M = fastmod::computeM_u64(partition_size);
             const uint64_t hashed_pilot = default_hash64(pilot, m_seed);
-            return fastmod::fastmod_u32(hash.second() ^ hashed_pilot, M, partition_size);
+            return fastmod::fastmod_u64(hash.second() ^ hashed_pilot, M, partition_size);
+        } else {
+            /* additive displacement */
+            const uint64_t M = fastmod::computeM_u32(partition_size);
+            const uint64_t s = fastmod::fastdiv_u32(pilot, M);
+            return fastmod::fastmod_u32(((hash64(hash.second() + s).mix()) >> 33) + pilot, M, partition_size);
         }
-
-        /* additive displacement */
-        const uint64_t s = fastmod::fastdiv_u32(pilot, M);
-        return fastmod::fastmod_u32(((hash64(hash.second() + s).mix()) >> 33) + pilot, M, partition_size);
     }
 
     size_t num_bits_for_pilots() const {

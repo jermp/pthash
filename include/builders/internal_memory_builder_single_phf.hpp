@@ -50,7 +50,8 @@ struct internal_memory_builder_single_phf {
         build_timings time;
 
         uint64_t table_size = static_cast<double>(num_keys) / config.alpha;
-        if ((table_size & (table_size - 1)) == 0) table_size += 1;
+        if (config.search == pthash_search_type::xor_displacement && (table_size & (table_size - 1)) == 0)
+            table_size += 1;
         const uint64_t num_buckets = (config.num_buckets == constants::invalid_num_buckets)
                                          ? compute_num_buckets(num_keys, config.lambda)
                                          : config.num_buckets;
@@ -59,7 +60,7 @@ struct internal_memory_builder_single_phf {
         m_table_size = table_size;
         m_num_buckets = num_buckets;
         m_bucketer.init(m_num_buckets, config.lambda,
-                        static_cast<double>(m_num_buckets) * config.lambda / config.alpha);
+                        static_cast<double>(m_num_buckets) * config.lambda / config.alpha, config.alpha);
 
         if (config.verbose_output) {
             std::cout << "lambda (avg. bucket size) = " << config.lambda << std::endl;
