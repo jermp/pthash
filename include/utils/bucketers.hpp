@@ -163,8 +163,7 @@ private:
 struct range_bucketer {
     range_bucketer() {}
 
-    void init(const uint64_t num_buckets,
-              const double /* lambda */, const uint64_t /* table_size */)  //
+    void init(const uint64_t num_buckets)  //
     {
         m_num_buckets = num_buckets;
     }
