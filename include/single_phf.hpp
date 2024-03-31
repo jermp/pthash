@@ -56,7 +56,8 @@ struct single_phf {
             p = fastmod::fastmod_u64(hash.second() ^ hashed_pilot, m_M_128, m_table_size);
         } else /* Search == pthash_search_type::add_displacement */ {
             const uint64_t s = fastmod::fastdiv_u32(pilot, m_M_64);
-            p = fastmod::fastmod_u32(((hash64(hash.second() + s).mix()) >> 33) + pilot, m_M_64, m_table_size);
+            p = fastmod::fastmod_u32(((hash64(hash.second() + s).mix()) >> 33) + pilot, m_M_64,
+                                     m_table_size);
         }
 
         if constexpr (Minimal) {
@@ -68,7 +69,8 @@ struct single_phf {
     }
 
     size_t num_bits_for_pilots() const {
-        return 8 * (sizeof(m_seed) + sizeof(m_num_keys) + sizeof(m_table_size) + sizeof(m_M_64) + sizeof(m_M_128)) +
+        return 8 * (sizeof(m_seed) + sizeof(m_num_keys) + sizeof(m_table_size) + sizeof(m_M_64) +
+                    sizeof(m_M_128)) +
                m_pilots.num_bits();
     }
 

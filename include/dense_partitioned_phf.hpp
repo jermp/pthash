@@ -82,7 +82,8 @@ struct dense_partitioned_phf {
             /* additive displacement */
             const uint64_t M = fastmod::computeM_u32(partition_size);
             const uint64_t s = fastmod::fastdiv_u32(pilot, M);
-            return fastmod::fastmod_u32(((hash64(hash.second() + s).mix()) >> 33) + pilot, M, partition_size);
+            return fastmod::fastmod_u32(((hash64(hash.second() + s).mix()) >> 33) + pilot, M,
+                                        partition_size);
         }
     }
 
