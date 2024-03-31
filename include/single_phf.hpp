@@ -29,7 +29,8 @@ struct single_phf {
         m_seed = builder.seed();
         m_num_keys = builder.num_keys();
         m_table_size = builder.table_size();
-        m_M = fastmod::computeM_u64(m_table_size);
+        m_M_128 = fastmod::computeM_u64(m_table_size);
+        m_M_64 = fastmod::computeM_u32(m_table_size);
         m_bucketer = builder.bucketer();
         m_pilots.encode(builder.pilots().data(), m_bucketer.num_buckets());
         if (Minimal and m_num_keys < m_table_size) {
@@ -52,13 +53,10 @@ struct single_phf {
         uint64_t p = 0;
         if constexpr (Search == pthash_search_type::xor_displacement) {
             const uint64_t hashed_pilot = default_hash64(pilot, m_seed);
-            p = fastmod::fastmod_u64(hash.second() ^ hashed_pilot, m_M, m_table_size);
+            p = fastmod::fastmod_u64(hash.second() ^ hashed_pilot, m_M_128, m_table_size);
         } else /* Search == pthash_search_type::add_displacement */ {
-            const uint64_t s = pilot / m_table_size;
-            const uint64_t d = pilot - s * m_table_size;
-            assert(d < m_table_size);
-            const uint64_t start_seed = default_hash64(42, m_seed);
-            p = fastmod::fastmod_u64((hash64(hash.second() + start_seed + s).mix()) + d, m_M, m_table_size);
+            const uint64_t s = fastmod::fastdiv_u32(pilot, m_M_64);
+            p = fastmod::fastmod_u32(((hash64(hash.second() + s).mix()) >> 33) + pilot, m_M_64, m_table_size);
         }
 
         if constexpr (Minimal) {
@@ -70,7 +68,7 @@ struct single_phf {
     }
 
     size_t num_bits_for_pilots() const {
-        return 8 * (sizeof(m_seed) + sizeof(m_num_keys) + sizeof(m_table_size) + sizeof(m_M)) +
+        return 8 * (sizeof(m_seed) + sizeof(m_num_keys) + sizeof(m_table_size) + sizeof(m_M_64) + sizeof(m_M_128)) +
                m_pilots.num_bits();
     }
 
@@ -95,7 +93,8 @@ struct single_phf {
         visitor.visit(m_seed);
         visitor.visit(m_num_keys);
         visitor.visit(m_table_size);
-        visitor.visit(m_M);
+        visitor.visit(m_M_128);
+        visitor.visit(m_M_64);
         visitor.visit(m_bucketer);
         visitor.visit(m_pilots);
         visitor.visit(m_free_slots);
@@ -105,7 +104,8 @@ private:
     uint64_t m_seed;
     uint64_t m_num_keys;
     uint64_t m_table_size;
-    __uint128_t m_M;
+    __uint128_t m_M_128;
+    uint64_t m_M_64;
     Bucketer m_bucketer;
     Encoder m_pilots;
     ef_sequence<false> m_free_slots;
