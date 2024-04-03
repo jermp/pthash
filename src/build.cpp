@@ -65,10 +65,8 @@ void build_benchmark(Builder& builder, build_timings const& timings,
         }
     }
 
-
     std::string benchResult = "---";
     if (params.queries > 0) {
-
         if (config.verbose_output) essentials::logger("measuring lookup time...");
         // bench
         std::random_device rd;
@@ -83,7 +81,9 @@ void build_benchmark(Builder& builder, build_timings const& timings,
 
         essentials::timer<std::chrono::high_resolution_clock, std::chrono::nanoseconds> t;
         t.start();
-        for (uint64_t i = 0; i < params.queries; ++i) { essentials::do_not_optimize_away(f(queryInputs[i])); }
+        for (uint64_t i = 0; i < params.queries; ++i) {
+            essentials::do_not_optimize_away(f(queryInputs[i]));
+        }
         t.stop();
         double lookup_time = t.elapsed() / static_cast<double>(params.queries);
         benchResult = std::to_string(lookup_time);
@@ -127,19 +127,19 @@ void build_benchmark(Builder& builder, build_timings const& timings,
 
 template <typename Builder, typename Iterator, pthash_search_type search_type, typename Encoder>
 void choose_needs_free_array(Builder const& builder, build_timings const& timings,
-                        build_parameters<Iterator> const& params, build_configuration const& config) {
-    bool needsFree = config.search == pthash_search_type::xor_displacement || (config.minimal_output && config.alpha < 0.999999);
+                             build_parameters<Iterator> const& params,
+                             build_configuration const& config) {
+    bool needsFree = config.search == pthash_search_type::xor_displacement ||
+                     (config.minimal_output && config.alpha < 0.999999);
 
-    if(needsFree) {
+    if (needsFree) {
         build_benchmark<
-            dense_partitioned_phf<typename Builder::hasher_type,
-                                  typename Builder::bucketer_type, Encoder, true, search_type>>(
-            builder, timings, params, config);
+            dense_partitioned_phf<typename Builder::hasher_type, typename Builder::bucketer_type,
+                                  Encoder, true, search_type>>(builder, timings, params, config);
     } else {
         build_benchmark<
-            dense_partitioned_phf<typename Builder::hasher_type,
-                                  typename Builder::bucketer_type, Encoder, false, search_type>>(
-            builder, timings, params, config);
+            dense_partitioned_phf<typename Builder::hasher_type, typename Builder::bucketer_type,
+                                  Encoder, false, search_type>>(builder, timings, params, config);
     }
 }
 
@@ -150,7 +150,10 @@ void choose_dual_encoder_tradeoff(build_parameters<Iterator> const& params,
                                   build_configuration const& config, Builder const& builder,
                                   build_timings const& timings) {
     if (tradeoff == uint64_t(std::round(params.dual_encoder_tradeoff * granularity))) {
-        choose_needs_free_array<Builder, Iterator, search_type, dual_interleaved<BaseEncoder1, BaseEncoder2, tradeoff, granularity>>(builder, timings, params, config);
+        choose_needs_free_array<
+            Builder, Iterator, search_type,
+            dual_interleaved<BaseEncoder1, BaseEncoder2, tradeoff, granularity>>(builder, timings,
+                                                                                 params, config);
     }
     if constexpr (tradeoff > 0) {
         choose_dual_encoder_tradeoff<Builder, BaseEncoder1, BaseEncoder2, search_type, tradeoff - 1,
@@ -226,28 +229,36 @@ void choose_encoder(build_parameters<Iterator> const& params, build_configuratio
     else if constexpr (t == phf_type::dense_partitioned)  //
     {
         if (encode_all or params.encoder_type == "mono-R") {
-            choose_needs_free_array<Builder, Iterator, search_type, mono_R>(builder, timings, params, config);
+            choose_needs_free_array<Builder, Iterator, search_type, mono_R>(builder, timings,
+                                                                            params, config);
         }
         if (encode_all or params.encoder_type == "multi-R") {
-            choose_needs_free_array<Builder, Iterator, search_type, multi_R>(builder, timings, params, config);
+            choose_needs_free_array<Builder, Iterator, search_type, multi_R>(builder, timings,
+                                                                             params, config);
         }
         if (encode_all or params.encoder_type == "mono-C") {
-            choose_needs_free_array<Builder, Iterator, search_type, mono_C>(builder, timings, params, config);
+            choose_needs_free_array<Builder, Iterator, search_type, mono_C>(builder, timings,
+                                                                            params, config);
         }
         if (encode_all or params.encoder_type == "multi-C") {
-            choose_needs_free_array<Builder, Iterator, search_type, multi_C>(builder, timings, params, config);
+            choose_needs_free_array<Builder, Iterator, search_type, multi_C>(builder, timings,
+                                                                             params, config);
         }
         if (encode_all or params.encoder_type == "mono-D") {
-            choose_needs_free_array<Builder, Iterator, search_type, mono_D>(builder, timings, params, config);
+            choose_needs_free_array<Builder, Iterator, search_type, mono_D>(builder, timings,
+                                                                            params, config);
         }
         if (encode_all or params.encoder_type == "multi-D") {
-            choose_needs_free_array<Builder, Iterator, search_type, multi_D>(builder, timings, params, config);
+            choose_needs_free_array<Builder, Iterator, search_type, multi_D>(builder, timings,
+                                                                             params, config);
         }
         if (encode_all or params.encoder_type == "mono-EF") {
-            choose_needs_free_array<Builder, Iterator, search_type, mono_EF>(builder, timings, params, config);
+            choose_needs_free_array<Builder, Iterator, search_type, mono_EF>(builder, timings,
+                                                                             params, config);
         }
         if (encode_all or params.encoder_type == "multi-EF") {
-            choose_needs_free_array<Builder, Iterator, search_type, multi_EF>(builder, timings, params, config);
+            choose_needs_free_array<Builder, Iterator, search_type, multi_EF>(builder, timings,
+                                                                              params, config);
         }
         if (encode_all or params.encoder_type == "mono-C-mono-R") {
             choose_dual_encoder_tradeoff<Builder, mono_C, mono_R, search_type>(params, config,
@@ -458,8 +469,6 @@ int main(int argc, char** argv) {
     if (!parser.parse()) return 1;
 
     auto num_keys = parser.get<uint64_t>("num_keys");
-    auto seed = (parser.parsed("seed")) ? parser.get<uint64_t>("seed") : constants::invalid_seed;
-
     if (parser.parsed("input_filename")) {
         auto input_filename = parser.get<std::string>("input_filename");
         std::vector<std::string> keys;

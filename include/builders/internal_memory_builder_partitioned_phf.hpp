@@ -108,7 +108,8 @@ struct internal_memory_builder_partitioned_phf {
         timings.searching_microseconds = t.searching_microseconds;
 
         /* fill free slots for dense partitioning */
-        if (config.dense_partitioning && ((config.minimal_output && config.alpha < 0.99999) || config.search == pthash_search_type::xor_displacement)) {
+        if (config.dense_partitioning && ((config.minimal_output && config.alpha < 0.99999) ||
+                                          config.search == pthash_search_type::xor_displacement)) {
             auto start = clock_type::now();
             m_free_slots.clear();
             taken t(m_builders);

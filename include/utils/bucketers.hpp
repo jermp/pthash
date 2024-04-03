@@ -6,23 +6,22 @@
 
 namespace pthash {
 
-template<typename Bucketer>
+template <typename Bucketer>
 struct table_bucketer {
     table_bucketer() : base(Bucketer()) {}
 
-
-    void init(const uint64_t num_buckets, const double lambda, const uint64_t table_size, const double alpha)
-    {
+    void init(const uint64_t num_buckets, const double lambda, const uint64_t table_size,
+              const double alpha) {
         base.init(num_buckets, lambda, table_size, alpha);
 
         fulcrums.push_back(0);
         for (size_t xi = 0; xi < FULCS - 1; xi++) {
             double x = double(xi) / double(FULCS - 1);
             double y = base.bucketRelative(x);
-            auto fulcV = uint64_t(y * double(num_buckets<<16));
+            auto fulcV = uint64_t(y * double(num_buckets << 16));
             fulcrums.push_back(fulcV);
         }
-        fulcrums.push_back(num_buckets<<16);
+        fulcrums.push_back(num_buckets << 16);
     }
 
     inline uint64_t bucket(const uint64_t hash) const {
@@ -61,12 +60,12 @@ struct opt_bucketer {
         return normalized_hash + (1 - normalized_hash) * std::log(1 - normalized_hash);
     }
 
-    void init(const uint64_t num_buckets, const double lambda, const uint64_t table_size, double alpha)
-    {
+    void init(const uint64_t num_buckets, const double lambda, const uint64_t table_size,
+              const double alpha) {
         constexpr double local_collision_factor = 0.3;
         m_num_buckets = num_buckets;
         m_alpha = alpha;
-        if(alpha>0.9999) {
+        if (alpha > 0.9999) {
             m_alpha_factor = 1.0;
         } else {
             m_alpha_factor = 1.0 / baseFunc(alpha);
@@ -76,7 +75,8 @@ struct opt_bucketer {
     }
 
     inline double bucketRelative(const double normalized_hash) const {
-        return std::max(m_alpha_factor * baseFunc(m_alpha * normalized_hash), slope * normalized_hash);
+        return std::max(m_alpha_factor * baseFunc(m_alpha * normalized_hash),
+                        slope * normalized_hash);
     }
 
     inline uint64_t bucket(const uint64_t hash) const {
@@ -93,7 +93,8 @@ struct opt_bucketer {
     }
 
     size_t num_bits() const {
-        return 8 * sizeof(m_num_buckets) + 8 * sizeof(slope) + 8 * sizeof(m_alpha) + 8 * sizeof(m_alpha_factor);
+        return 8 * sizeof(m_num_buckets) + 8 * sizeof(slope) + 8 * sizeof(m_alpha) +
+               8 * sizeof(m_alpha_factor);
     }
 
     template <typename Visitor>
@@ -117,7 +118,8 @@ struct skew_bucketer {
 
     skew_bucketer() {}
 
-    void init(const uint64_t num_buckets, const double lambda, const uint64_t table_size, const double alpha) {
+    void init(const uint64_t num_buckets, const double /* lambda */,
+              const uint64_t /* table_size */, const double /* alpha */) {
         m_num_dense_buckets = b * num_buckets;
         m_num_sparse_buckets = num_buckets - m_num_dense_buckets;
         m_M_num_dense_buckets = fastmod::computeM_u64(m_num_dense_buckets);
@@ -163,8 +165,7 @@ private:
 struct range_bucketer {
     range_bucketer() {}
 
-    void init(const uint64_t num_buckets)  //
-    {
+    void init(const uint64_t num_buckets) {
         m_num_buckets = num_buckets;
     }
 
@@ -194,8 +195,8 @@ private:
 struct uniform_bucketer {
     uniform_bucketer() {}
 
-    void init(const uint64_t num_buckets, const double lambda, const uint64_t table_size, const double alpha)
-    {
+    void init(const uint64_t num_buckets, const double /* lambda */,
+              const uint64_t /* table_size */, const double /* alpha */) {
         m_num_buckets = num_buckets;
         m_M_num_buckets = fastmod::computeM_u64(m_num_buckets);
     }

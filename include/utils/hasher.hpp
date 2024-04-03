@@ -231,7 +231,7 @@ struct xxhash128 {
     typedef hash128 hash_type;
 
     // specialization for std::string
-    static inline hash_type hash(std::string const &val, uint64_t seed) {
+    static inline hash_type hash(std::string const& val, uint64_t seed) {
         return XXH128(val.data(), val.size(), seed);
     }
 
