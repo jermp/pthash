@@ -7,7 +7,7 @@ int main() {
     using namespace pthash;
 
     /* Generate 1M random 64-bit keys as input data. */
-    static const uint64_t num_keys = 1000000;
+    static const uint64_t num_keys = 100000000;
     static const uint64_t seed = 1234567890;
     std::cout << "generating input data..." << std::endl;
     std::vector<uint64_t> keys = distinct_keys<uint64_t>(num_keys, default_hash64(seed, seed));
@@ -16,9 +16,9 @@ int main() {
     /* Set up a build configuration. */
     build_configuration config;
     config.seed = seed;
-    config.lambda = 5;
+    config.lambda = 3;
     config.alpha = 1;
-    config.num_threads = 8;
+    config.num_threads = 80;
     config.search = pthash_search_type::add_displacement;
     config.dense_partitioning = true;
     config.avg_partition_size = 2048;
