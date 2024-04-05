@@ -7,7 +7,7 @@ int main() {
     using namespace pthash;
 
     /* Generate 1M random 64-bit keys as input data. */
-    static const uint64_t num_keys = 100000000;
+    static const uint64_t num_keys = 1000000;
     static const uint64_t seed = 1234567890;
     std::cout << "generating input data..." << std::endl;
     std::vector<uint64_t> keys = distinct_keys<uint64_t>(num_keys, default_hash64(seed, seed));
@@ -16,15 +16,13 @@ int main() {
     /* Set up a build configuration. */
     build_configuration config;
     config.seed = seed;
-    config.lambda = 3;
-    config.alpha = 1;
-    config.num_threads = 80;
+    config.lambda = 6;
+    config.alpha = 0.97;
     config.search = pthash_search_type::add_displacement;
     config.dense_partitioning = true;
-    config.avg_partition_size = 2048;
+    config.avg_partition_size = 3000;
     config.minimal_output = true;  // mphf
     config.verbose_output = true;
-    config.secondary_sort = true;
 
     /* Declare the PTHash function. */
     // typedef single_phf<
@@ -36,9 +34,9 @@ int main() {
     //                                                                           // search
     //     >
     typedef dense_partitioned_phf<murmurhash2_64,                       // base hasher
-                                  table_bucketer<opt_bucketer>,                         // bucketer type
-                                  multi_C,                              // encoder type
-                                  false,                                 // minimal
+                                  opt_bucketer,                         // bucketer type
+                                  mono_EF,                              // encoder type
+                                  true,                                 // minimal
                                   pthash_search_type::add_displacement  // additive
                                                                         // displacement search
                                   >
@@ -60,11 +58,29 @@ int main() {
     double bits_per_key = static_cast<double>(f.num_bits()) / f.num_keys();
     std::cout << "function uses " << bits_per_key << " [bits/key]" << std::endl;
 
-
-
-    std::cout << "part" << timings.partitioning_microseconds  << std::endl;
     /* Sanity check! */
     if (check(keys.begin(), f)) std::cout << "EVERYTHING OK!" << std::endl;
 
+    /* Now evaluate f on some keys. */
+    for (uint64_t i = 0; i != 10; ++i) {
+        std::cout << "f(" << keys[i] << ") = " << f(keys[i]) << '\n';
+    }
+
+    /* Serialize the data structure to a file. */
+    std::cout << "serializing the function to disk..." << std::endl;
+    std::string output_filename("pthash.bin");
+    essentials::save(f, output_filename.c_str());
+
+    {
+        /* Now reload from disk and query. */
+        pthash_type other;
+        essentials::load(other, output_filename.c_str());
+        for (uint64_t i = 0; i != 10; ++i) {
+            std::cout << "f(" << keys[i] << ") = " << other(keys[i]) << '\n';
+            assert(f(keys[i]) == other(keys[i]));
+        }
+    }
+
+    std::remove(output_filename.c_str());
     return 0;
 }

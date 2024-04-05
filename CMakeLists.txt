@@ -22,7 +22,7 @@ if(NOT TARGET PTHASH)
     MESSAGE(STATUS "Compiling with flags: -march=native -mbmi2 -msse4.2")
     target_compile_options(PTHASH INTERFACE -march=native)
     # Flags for PTHASH:
-    #target_compile_options(PTHASH INTERFACE -mbmi2 -msse4.2) # for hardware popcount and pdep
+    target_compile_options(PTHASH INTERFACE -mbmi2 -msse4.2) # for hardware popcount and pdep
   endif()
 
   if (PTHASH_ENABLE_LARGE_BUCKET_ID_TYPE)
