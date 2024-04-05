@@ -126,8 +126,8 @@ struct internal_memory_builder_partitioned_phf {
             }
         };
 
-        auto mergeAndCOllect = [&](uint64_t id) {
-            for (int row = 0; row < num_threads; ++row) {
+        auto mergeAndCollect = [&](uint64_t id) {
+            for (uint64_t row = 0; row < num_threads; ++row) {
                 for(typename hasher_type::hash_type hash : split[row][id]) {
                     uint64_t partition = partitioner.bucket(hash.mix());
                     partitions[partition].push_back(hash);
@@ -149,7 +149,7 @@ struct internal_memory_builder_partitioned_phf {
         }
 
         for (uint64_t i = 0; i != num_threads; ++i) {
-            threads[i] = std::thread(mergeAndCOllect, i);
+            threads[i] = std::thread(mergeAndCollect, i);
         }
         for (auto& t : threads) {
             if (t.joinable()) t.join();
