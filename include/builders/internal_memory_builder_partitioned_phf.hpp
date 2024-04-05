@@ -36,9 +36,18 @@ struct internal_memory_builder_partitioned_phf {
         m_offsets.resize(num_partitions + 1);
         m_builders.resize(num_partitions);
 
-        std::vector<std::vector<typename hasher_type::hash_type>> partitions;
-
-        hashAndPartition(keys, partitions, num_keys, config.num_threads, m_seed, num_partitions, m_bucketer);
+        std::vector<std::vector<typename hasher_type::hash_type>> partitions(num_partitions);
+        for (auto& partition : partitions) partition.reserve(1.1 * config.avg_partition_size);
+        if(config.num_threads > 1) {
+            parallelHashAndPartition(keys, partitions, num_keys, config.num_threads, m_seed, num_partitions, m_bucketer);
+        } else {
+            for (uint64_t i = 0; i != num_keys; ++i, ++keys) {
+                auto const& key = *keys;
+                auto hash = hasher_type::hash(key, m_seed);
+                auto b = m_bucketer.bucket(hash.mix());
+                partitions[b].push_back(hash);
+            }
+        }
 
         uint64_t cumulative_size = 0;
         for (uint64_t i = 0; i != num_partitions; ++i) {
@@ -98,8 +107,7 @@ struct internal_memory_builder_partitioned_phf {
         return timings;
     }
     template <typename KeyIterator>
-    static void hashAndPartition(KeyIterator keys, std::vector<std::vector<typename hasher_type::hash_type>> &partitions, const uint64_t num_keys, const uint64_t num_threads, const uint64_t m_seed, const uint64_t numPartitions, const range_bucketer partitioner) {
-        partitions.resize(numPartitions);
+    static void parallelHashAndPartition(KeyIterator keys, std::vector<std::vector<typename hasher_type::hash_type>> &partitions, const uint64_t num_keys, const uint64_t num_threads, const uint64_t m_seed, const uint64_t numPartitions, const range_bucketer partitioner) {
         std::vector<std::vector<std::vector<typename hasher_type::hash_type>>> split;
         split.resize(num_threads);
         uint64_t partitionsPerThread = (numPartitions +num_threads-1) / num_threads;
@@ -111,11 +119,7 @@ struct internal_memory_builder_partitioned_phf {
                 c.reserve(cellReserve);
             }
         }
-        uint64_t partReserve = num_keys / numPartitions;
-        partReserve = partReserve + partReserve / 10;
-        for(auto &v : partitions) {
-            v.reserve(partReserve);
-        }
+
 
         auto hashAndSplit = [&](uint64_t  id, uint64_t begin, uint64_t end ) {
             for (; begin != end; ++begin) {
