@@ -104,7 +104,7 @@ struct internal_memory_builder_partitioned_phf {
         split.resize(num_threads);
         uint64_t partitionsPerThread = (numPartitions +num_threads-1) / num_threads;
         uint64_t expectedCellSize = num_keys / (num_threads * num_threads);
-        uint64_t cellReserve = expectedCellSize + expectedCellSize / 10;
+        uint64_t cellReserve = expectedCellSize + expectedCellSize / 20;
         for(auto &v : split) {
             v.resize(num_threads);
             for(auto &c :v) {
