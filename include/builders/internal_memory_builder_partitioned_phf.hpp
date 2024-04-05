@@ -108,7 +108,7 @@ struct internal_memory_builder_partitioned_phf {
         for(auto &v : split) {
             v.resize(num_threads);
             for(auto &c :v) {
-                v.reserve(cellReserve);
+                c.reserve(cellReserve);
             }
         }
         uint64_t partReserve = num_keys / numPartitions;
