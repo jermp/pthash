@@ -10,6 +10,3 @@
 [submodule "external/xxHash"]
 	path = external/xxHash
 	url = https://github.com/Cyan4973/xxHash.git
-[submodule "external/ips2ra"]
-	path = external/ips2ra
-	url = https://github.com/ips4o/ips2ra.git
