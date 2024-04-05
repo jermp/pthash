@@ -3,8 +3,10 @@
 #include "util.hpp"
 #include "internal_memory_builder_single_phf.hpp"
 
-namespace pthash {
 
+#include <external/ips2ra/include/ips2ra.hpp>
+
+namespace pthash {
 template <typename Hasher, typename Bucketer>
 struct internal_memory_builder_partitioned_phf {
     typedef Hasher hasher_type;
@@ -33,42 +35,55 @@ struct internal_memory_builder_partitioned_phf {
         m_table_size = 0;
         m_num_partitions = num_partitions;
         m_bucketer.init(num_partitions);
-        m_offsets.resize(num_partitions + 1);
+        m_table_offsets.reserve(num_partitions + 1);
         m_builders.resize(num_partitions);
 
-        std::vector<std::vector<typename hasher_type::hash_type>> partitions(num_partitions);
-        for (auto& partition : partitions) partition.reserve(1.5 * config.avg_partition_size);
 
-        progress_logger logger(num_keys, " == partitioned ", " keys", config.verbose_output);
-        for (uint64_t i = 0; i != num_keys; ++i, ++keys) {
-            auto const& key = *keys;
-            auto hash = hasher_type::hash(key, m_seed);
-            auto b = m_bucketer.bucket(hash.mix());
-            partitions[b].push_back(hash);
-            logger.log();
-        }
-        logger.finalize();
+        std::vector<typename hasher_type::hash_type> keysToSort;
+        initialHash(keys, keysToSort, num_keys, config.num_threads, config.seed);
 
-        uint64_t cumulative_size = 0;
-        for (uint64_t i = 0; i != num_partitions; ++i) {
-            auto const& partition = partitions[i];
-            if (partition.size() <= 1) {
-                throw std::runtime_error(
-                    "each partition must contain more than one key: use less partitions");
+        ips2ra::parallel::sort(keysToSort.begin(), keysToSort.end(), [&](const typename hasher_type::hash_type &a) { return m_bucketer.bucket(a.mix()); }, config.num_threads);
+
+        std::vector<uint64_t> partition_sizes;
+        partition_sizes.reserve(num_partitions + 1);
+        std::vector<uint64_t> partition_offsets;
+        partition_offsets.reserve(num_partitions + 1);
+        uint64_t key_index = 0;
+        uint64_t partition_index = 0;
+        uint64_t currentSize = 0;
+        uint64_t cumTableSize = 0;
+        partition_offsets.push_back(0);
+        m_table_offsets.push_back(0);
+        while (key_index < num_keys) {
+            const auto &k = keysToSort[key_index];
+            uint64_t partition = m_bucketer.bucket(k.mix());
+            if(partition == partition_index) {
+                currentSize++;
+                key_index++;
             }
-            uint64_t table_size = static_cast<double>(partition.size()) / config.alpha;
-            if (config.search == pthash_search_type::xor_displacement &&
-                ((table_size & (table_size - 1)) == 0))
-                table_size += 1;
-            m_table_size += table_size;
-            m_offsets[i] = cumulative_size;
-            if (config.dense_partitioning) {
-                cumulative_size += table_size;
-            } else {
-                cumulative_size += config.minimal_output ? partition.size() : table_size;
+            if(partition != partition_index || key_index == num_keys) {
+                if (currentSize <= 1) {
+                    throw std::runtime_error(
+                        "each partition must contain more than one key: use less partitions");
+                }
+
+                partition_sizes.push_back(currentSize);
+                partition_offsets.push_back(key_index);
+
+                uint64_t table_size = static_cast<double>(currentSize) / config.alpha;
+                if (config.search == pthash_search_type::xor_displacement && ((table_size & (table_size - 1)) == 0))
+                    table_size += 1;
+                m_table_size += table_size;
+                if (config.dense_partitioning || !config.minimal_output) {
+                    cumTableSize += table_size;
+                } else {
+                    cumTableSize += currentSize;
+                }
+                m_table_offsets.push_back(cumTableSize);
+                currentSize = 0;
+                partition_index++;
             }
         }
-        m_offsets[num_partitions] = cumulative_size;
 
         auto partition_config = config;
         partition_config.seed = m_seed;
@@ -87,7 +102,7 @@ struct internal_memory_builder_partitioned_phf {
 
         timings.partitioning_microseconds = to_microseconds(clock_type::now() - start);
 
-        auto t = build_partitions(partitions.begin(), m_builders.begin(), partition_config,
+        auto t = build_partitions(keysToSort, partition_offsets, partition_sizes, m_builders.begin(), partition_config,
                                   config.num_threads, num_partitions);
         timings.mapping_ordering_microseconds = t.mapping_ordering_microseconds;
         timings.searching_microseconds = t.searching_microseconds;
@@ -107,13 +122,47 @@ struct internal_memory_builder_partitioned_phf {
         return timings;
     }
 
-    template <typename PartitionsIterator, typename BuildersIterator>
-    static build_timings build_partitions(PartitionsIterator partitions, BuildersIterator builders,
+    template <typename KeyIterator>
+    static void initialHash(KeyIterator keys, std::vector<typename hasher_type::hash_type> &keysToSort, const uint64_t num_keys, const uint64_t num_threads, const uint64_t m_seed) {
+        if (num_threads > 1) {  // parallel
+            keysToSort.resize(num_keys);
+            std::vector<std::thread> threads(num_threads);
+            std::vector<build_timings> thread_timings(num_threads);
+
+            auto exe = [&](uint64_t begin, uint64_t end ) {
+                for (; begin != end; ++begin) {
+                    keysToSort[begin] = hasher_type::hash(keys[begin], m_seed);
+                }
+            };
+
+            const uint64_t num_keys_per_thread =
+                (num_keys + num_threads - 1) / num_threads;
+            for (uint64_t i = 0, begin = 0; i != num_threads; ++i) {
+                uint64_t end = begin + num_keys_per_thread;
+                if (end > num_keys) end = num_keys;
+                threads[i] = std::thread(exe, begin, end);
+                begin = end;
+            }
+
+            for (auto& t : threads) {
+                if (t.joinable()) t.join();
+            }
+        } else {  // sequential
+            keysToSort.reserve(num_keys);
+            for (uint64_t i = 0; i != num_keys; ++i, ++keys) {
+                auto const& key = *keys;
+                auto hash = hasher_type::hash(key, m_seed);
+                keysToSort.push_back(hash);
+            }
+        }
+    }
+
+    template <typename BuildersIterator>
+    static build_timings build_partitions(const std::vector<typename hasher_type::hash_type> &keys,  const std::vector<uint64_t> &offsets, const std::vector<uint64_t> &sizes, BuildersIterator builders,
                                           build_configuration const& config,
                                           const uint64_t num_threads,
                                           const uint64_t num_partitions) {
         build_timings timings;
-        assert(config.num_threads == 1);
 
         if (num_threads > 1) {  // parallel
             std::vector<std::thread> threads(num_threads);
@@ -121,10 +170,8 @@ struct internal_memory_builder_partitioned_phf {
 
             auto exe = [&](uint64_t i, uint64_t begin, uint64_t end) {
                 for (; begin != end; ++begin) {
-                    auto const& partition = partitions[begin];
                     builders[begin].set_seed(config.seed);
-                    auto t = builders[begin].build_from_hashes(partition.begin(), partition.size(),
-                                                               config);
+                    auto t = builders[begin].build_from_hashes(keys.begin() + offsets[begin], sizes[begin], config);
                     thread_timings[i].mapping_ordering_microseconds +=
                         t.mapping_ordering_microseconds;
                     thread_timings[i].searching_microseconds += t.searching_microseconds;
@@ -152,9 +199,8 @@ struct internal_memory_builder_partitioned_phf {
             }
         } else {  // sequential
             for (uint64_t i = 0; i != num_partitions; ++i) {
-                auto const& partition = partitions[i];
                 builders[i].set_seed(config.seed);
-                auto t = builders[i].build_from_hashes(partition.begin(), partition.size(), config);
+                auto t = builders[i].build_from_hashes(keys.begin() + offsets[i], sizes[i], config);
                 timings.mapping_ordering_microseconds += t.mapping_ordering_microseconds;
                 timings.searching_microseconds += t.searching_microseconds;
             }
@@ -188,7 +234,7 @@ struct internal_memory_builder_partitioned_phf {
     }
 
     std::vector<uint64_t> const& offsets() const {
-        return m_offsets;
+        return m_table_offsets;
     }
 
     std::vector<uint64_t> const& free_slots() const {
@@ -323,7 +369,7 @@ private:
     uint64_t m_num_partitions;
     uint64_t m_num_buckets_per_partition;
     range_bucketer m_bucketer;
-    std::vector<uint64_t> m_offsets;
+    std::vector<uint64_t> m_table_offsets;
     std::vector<uint64_t> m_free_slots;  // for dense partitioning
     std::vector<internal_memory_builder_single_phf<hasher_type, bucketer_type>> m_builders;
 };

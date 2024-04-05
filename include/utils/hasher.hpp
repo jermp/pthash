@@ -207,6 +207,26 @@ struct murmurhash2_128 {
     }
 };
 
+struct xxhash64 {
+    typedef hash64 hash_type;
+
+    // specialization for std::string
+    static inline hash_type hash(std::string const &val, uint64_t seed) {
+        return XXH64(val.data(), val.size(), seed);
+    }
+
+    // specialization for uint64_t
+    static inline hash_type hash(uint64_t val, uint64_t seed) {
+        return XXH64(&val, sizeof(val), seed);
+    }
+
+    // specialization for std::pair<uint64_t, uint64_t>
+    static inline hash_type hash(std::pair<uint64_t, uint64_t> val, uint64_t seed) {
+        return XXH64(&val, sizeof(val), seed);
+    }
+};
+
+
 struct xxhash128 {
     typedef hash128 hash_type;
 
