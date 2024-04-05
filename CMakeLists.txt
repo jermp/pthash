@@ -47,17 +47,6 @@ if(NOT TARGET PTHASH)
   target_link_libraries(PTHASH INTERFACE ESSENTIALS)
 
   target_include_directories(PTHASH SYSTEM INTERFACE external/xxHash)
-
-  if(NOT TARGET ips2ra)
-    set(IPS2RA_DISABLE_PARALLEL ON CACHE PATH "ips2ra's FindTBB greps a file that does not exist in recent TBB versions")
-    add_subdirectory(external/ips2ra)
-    find_package(TBB)
-    target_compile_options(ips2ra INTERFACE -D_REENTRANT)
-    target_link_libraries(ips2ra INTERFACE pthread atomic tbb)
-  endif()
-
-  target_link_libraries(PTHASH INTERFACE ips2ra)
-
 endif()
 
 # Only add benchmarks and tests when compiling PTHash itself, not when added as a dependency
