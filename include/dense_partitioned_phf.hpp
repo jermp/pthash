@@ -93,8 +93,7 @@ struct dense_partitioned_phf {
     }
 
     size_t num_bits_for_mapper() const {
-        return m_partitioner.num_bits() + m_bucketer.num_bits() + m_offsets.num_bits() +
-               m_free_slots.num_bits();
+        return m_offsets.num_bits() + (needsFreeArray ? m_free_slots.num_bits() : 0);
     }
 
     size_t num_bits() const {
