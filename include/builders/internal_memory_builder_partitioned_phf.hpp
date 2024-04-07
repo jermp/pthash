@@ -35,6 +35,7 @@ struct internal_memory_builder_partitioned_phf {
         m_bucketer.init(num_partitions);
         m_offsets.resize(num_partitions + 1);
         m_builders.resize(num_partitions);
+        m_num_buckets_per_partition = compute_num_buckets(config.avg_partition_size, config.lambda);
 
         std::vector<std::vector<typename hasher_type::hash_type>> partitions(num_partitions);
         for (auto& partition : partitions) partition.reserve(1.1 * config.avg_partition_size);
@@ -72,12 +73,7 @@ struct internal_memory_builder_partitioned_phf {
 
         auto partition_config = config;
         partition_config.seed = m_seed;
-
-        const uint64_t num_buckets_single_phf = compute_num_buckets(num_keys, config.lambda);
-        const uint64_t num_buckets_per_partition =
-            std::ceil(static_cast<double>(num_buckets_single_phf) / num_partitions);
-        m_num_buckets_per_partition = num_buckets_per_partition;
-        partition_config.num_buckets = num_buckets_per_partition;
+        partition_config.num_buckets = m_num_buckets_per_partition;
         if (config.verbose_output) {
             std::cout << "num_buckets_per_partition = " << partition_config.num_buckets
                       << std::endl;
