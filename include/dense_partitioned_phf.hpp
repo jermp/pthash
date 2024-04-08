@@ -117,7 +117,8 @@ struct dense_partitioned_phf {
         visitor.visit(m_bucketer);
         visitor.visit(m_pilots);
         visitor.visit(m_offsets);
-        visitor.visit(m_free_slots);
+        if(needsFreeArray)
+            visitor.visit(m_free_slots);
     }
 
 private:
