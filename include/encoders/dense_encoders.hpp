@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <cassert>
+#include <thread>
 
 namespace pthash {
 
@@ -53,7 +54,7 @@ struct mono_interleaved {
     template <typename Iterator>
     void encode(Iterator begin,                            //
                 const uint64_t num_partitions,             //
-                const uint64_t num_buckets_per_partition)  //
+                const uint64_t num_buckets_per_partition, const uint64_t /*num_threads*/)  //
     {
         m_num_partitions = num_partitions;
         m_encoder.encode(begin, num_partitions * num_buckets_per_partition);
@@ -92,11 +93,36 @@ struct multi_interleaved {
     template <typename Iterator>
     void encode(Iterator begin,                            //
                 const uint64_t num_partitions,             //
-                const uint64_t num_buckets_per_partition)  //
+                const uint64_t num_buckets_per_partition, const uint64_t num_threads)  //
     {
         m_encoders.resize(num_buckets_per_partition);
-        for (uint64_t i = 0; i != num_buckets_per_partition; ++i) {
-            m_encoders[i].encode(begin + i * num_partitions, num_partitions);
+        if(num_threads==1) {
+            for (uint64_t i = 0; i != num_buckets_per_partition; ++i) {
+                m_encoders[i].encode(begin + i * num_partitions, num_partitions);
+            }
+        } else {
+            auto exe = [&](uint64_t beginEncoder, uint64_t endEncoder) {
+                for (; beginEncoder != endEncoder; ++beginEncoder) {
+                    m_encoders[beginEncoder].encode(begin + beginEncoder * num_partitions, num_partitions);
+                }
+            };
+
+            std::vector<std::thread> threads(num_threads);
+            uint64_t currentEncoder = 0;
+            uint64_t i = 0;
+            const uint64_t enc_per_thread =
+                (num_buckets_per_partition + num_threads - 1) / num_threads;
+            while (currentEncoder < num_buckets_per_partition) {
+                uint64_t endEncoder = currentEncoder + enc_per_thread;
+                if (endEncoder > num_buckets_per_partition) endEncoder = num_buckets_per_partition;
+                threads[i] = std::thread(exe, currentEncoder, endEncoder);
+                currentEncoder = endEncoder;
+                i++;
+            }
+            for (auto& t : threads) {
+                if (t.joinable()) t.join();
+            }
+
         }
     }
 
@@ -129,16 +155,29 @@ struct dual_interleaved {
     template <typename Iterator>
     void encode(Iterator begin,                            //
                 const uint64_t num_partitions,             //
-                const uint64_t num_buckets_per_partition)  //
+                const uint64_t num_buckets_per_partition, const uint64_t num_threads)  //
     {
         m_front_size = num_buckets_per_partition * (static_cast<double>(numerator) / denominator);
-        m_front.encode(begin, num_partitions, m_front_size);
-        m_back.encode(begin + m_front_size * num_partitions, num_partitions,
-                      num_buckets_per_partition - m_front_size);
+        if(num_threads == 1) {
+            if(m_front_size > 0) m_front.encode(begin, num_partitions, m_front_size, 1);
+            if(num_buckets_per_partition - m_front_size > 0) m_back.encode(begin + m_front_size * num_partitions, num_partitions,
+                          num_buckets_per_partition - m_front_size, 1);
+        } else {
+            uint64_t m_front_threads =
+                (num_threads * m_front_size + num_buckets_per_partition - 1) /
+                num_buckets_per_partition;
+            auto exe = [&]() {
+                if(m_front_size > 0) m_front.encode(begin, num_partitions, m_front_size, m_front_threads);
+            };
+            std::thread frontThread = std::thread(exe);
+            if(num_buckets_per_partition - m_front_size > 0) m_back.encode(begin + m_front_size * num_partitions, num_partitions,
+                          num_buckets_per_partition - m_front_size, num_threads - m_front_threads);
+            if (frontThread.joinable()) frontThread.join();
+        }
     }
 
     static std::string name() {
-        return Front::name() + "-" + Back::name();
+        return Front::name() + "-" + Back::name() + "-" + std::to_string(static_cast<double>(numerator)/denominator);
     }
 
     size_t num_bits() const {

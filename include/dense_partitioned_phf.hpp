@@ -21,7 +21,7 @@ struct dense_partitioned_phf {
     }
 
     template <typename Builder>
-    double build(Builder& builder, build_configuration const& /* config */)  //
+    double build(Builder& builder, build_configuration const&  config)  //
     {
         auto start = clock_type::now();
 
@@ -40,7 +40,7 @@ struct dense_partitioned_phf {
         const uint64_t increment = m_table_size / num_partitions;
         m_offsets.encode(offsets.begin(), offsets.size(), increment);
         m_pilots.encode(builder.interleaving_pilots_iterator_begin(), num_partitions,
-                        num_buckets_per_partition);
+                        num_buckets_per_partition, config.num_threads);
         if constexpr (needsFreeArray) {
             assert(builder.free_slots().size() == m_table_size - m_num_keys);
             m_free_slots.encode(builder.free_slots().data(), m_table_size - m_num_keys);
