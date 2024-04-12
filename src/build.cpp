@@ -481,11 +481,8 @@ int main(int argc, char** argv) {
             input.close();
         }
         build(parser, keys.begin(), keys.size());
-    } else {  // use num_keys random 64-bit keys
-        std::vector<std::string> keys;
-        keys.reserve(num_keys);
-        for (size_t i = 0; i < num_keys; ++i) { keys.push_back(std::to_string(i)); }
-        build(parser, keys.begin(), keys.size());
+    } else {  // use num_keys random strings
+        build(parser, generateBenchmarkInput(num_keys).begin(), num_keys);
     }
 
     return 0;
