@@ -15,21 +15,22 @@ struct table_bucketer {
         base.init(num_buckets, lambda, table_size, alpha);
 
         fulcrums.push_back(0);
-        for (size_t xi = 1; xi < FULCS; xi++) {
-            double x = double(xi) / double(FULCS);
+        for (size_t xi = 0; xi < FULCS - 1; xi++) {
+            double x = double(xi) / double(FULCS - 1);
             double y = base.bucketRelative(x);
-            double fulcV = y * num_buckets;
+            auto fulcV = uint64_t(y * double(num_buckets << 16));
             fulcrums.push_back(fulcV);
         }
-        fulcrums.push_back(num_buckets);
+        fulcrums.push_back(num_buckets << 16);
     }
 
     inline uint64_t bucket(const uint64_t hash) const {
-        uint64_t index = hash % FULCS;
-        auto hashD = double(hash) / double(~0ul);
-        uint64_t v1 = (fulcrums[index + 0] * hashD);
-        uint64_t v2 = (fulcrums[index + 1] * (1.0 - hashD));
-        return v1 + v2;
+        uint64_t z = (hash & 0xFFFFFFFF) * uint64_t(FULCS - 1);
+        uint64_t index = z >> 32;
+        uint64_t part = z & 0xFFFFFFFF;
+        uint64_t v1 = (fulcrums[index + 0] * part) >> 32;
+        uint64_t v2 = (fulcrums[index + 1] * (0xFFFFFFFF - part)) >> 32;
+        return (v1 + v2) >> 16;
     }
 
     uint64_t num_buckets() const {
@@ -37,7 +38,7 @@ struct table_bucketer {
     }
 
     size_t num_bits() const {
-        return base.num_buckets() + fulcrums.size() * sizeof(double) * 8;
+        return base.num_buckets() + fulcrums.size() * 64;
     }
 
     template <typename Visitor>
@@ -49,7 +50,7 @@ struct table_bucketer {
 private:
     Bucketer base;
     static const uint64_t FULCS = 2048;
-    std::vector<double> fulcrums;
+    std::vector<uint64_t> fulcrums;
 };
 
 struct opt_bucketer {
@@ -70,7 +71,7 @@ struct opt_bucketer {
         } else {
             m_alpha_factor = 1.0 / baseFunc(alpha);
         }
-        slope =  std::min(1.0, std::max(lambda / max_bucket_size_expected, local_collision_factor * lambda / std::sqrt((double)table_size)));
+        slope =  std::min(1.0, std::max(0.0, local_collision_factor * lambda / std::sqrt((double)table_size)));
 
     }
 
