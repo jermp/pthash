@@ -63,7 +63,6 @@ struct opt_bucketer {
     void init(const uint64_t num_buckets, const double lambda, const uint64_t table_size,
               const double alpha) {
         constexpr double local_collision_factor = 0.3;
-        constexpr double max_bucket_size_expected = 130.0;
         m_num_buckets = num_buckets;
         m_alpha = alpha;
         if (alpha > 0.9999) {
@@ -71,8 +70,8 @@ struct opt_bucketer {
         } else {
             m_alpha_factor = 1.0 / baseFunc(alpha);
         }
-        slope =  std::min(1.0, std::max(0.0, local_collision_factor * lambda / std::sqrt((double)table_size)));
-
+        slope = std::max(
+            0.05, std::min(1.0, local_collision_factor * lambda / std::sqrt((double)table_size)));
     }
 
     inline double bucketRelative(const double normalized_hash) const {
