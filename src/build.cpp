@@ -152,7 +152,7 @@ void choose_dual_encoder_tradeoff(build_parameters<Iterator> const& params,
     if (tradeoff == uint64_t(std::round(params.dual_encoder_tradeoff * granularity))) {
         choose_needs_free_array<
             Builder, Iterator, search_type,
-            dual_interleaved<BaseEncoder1, BaseEncoder2, tradeoff, granularity>>(builder, timings,
+                                dense_dual<BaseEncoder1, BaseEncoder2, tradeoff, granularity>>(builder, timings,
                                                                                  params, config);
     }
     if constexpr (tradeoff > 0) {
@@ -232,48 +232,48 @@ void choose_encoder(build_parameters<Iterator> const& params, build_configuratio
             choose_needs_free_array<Builder, Iterator, search_type, mono_R>(builder, timings,
                                                                             params, config);
         }
-        if (encode_all or params.encoder_type == "multi-R") {
-            choose_needs_free_array<Builder, Iterator, search_type, multi_R>(builder, timings,
+        if (encode_all or params.encoder_type == "inter-R") {
+            choose_needs_free_array<Builder, Iterator, search_type, inter_R>(builder, timings,
                                                                              params, config);
         }
         if (encode_all or params.encoder_type == "mono-C") {
             choose_needs_free_array<Builder, Iterator, search_type, mono_C>(builder, timings,
                                                                             params, config);
         }
-        if (encode_all or params.encoder_type == "multi-C") {
-            choose_needs_free_array<Builder, Iterator, search_type, multi_C>(builder, timings,
+        if (encode_all or params.encoder_type == "inter-C") {
+            choose_needs_free_array<Builder, Iterator, search_type, inter_C>(builder, timings,
                                                                              params, config);
         }
         if (encode_all or params.encoder_type == "mono-D") {
             choose_needs_free_array<Builder, Iterator, search_type, mono_D>(builder, timings,
                                                                             params, config);
         }
-        if (encode_all or params.encoder_type == "multi-D") {
-            choose_needs_free_array<Builder, Iterator, search_type, multi_D>(builder, timings,
+        if (encode_all or params.encoder_type == "inter-D") {
+            choose_needs_free_array<Builder, Iterator, search_type, inter_D>(builder, timings,
                                                                              params, config);
         }
         if (encode_all or params.encoder_type == "mono-EF") {
             choose_needs_free_array<Builder, Iterator, search_type, mono_EF>(builder, timings,
                                                                              params, config);
         }
-        if (encode_all or params.encoder_type == "multi-EF") {
-            choose_needs_free_array<Builder, Iterator, search_type, multi_EF>(builder, timings,
+        if (encode_all or params.encoder_type == "inter-EF") {
+            choose_needs_free_array<Builder, Iterator, search_type, inter_EF>(builder, timings,
                                                                               params, config);
         }
         if (encode_all or params.encoder_type == "mono-C-mono-R") {
             choose_dual_encoder_tradeoff<Builder, mono_C, mono_R, search_type>(params, config,
                                                                                builder, timings);
         }
-        if (encode_all or params.encoder_type == "multi-C-multi-R") {
-            choose_dual_encoder_tradeoff<Builder, multi_C, multi_R, search_type>(params, config,
+        if (encode_all or params.encoder_type == "inter-C-inter-R") {
+            choose_dual_encoder_tradeoff<Builder, inter_C, inter_R, search_type>(params, config,
                                                                                  builder, timings);
         }
         if (encode_all or params.encoder_type == "mono-D-mono-R") {
             choose_dual_encoder_tradeoff<Builder, mono_D, mono_R, search_type>(params, config,
                                                                                builder, timings);
         }
-        if (encode_all or params.encoder_type == "multi-D-multi-R") {
-            choose_dual_encoder_tradeoff<Builder, multi_D, multi_R, search_type>(params, config,
+        if (encode_all or params.encoder_type == "inter-D-inter-R") {
+            choose_dual_encoder_tradeoff<Builder, inter_D, inter_R, search_type>(params, config,
                                                                                  builder, timings);
         }
 
@@ -356,8 +356,8 @@ void build(cmd_line_parser::parser const& parser, Iterator keys, uint64_t num_ke
 
             /* only for dense partitioning  */
             "mono-R", "mono-C", "mono-D", "mono-EF",                                 // mono
-            "multi-R", "multi-C", "multi-D", "multi-EF",                             // multi
-            "mono-C-mono-R", "multi-C-multi-R", "mono-D-mono-R", "multi-D-multi-R",  // dual
+            "inter-R", "inter-C", "inter-D", "inter-EF",                             // inter
+            "mono-C-mono-R", "inter-C-inter-R", "mono-D-mono-R", "inter-D-inter-R",  // dual
 
             /**/
             "all"  //
@@ -436,8 +436,8 @@ int main(int argc, char** argv) {
                "The encoder type. Possibile values are: "
                "'R-R', 'PC', 'D-D', 'EF', "
                "'mono-R', 'mono-C', 'mono-D', 'mono-EF', "
-               "'multi-R', 'multi-C', 'multi-D', 'multi-EF', "
-               "'mono-C-mono-R', 'multi-C-multi-R', 'mono-D-mono-R', 'multi-D-multi-R', "
+               "'inter-R', 'inter-C', 'inter-D', 'inter-EF', "
+               "'mono-C-mono-R', 'inter-C-inter-R', 'mono-D-mono-R', 'inter-D-inter-R', "
                "'all'.\n\t"
                "The 'all' type will just benchmark all encoders. (Useful for benchmarking "
                "purposes.)",
