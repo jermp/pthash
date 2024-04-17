@@ -73,7 +73,7 @@ struct opt_bucketer {
     }
 
     inline double bucketRelative(const double normalized_hash) const {
-        return std::max(m_alpha_factor * baseFunc(m_alpha * normalized_hash), c * normalized_hash);
+        return m_alpha_factor * baseFunc(m_alpha * normalized_hash);
     }
 
     inline uint64_t bucket(const uint64_t hash) const {
