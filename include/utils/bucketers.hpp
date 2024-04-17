@@ -57,26 +57,23 @@ struct opt_bucketer {
     opt_bucketer() {}
 
     inline double baseFunc(const double normalized_hash) const {
-        return normalized_hash + (1 - normalized_hash) * std::log(1 - normalized_hash);
+        return (normalized_hash + (1 - normalized_hash) * std::log(1 - normalized_hash))  * (1.0 - c) + c * normalized_hash;;
     }
 
     void init(const uint64_t num_buckets, const double lambda, const uint64_t table_size,
               const double alpha) {
-        constexpr double local_collision_factor = 0.3;
         m_num_buckets = num_buckets;
         m_alpha = alpha;
+        c = 0.2 * lambda / std::sqrt(table_size);
         if (alpha > 0.9999) {
             m_alpha_factor = 1.0;
         } else {
             m_alpha_factor = 1.0 / baseFunc(alpha);
         }
-        slope = std::max(
-            0.05, std::min(1.0, local_collision_factor * lambda / std::sqrt((double)table_size)));
     }
 
     inline double bucketRelative(const double normalized_hash) const {
-        return std::max(m_alpha_factor * baseFunc(m_alpha * normalized_hash),
-                        slope * normalized_hash);
+        return std::max(m_alpha_factor * baseFunc(m_alpha * normalized_hash), c * normalized_hash);
     }
 
     inline uint64_t bucket(const uint64_t hash) const {
@@ -93,20 +90,20 @@ struct opt_bucketer {
     }
 
     size_t num_bits() const {
-        return 8 * sizeof(m_num_buckets) + 8 * sizeof(slope) + 8 * sizeof(m_alpha) +
+        return 8 * sizeof(m_num_buckets) + 8 * sizeof(c) + 8 * sizeof(m_alpha) +
                8 * sizeof(m_alpha_factor);
     }
 
     template <typename Visitor>
     void visit(Visitor& visitor) {
         visitor.visit(m_num_buckets);
-        visitor.visit(slope);
+        visitor.visit(c);
         visitor.visit(m_alpha);
         visitor.visit(m_alpha_factor);
     }
 
 private:
-    double slope;
+    double c;
     uint64_t m_num_buckets;
     double m_alpha;
     double m_alpha_factor;
