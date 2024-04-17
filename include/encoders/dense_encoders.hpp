@@ -50,7 +50,7 @@ private:
 };
 
 template <typename Encoder>
-struct mono_interleaved {
+struct dense_mono {
     template <typename Iterator>
     void encode(Iterator begin,                            //
                 const uint64_t num_partitions,             //
@@ -89,7 +89,7 @@ private:
 };
 
 template <typename Encoder>
-struct multi_interleaved {
+struct dense_interleaved {
     template <typename Iterator>
     void encode(Iterator begin,                            //
                 const uint64_t num_partitions,             //
@@ -127,7 +127,7 @@ struct multi_interleaved {
     }
 
     static std::string name() {
-        return "multi-" + Encoder::name();
+        return "inter-" + Encoder::name();
     }
 
     inline uint64_t access(const uint64_t partition, const uint64_t bucket) const {
@@ -151,7 +151,7 @@ private:
 };
 
 template <typename Front, typename Back, uint64_t numerator = 1, uint64_t denominator = 3>
-struct dual_interleaved {
+struct dense_dual {
     template <typename Iterator>
     void encode(Iterator begin,                            //
                 const uint64_t num_partitions,             //
@@ -207,19 +207,19 @@ private:
     Back m_back;
 };
 
-typedef mono_interleaved<rice> mono_R;
-typedef multi_interleaved<rice> multi_R;
-typedef mono_interleaved<compact> mono_C;
-typedef multi_interleaved<compact> multi_C;
-typedef mono_interleaved<dictionary> mono_D;
-typedef multi_interleaved<dictionary> multi_D;
-typedef mono_interleaved<elias_fano> mono_EF;
-typedef multi_interleaved<elias_fano> multi_EF;
+typedef dense_mono<rice> mono_R;
+typedef dense_interleaved<rice> inter_R;
+typedef dense_mono<compact> mono_C;
+typedef dense_interleaved<compact> inter_C;
+typedef dense_mono<dictionary> mono_D;
+typedef dense_interleaved<dictionary> inter_D;
+typedef dense_mono<elias_fano> mono_EF;
+typedef dense_interleaved<elias_fano> inter_EF;
 
 /* dual_interleaved encoders */
-typedef dual_interleaved<mono_C, mono_R, 1, 3> mono_C_mono_R;
-typedef dual_interleaved<multi_C, multi_R, 1, 3> multi_C_multi_R;
-typedef dual_interleaved<mono_D, mono_R, 1, 3> mono_D_mono_R;
-typedef dual_interleaved<multi_D, multi_R, 1, 3> multi_D_multi_R;
+typedef dense_dual<mono_C, mono_R, 1, 3> mono_C_mono_R;
+typedef dense_dual<inter_C, inter_R, 1, 3> inter_C_inter_R;
+typedef dense_dual<mono_D, mono_R, 1, 3> mono_D_mono_R;
+typedef dense_dual<inter_D, inter_R, 1, 3> inter_D_inter_R;
 
 }  // namespace pthash
