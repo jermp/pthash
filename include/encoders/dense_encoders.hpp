@@ -49,8 +49,11 @@ private:
     Encoder m_encoder;
 };
 
+struct dense_encoder {
+};
+
 template <typename Encoder>
-struct dense_mono {
+struct dense_mono : dense_encoder {
     template <typename Iterator>
     void encode(Iterator begin,                            //
                 const uint64_t num_partitions,             //
@@ -89,7 +92,7 @@ private:
 };
 
 template <typename Encoder>
-struct dense_interleaved {
+struct dense_interleaved : dense_encoder {
     template <typename Iterator>
     void encode(Iterator begin,                            //
                 const uint64_t num_partitions,             //
@@ -151,7 +154,7 @@ private:
 };
 
 template <typename Front, typename Back, uint64_t numerator = 1, uint64_t denominator = 3>
-struct dense_dual {
+struct dense_dual : dense_encoder {
     template <typename Iterator>
     void encode(Iterator begin,                            //
                 const uint64_t num_partitions,             //
