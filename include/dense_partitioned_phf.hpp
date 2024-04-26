@@ -7,6 +7,8 @@ namespace pthash {
 template <typename Hasher, typename Bucketer, typename Encoder, bool NeedsFreeArray,
           pthash_search_type Search>
 struct dense_partitioned_phf {
+    static_assert(std::is_base_of<dense_encoder, Encoder>::value,
+                  "Needs a dense encoder for dense partitioned PTHash. Select another encoder.");
     typedef Encoder encoder_type;
     static constexpr bool needsFreeArray = NeedsFreeArray;
 
@@ -14,6 +16,8 @@ struct dense_partitioned_phf {
     build_timings build_in_internal_memory(Iterator keys, const uint64_t num_keys,
                                            build_configuration const& config) {
         assert(Search == config.search);
+        assert(config.dense_partitioning == true);
+        assert(config.avg_partition_size < 10000); // Unlike partitioned, must use small partitions
         internal_memory_builder_partitioned_phf<Hasher, Bucketer> builder;
         auto timings = builder.build_from_keys(keys, num_keys, config);
         timings.encoding_microseconds = build(builder, config);
@@ -132,4 +136,7 @@ private:
     ef_sequence<false> m_free_slots;
 };
 
+template <typename Hasher, typename Encoder>
+using phobic = dense_partitioned_phf<Hasher, table_bucketer<opt_bucketer>,
+    dense_interleaved<Encoder>, false, pthash_search_type::add_displacement>;
 }  // namespace pthash

@@ -10,6 +10,8 @@ namespace pthash {
 template <typename Hasher, typename Bucketer, typename Encoder, bool Minimal,
           pthash_search_type Search>
 struct partitioned_phf {
+    static_assert(!std::is_base_of<dense_encoder, Encoder>::value,
+                  "Dense encoders are only for dense PTHash. Select another encoder.");
 private:
     struct partition {
         template <typename Visitor>
