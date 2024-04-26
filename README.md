@@ -1,6 +1,6 @@
 [![CodeQL](https://github.com/jermp/pthash/actions/workflows/codeql.yml/badge.svg)](https://github.com/jermp/pthash/actions/workflows/codeql.yml)
 
-PTHash
+PTHash / PHOBIC
 ------
 
 PTHash is a C++ library implementing fast and compact minimal perfect hash functions as described in the papers
@@ -8,7 +8,12 @@ PTHash is a C++ library implementing fast and compact minimal perfect hash funct
 * [*PTHash: Revisiting FCH Minimal Perfect Hashing*](https://dl.acm.org/doi/10.1145/3404835.3462849) [1]
 * [*Parallel and External-Memory Construction of Minimal Perfect Hash Functions with PTHash*](https://ieeexplore.ieee.org/document/10210677) [2]
 
-Please, cite these papers if you use PTHash.
+PHOBIC revisits the idea to enable smaller minimal perfect hash functions at the same space and query performance
+as described in the paper
+
+* todo
+
+Please, cite these papers if you use PTHash or PHOBIC.
 
 #### Features
 - Minimal and Non-Minimal Perfect Hash Functions
@@ -25,7 +30,7 @@ Algorithms that find such functions when *n* is large and retain constant evalua
 For instance, search engines and databases typically use minimal perfect hash functions to quickly assign identifiers to static sets of variable-length keys such as strings.
 The challenge is to design an algorithm which is efficient in three different aspects: time to find *f* (construction time), time to evaluate *f* on a key of *S* (lookup time), and space of representation for *f*.
 
-PTHash is one such algorithm.
+PTHash and PHOBIC are two such algorithms.
 
 The following guide is meant to provide a brief overview of the library
 by illustrating its functionalities through some examples.
@@ -123,7 +128,7 @@ int main() {
 
     /* Set up a build configuration. */
     build_configuration config;
-    config.c = 6.0;
+    config.lambda = 4.0;
     config.alpha = 0.94;
     config.minimal_output = true;  // mphf
     config.verbose_output = true;
@@ -184,7 +189,7 @@ shows the usage of the driver program.
 
 #### Example 1
 
-	./build -n 1000000 -c 4.5 -a 0.99 -e dictionary_dictionary -s 727369 --minimal --verbose --check --lookup -o mphf.bin
+	./build -n 1000000 -lambda 4.5 -a 0.99 -e dictionary_dictionary -s 727369 --minimal --verbose --check --lookup -o mphf.bin
 
 This example will build a MPHF over 1M random 64-bit keys (generated with seed 727369), using c = 4.5, alpha = 0.99, and compressing the MPHF data structure with the encoder `dictionary_dictionary`.
 
@@ -216,14 +221,14 @@ The file contains one string per line, for a total of 39,459,925 strings.
 #### NOTE: Input files are read line by line (i.e., individual strings are assumed to be separated by the character `\n`). Be sure there are no blank lines.
 
 The following command will build a MPHF using the strings of the file as input keys,
-with c = 7.0, alpha = 0.94.
+with lambda = 6.0, alpha = 0.94.
 
-	./build -n 39459925 -c 7.0 -a 0.94 -e dictionary_dictionary -s 1234567890 --minimal -i uk-2005.urls --verbose --check --lookup
+	./build -n 39459925 -lambda 6.0 -a 0.94 -e dictionary_dictionary -s 1234567890 --minimal -i uk-2005.urls --verbose --check --lookup
 
 
 #### Example 3
 
-	./build -n 39459925 -c 7.0 -a 0.94 -e dictionary_dictionary -s 1234567890 --minimal -i uk-2005.urls --verbose --check --lookup -p 128
+	./build -n 39459925 -lambda 6.0 -a 0.94 -e dictionary_dictionary -s 1234567890 --minimal -i uk-2005.urls --verbose --check --lookup -p 128
 
 This example will run the construction over the same input and parameters used in Example 2,
 but with 128 **partitions**.
@@ -232,7 +237,7 @@ The resulting data structure will consume essentially the same space as that bui
 
 #### Example 4
 
-	./build -n 39459925 -c 7.0 -a 0.94 -e dictionary_dictionary -s 1234567890 -i uk-2005.urls --verbose --check --lookup --external
+	./build -n 39459925 -lambda 6.0 -a 0.94 -e dictionary_dictionary -s 1234567890 -i uk-2005.urls --verbose --check --lookup --external
 
 This example will run the construction over the same input and parameters used in Example 2,
 but using **external memory**.
@@ -254,14 +259,14 @@ in combination with option `-i -`. This is very useful when building keys from c
 Some examples below.
 
 	for i in $(seq 1 1000000) ; do echo $i ; done > foo.txt
-	cat foo.txt | ./build --minimal -c 5 -a 0.94 -e dictionary_dictionary -n 1000000 -m 1 -i - -o foo.mph --verbose --external
+	cat foo.txt | ./build --minimal -lambda 5 -a 0.94 -e dictionary_dictionary -n 1000000 -m 1 -i - -o foo.mph --verbose --external
 
 	gzip foo.txt
-	zcat foo.txt.gz | ./build --minimal -c 5 -a 0.94 -e dictionary_dictionary -n 1000000 -m 1 -i - -o foo.mph --verbose --external
+	zcat foo.txt.gz | ./build --minimal -lambda 5 -a 0.94 -e dictionary_dictionary -n 1000000 -m 1 -i - -o foo.mph --verbose --external
 
 	gunzip foo.txt.gz
 	zstd foo.txt
-	zstdcat foo.txt.zst | ./build --minimal -c 5 -a 0.94 -e dictionary_dictionary -n 1000000 -m 1 -i - -o foo.mph --verbose --external
+	zstdcat foo.txt.zst | ./build --minimal -lambda 5 -a 0.94 -e dictionary_dictionary -n 1000000 -m 1 -i - -o foo.mph --verbose --external
 
 **Note**: you may need to write `zcat < foo.txt.gz | (...)` on Mac OSX.
 
@@ -271,7 +276,7 @@ need to re-iterate over the keys from the stream.
 An Example Benchmark
 -----
 
-The script `script/run_benchmark.sh` runs the 4 trade-off configurations (encoder, alpha, c) described in Section 5.2 of the paper [1] on 100M and 1000M keys.
+The script `script/run_benchmark.sh` runs the 4 trade-off configurations (encoder, alpha, lambda) described in Section 5.2 of the paper [1] on 100M and 1000M keys.
 
 C-C stands for "compact-compact" encoder; D-D for "dictionary-dictionary"; and EF for "Elias-Fano".
 
