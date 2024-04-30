@@ -160,6 +160,27 @@ struct internal_memory_builder_partitioned_phf {
         return m_builders;
     }
 
+    void swap(internal_memory_builder_partitioned_phf& other) {
+        std::swap(m_seed, other.m_seed);
+        std::swap(m_num_keys, other.m_num_keys);
+        std::swap(m_table_size, other.m_table_size);
+        std::swap(m_num_partitions, other.m_num_partitions);
+        std::swap(m_bucketer, other.m_bucketer);
+        m_offsets.swap(other.m_offsets);
+        m_builders.swap(other.m_builders);
+    }
+
+    template <typename Visitor>
+    void visit(Visitor& visitor) {
+        visitor.visit(m_seed);
+        visitor.visit(m_num_keys);
+        visitor.visit(m_table_size);
+        visitor.visit(m_num_partitions);
+        visitor.visit(m_bucketer);
+        visitor.visit(m_offsets);
+        visitor.visit(m_builders);
+    }
+
 private:
     uint64_t m_seed;
     uint64_t m_num_keys;
