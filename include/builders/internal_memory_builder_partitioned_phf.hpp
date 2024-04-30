@@ -12,6 +12,17 @@ struct internal_memory_builder_partitioned_phf {
     template <typename Iterator>
     build_timings build_from_keys(Iterator keys, uint64_t num_keys,
                                   build_configuration const& config) {
+        build_configuration actual_config = config;
+        if (config.seed == constants::invalid_seed)
+            actual_config.seed = random_value();
+
+        return build_from_hashes(hash_generator<Iterator, hasher_type>(keys, actual_config.seed),
+                                 num_keys, actual_config);
+    }
+
+    template <typename Iterator>
+    build_timings build_from_hashes(Iterator hashes, uint64_t num_keys,
+                                    build_configuration const& config) {
         assert(num_keys > 1);
         util::check_hash_collision_probability<Hasher>(num_keys);
 
@@ -25,7 +36,7 @@ struct internal_memory_builder_partitioned_phf {
         uint64_t num_partitions = config.num_partitions;
         if (config.verbose_output) std::cout << "num_partitions " << num_partitions << std::endl;
 
-        m_seed = config.seed == constants::invalid_seed ? random_value() : config.seed;
+        m_seed = config.seed;
         m_num_keys = num_keys;
         m_table_size = 0;
         m_num_partitions = num_partitions;
@@ -41,9 +52,8 @@ struct internal_memory_builder_partitioned_phf {
         for (auto& partition : partitions) partition.reserve(1.5 * average_partition_size);
 
         progress_logger logger(num_keys, " == partitioned ", " keys", config.verbose_output);
-        for (uint64_t i = 0; i != num_keys; ++i, ++keys) {
-            auto const& key = *keys;
-            auto hash = hasher_type::hash(key, m_seed);
+        for (uint64_t i = 0; i != num_keys; ++i, ++hashes) {
+            auto hash = *hashes;
             auto b = m_bucketer.bucket(hash.mix());
             partitions[b].push_back(hash);
             logger.log();
