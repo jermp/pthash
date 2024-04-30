@@ -15,21 +15,22 @@ struct internal_memory_builder_single_phf {
     template <typename RandomAccessIterator>
     build_timings build_from_keys(RandomAccessIterator keys, uint64_t num_keys,
                                   build_configuration const& config) {
-        build_configuration actual_config = config;
         if (config.seed == constants::invalid_seed) {
+            build_configuration actual_config = config;
             for (auto attempt = 0; attempt < 10; ++attempt) {
                 actual_config.seed = random_value();
                 try {
-                    return build_from_hashes(hash_generator<RandomAccessIterator, hasher_type>(keys, actual_config.seed),
-                                             num_keys, actual_config);
+                    return build_from_hashes(
+                        hash_generator<RandomAccessIterator, hasher_type>(keys, actual_config.seed),
+                        num_keys, actual_config);
                 } catch (seed_runtime_error const& error) {
                     std::cout << "attempt " << attempt + 1 << " failed" << std::endl;
                 }
             }
             throw seed_runtime_error();
         }
-        return build_from_hashes(hash_generator<RandomAccessIterator, hasher_type>(keys, config.seed),
-                                 num_keys, config);
+        return build_from_hashes(
+            hash_generator<RandomAccessIterator, hasher_type>(keys, config.seed), num_keys, config);
     }
 
     template <typename RandomAccessIterator>

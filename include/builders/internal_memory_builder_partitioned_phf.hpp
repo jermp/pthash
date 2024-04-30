@@ -13,9 +13,7 @@ struct internal_memory_builder_partitioned_phf {
     build_timings build_from_keys(Iterator keys, uint64_t num_keys,
                                   build_configuration const& config) {
         build_configuration actual_config = config;
-        if (config.seed == constants::invalid_seed)
-            actual_config.seed = random_value();
-
+        if (config.seed == constants::invalid_seed) actual_config.seed = random_value();
         return build_from_hashes(hash_generator<Iterator, hasher_type>(keys, actual_config.seed),
                                  num_keys, actual_config);
     }
