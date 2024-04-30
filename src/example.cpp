@@ -29,9 +29,10 @@ int main() {
 
     // config.num_partitions = 50;
     // config.num_threads = 4;
-    // typedef partitioned_mphf<murmurhash2_64,        // base hasher
-    //                          dictionary_dictionary  // encoder type
-    //                          >
+    // typedef partitioned_phf<murmurhash2_64,        // base hasher
+    //                         dictionary_dictionary, // encoder type
+    //                         true
+    //                         >
     //     pthash_type;
 
     pthash_type f;
