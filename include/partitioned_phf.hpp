@@ -93,6 +93,10 @@ public:
     template <typename T>
     uint64_t operator()(T const& key) const {
         auto hash = Hasher::hash(key, m_seed);
+        return position(hash);
+    }
+
+    uint64_t position(typename Hasher::hash_type hash) const {
         auto b = m_bucketer.bucket(hash.mix());
         auto const& p = m_partitions[b];
         return p.offset + p.f.position(hash);
