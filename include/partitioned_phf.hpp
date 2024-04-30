@@ -122,6 +122,10 @@ public:
         return m_table_size;
     }
 
+    inline uint64_t seed() const {
+        return m_seed;
+    }
+
     template <typename Visitor>
     void visit(Visitor& visitor) {
         visitor.visit(m_seed);
