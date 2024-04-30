@@ -20,7 +20,7 @@ struct internal_memory_builder_single_phf {
             for (auto attempt = 0; attempt < 10; ++attempt) {
                 actual_config.seed = random_value();
                 try {
-                    return build_from_hashes(hash_generator<RandomAccessIterator>(keys, actual_config.seed),
+                    return build_from_hashes(hash_generator<RandomAccessIterator, hasher_type>(keys, actual_config.seed),
                                              num_keys, actual_config);
                 } catch (seed_runtime_error const& error) {
                     std::cout << "attempt " << attempt + 1 << " failed" << std::endl;
@@ -28,8 +28,8 @@ struct internal_memory_builder_single_phf {
             }
             throw seed_runtime_error();
         }
-        return build_from_hashes(hash_generator<RandomAccessIterator>(keys, config.seed), num_keys,
-                                 config);
+        return build_from_hashes(hash_generator<RandomAccessIterator, hasher_type>(keys, config.seed),
+                                 num_keys, config);
     }
 
     template <typename RandomAccessIterator>
