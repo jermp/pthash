@@ -15,21 +15,21 @@ struct internal_memory_builder_single_phf {
     template <typename RandomAccessIterator>
     build_timings build_from_keys(RandomAccessIterator keys, uint64_t num_keys,
                                   build_configuration const& config) {
+        build_configuration actual_config = config;
         if (config.seed == constants::invalid_seed) {
             for (auto attempt = 0; attempt < 10; ++attempt) {
-                m_seed = random_value();
+                actual_config.seed = random_value();
                 try {
-                    return build_from_hashes(hash_generator<RandomAccessIterator, hasher_type>(keys, m_seed),
-                                             num_keys, config);
+                    return build_from_hashes(hash_generator<RandomAccessIterator>(keys, actual_config.seed),
+                                             num_keys, actual_config);
                 } catch (seed_runtime_error const& error) {
                     std::cout << "attempt " << attempt + 1 << " failed" << std::endl;
                 }
             }
             throw seed_runtime_error();
         }
-        m_seed = config.seed;
-        return build_from_hashes(hash_generator<RandomAccessIterator, hasher_type>(keys, m_seed),
-                                 num_keys, config);
+        return build_from_hashes(hash_generator<RandomAccessIterator>(keys, config.seed), num_keys,
+                                 config);
     }
 
     template <typename RandomAccessIterator>
@@ -54,6 +54,7 @@ struct internal_memory_builder_single_phf {
                                    ? (std::ceil((config.c * num_keys) / std::log2(num_keys)))
                                    : config.num_buckets;
 
+        m_seed = config.seed;
         m_num_keys = num_keys;
         m_table_size = table_size;
         m_num_buckets = num_buckets;
