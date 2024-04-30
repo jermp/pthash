@@ -286,4 +286,25 @@ void fill_free_slots(bit_vector_builder const& taken, uint64_t num_keys, FreeSlo
     assert(next_used_slot == table_size);
 }
 
+template <typename RandomAccessIterator, typename Hasher>
+struct hash_generator {
+    hash_generator(RandomAccessIterator keys, uint64_t seed) : m_iterator(keys), m_seed(seed) {}
+
+    inline auto operator*() {
+        return Hasher::hash(*m_iterator, m_seed);
+    }
+
+    inline void operator++() {
+        ++m_iterator;
+    }
+
+    inline hash_generator operator+(uint64_t offset) const {
+        return hash_generator(m_iterator + offset, m_seed);
+    }
+
+private:
+    RandomAccessIterator m_iterator;
+    uint64_t m_seed;
+};
+
 }  // namespace pthash
