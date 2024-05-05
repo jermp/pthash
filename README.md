@@ -10,6 +10,10 @@ PTHash is a C++ library implementing fast and compact minimal perfect hash funct
 
 Please, cite these papers if you use PTHash.
 
+#### **NEWS**:
+
+- The [PHOBIC](https://github.com/jermp/pthash/tree/phobic) branch of PTHash introduces some algorithmic novelties to build smaller functions and accelerate construction.
+
 #### Features
 - Minimal and Non-Minimal Perfect Hash Functions
 - Space/Time Efficiency: fast lookup within compressed space

@@ -35,12 +35,10 @@ struct single_phf {
         auto start = clock_type::now();
         if (Minimal && !config.minimal_output) {
             throw std::runtime_error(
-                "Cannot build single_phf<..., ..., true> with minimal_output=false"
-            );
+                "Cannot build single_phf<..., ..., true> with minimal_output=false");
         } else if (!Minimal && config.minimal_output) {
             throw std::runtime_error(
-                "Cannot build single_phf<..., ..., false> with minimal_output=true"
-            );
+                "Cannot build single_phf<..., ..., false> with minimal_output=true");
         }
         m_seed = builder.seed();
         m_num_keys = builder.num_keys();
