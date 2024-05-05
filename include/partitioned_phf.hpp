@@ -47,6 +47,15 @@ public:
     template <typename Builder>
     double build(Builder& builder, build_configuration const& config) {
         auto start = clock_type::now();
+        if (Minimal && !config.minimal_output) {
+            throw std::runtime_error(
+                "Cannot build partitioned_phf<..., ..., true> with minimal_output=false"
+            );
+        } else if (!Minimal && config.minimal_output) {
+            throw std::runtime_error(
+                "Cannot build partitioned_phf<..., ..., false> with minimal_output=true"
+            );
+        }
         uint64_t num_partitions = builder.num_partitions();
 
         m_seed = builder.seed();
