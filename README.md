@@ -1,24 +1,23 @@
 [![CodeQL](https://github.com/jermp/pthash/actions/workflows/codeql.yml/badge.svg)](https://github.com/jermp/pthash/actions/workflows/codeql.yml)
 
 PTHash / PHOBIC
-------
+---------------
 
 PTHash is a C++ library implementing fast and compact minimal perfect hash functions as described in the papers
 
-* [*PTHash: Revisiting FCH Minimal Perfect Hashing*](https://dl.acm.org/doi/10.1145/3404835.3462849) [1]
-* [*Parallel and External-Memory Construction of Minimal Perfect Hash Functions with PTHash*](https://ieeexplore.ieee.org/document/10210677) [2]
+* [*PTHash: Revisiting FCH Minimal Perfect Hashing*](https://dl.acm.org/doi/10.1145/3404835.3462849)
+* [*Parallel and External-Memory Construction of Minimal Perfect Hash Functions with PTHash*](https://ieeexplore.ieee.org/document/10210677)
 
-PHOBIC revisits the idea to enable smaller minimal perfect hash functions at the same space and query performance
-as described in the paper
+**PHOBIC** revisits the idea to build smaller functions in less time, for the same query performance as described in the pre-print
 
-* todo
+* [*PHOBIC: Perfect Hashing with
+Optimized Bucket Sizes and Interleaved Coding*](https://arxiv.org/pdf/2404.18497), Stefan Hermann, Hans-Peter Lehmann, Giulio Ermanno Pibiri, Peter Sanders, and Stefan Walzer.
 
 Please, cite these papers if you use PTHash or PHOBIC.
 
 #### Features
 - Minimal and Non-Minimal Perfect Hash Functions
 - Space/Time Efficiency: fast lookup within compressed space
-- External-Memory Scaling
 - Multi-Threaded Construction
 - Configurable: can offer different trade-offs (between construction time, lookup time, and space effectiveness)
 
