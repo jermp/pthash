@@ -133,14 +133,14 @@ struct external_memory_builder_partitioned_phf {
                     std::cout << "writing builders to disk..." << std::endl;
                 }
                 start = clock_type::now();
-                uint64_t id = i - partition_config.num_partitions;
-                for (auto& builder : in_memory_builders) {
-                    m_builders.save(builder, id);
-                    internal_memory_builder_single_phf<hasher_type>().swap(builder);
+                assert(partition_config.num_partitions == in_memory_builders.size());
+                uint64_t id = 0;
+                while (in_memory_builders.size()) {
                     ++id;
+                    m_builders.save(in_memory_builders.back(), i - id);
+                    in_memory_builders.pop_back();
                 }
                 timings.partitioning_seconds += seconds(clock_type::now() - start);
-                assert(id == i);
             };
 
             for (; i != num_partitions; ++i) {
