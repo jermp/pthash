@@ -5,9 +5,11 @@
 namespace pthash {
 
 struct skew_bucketer {
-    skew_bucketer() {
-        init(0);
-    }
+    skew_bucketer()
+        : m_num_dense_buckets(0)
+        , m_num_sparse_buckets(0)
+        , m_M_num_dense_buckets(0)
+        , m_M_num_sparse_buckets(0) {}
 
     void init(uint64_t num_buckets) {
         m_num_dense_buckets = constants::b * num_buckets;
@@ -53,9 +55,7 @@ private:
 };
 
 struct uniform_bucketer {
-    uniform_bucketer() {
-        init(0);
-    }
+    uniform_bucketer() : m_num_buckets(0), m_M_num_buckets(0) {}
 
     void init(uint64_t num_buckets) {
         m_num_buckets = num_buckets;
