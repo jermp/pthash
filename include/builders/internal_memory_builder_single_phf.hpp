@@ -12,6 +12,15 @@ template <typename Hasher>
 struct internal_memory_builder_single_phf {
     typedef Hasher hasher_type;
 
+    internal_memory_builder_single_phf()
+        : m_seed(constants::invalid_seed)
+        , m_num_keys(0)
+        , m_num_buckets(0)
+        , m_table_size(0)
+        , m_bucketer()
+        , m_pilots()
+        , m_free_slots() {}
+
     template <typename RandomAccessIterator>
     build_timings build_from_keys(RandomAccessIterator keys, uint64_t num_keys,
                                   build_configuration const& config) {
