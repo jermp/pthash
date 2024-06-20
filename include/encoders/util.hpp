@@ -88,8 +88,8 @@ inline uint64_t select64(uint64_t x, uint64_t k) {
     return s - 1;
 #else
     uint64_t i = 1ULL << k;
-    asm("pdep %[x], %[mask], %[x]" : [ x ] "+r"(x) : [ mask ] "r"(i));
-    asm("tzcnt %[bit], %[index]" : [ index ] "=r"(i) : [ bit ] "g"(x) : "cc");
+    asm("pdep %[x], %[mask], %[x]" : [x] "+r"(x) : [mask] "r"(i));
+    asm("tzcnt %[bit], %[index]" : [index] "=r"(i) : [bit] "g"(x) : "cc");
     return i;
 #endif
 }
