@@ -33,6 +33,11 @@ struct compact {
     }
 
     template <typename Visitor>
+    void visit(Visitor& visitor) const {
+        visitor.visit(m_values);
+    }
+
+    template <typename Visitor>
     void visit(Visitor& visitor) {
         visitor.visit(m_values);
     }
@@ -98,13 +103,22 @@ struct partitioned_compact {
     }
 
     template <typename Visitor>
+    void visit(Visitor& visitor) const {
+        visit_impl(visitor, *this);
+    }
+
+    template <typename Visitor>
     void visit(Visitor& visitor) {
-        visitor.visit(m_size);
-        visitor.visit(m_bits_per_value);
-        visitor.visit(m_values);
+        visit_impl(visitor, *this);
     }
 
 private:
+    template <typename Visitor, typename T>
+    static void visit_impl(Visitor& visitor, T&& t) {
+        visitor.visit(t.m_size);
+        visitor.visit(t.m_bits_per_value);
+        visitor.visit(t.m_values);
+    }
     uint64_t m_size;
     std::vector<uint32_t> m_bits_per_value;
     bit_vector m_values;
@@ -170,12 +184,21 @@ struct dictionary {
     }
 
     template <typename Visitor>
+    void visit(Visitor& visitor) const {
+        visit_impl(visitor, *this);
+    }
+
+    template <typename Visitor>
     void visit(Visitor& visitor) {
-        visitor.visit(m_ranks);
-        visitor.visit(m_dict);
+        visit_impl(visitor, *this);
     }
 
 private:
+    template <typename Visitor, typename T>
+    static void visit_impl(Visitor& visitor, T&& t) {
+        visitor.visit(t.m_ranks);
+        visitor.visit(t.m_dict);
+    }
     compact_vector m_ranks;
     compact_vector m_dict;
 };
@@ -201,6 +224,11 @@ struct elias_fano {
     uint64_t access(uint64_t i) const {
         assert(i + 1 < m_values.size());
         return m_values.diff(i);
+    }
+
+    template <typename Visitor>
+    void visit(Visitor& visitor) const {
+        visitor.visit(m_values);
     }
 
     template <typename Visitor>
@@ -271,12 +299,22 @@ struct dual {
     }
 
     template <typename Visitor>
+    void visit(Visitor& visitor) const {
+        visit_impl(visitor, *this);
+    }
+
+    template <typename Visitor>
     void visit(Visitor& visitor) {
-        visitor.visit(m_front);
-        visitor.visit(m_back);
+        visit_impl(visitor, *this);
     }
 
 private:
+    template <typename Visitor, typename T>
+    static void visit_impl(Visitor& visitor, T&& t) {
+        visitor.visit(t.m_front);
+        visitor.visit(t.m_back);
+    }
+
     Front m_front;
     Back m_back;
 };

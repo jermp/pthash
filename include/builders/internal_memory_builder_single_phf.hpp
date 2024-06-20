@@ -175,14 +175,13 @@ struct internal_memory_builder_single_phf {
     }
 
     template <typename Visitor>
+    void visit(Visitor& visitor) const {
+        visit_impl(visitor, *this);
+    }
+
+    template <typename Visitor>
     void visit(Visitor& visitor) {
-        visitor.visit(m_seed);
-        visitor.visit(m_num_keys);
-        visitor.visit(m_num_buckets);
-        visitor.visit(m_table_size);
-        visitor.visit(m_bucketer);
-        visitor.visit(m_pilots);
-        visitor.visit(m_free_slots);
+        visit_impl(visitor, *this);
     }
 
     static uint64_t estimate_num_bytes_for_construction(uint64_t num_keys,
@@ -208,6 +207,17 @@ struct internal_memory_builder_single_phf {
     }
 
 private:
+    template <typename Visitor, typename T>
+    static void visit_impl(Visitor& visitor, T&& t) {
+        visitor.visit(t.m_seed);
+        visitor.visit(t.m_num_keys);
+        visitor.visit(t.m_num_buckets);
+        visitor.visit(t.m_table_size);
+        visitor.visit(t.m_bucketer);
+        visitor.visit(t.m_pilots);
+        visitor.visit(t.m_free_slots);
+    }
+
     uint64_t m_seed;
     uint64_t m_num_keys;
     uint64_t m_num_buckets;
