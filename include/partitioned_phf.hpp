@@ -110,7 +110,10 @@ public:
     }
 
     size_t num_bits_for_pilots() const {
-        size_t bits = 8 * (sizeof(m_seed) + sizeof(m_num_keys)) + m_bucketer.num_bits();
+        size_t bits = 8 * (sizeof(m_seed) + sizeof(m_num_keys) + sizeof(m_table_size) +
+                           sizeof(size_t)  // for std::vector::size
+                           ) +
+                      m_bucketer.num_bits();
         for (auto const& p : m_partitions) bits += 8 * sizeof(p.offset) + p.f.num_bits_for_pilots();
         return bits;
     }
