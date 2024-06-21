@@ -13,13 +13,24 @@ struct partitioned_phf {
 private:
     struct partition {
         template <typename Visitor>
+        void visit(Visitor& visitor) const {
+            visit_impl(visitor, *this);
+        }
+
+        template <typename Visitor>
         void visit(Visitor& visitor) {
-            visitor.visit(offset);
-            visitor.visit(f);
+            visit_impl(visitor, *this);
         }
 
         uint64_t offset;
         single_phf<Hasher, Encoder, Minimal> f;
+
+    private:
+        template <typename Visitor, typename T>
+        static void visit_impl(Visitor& visitor, T&& t) {
+            visitor.visit(t.offset);
+            visitor.visit(t.f);
+        }
     };
 
 public:
@@ -141,15 +152,25 @@ public:
     }
 
     template <typename Visitor>
+    void visit(Visitor& visitor) const {
+        visit_impl(visitor, *this);
+    }
+
+    template <typename Visitor>
     void visit(Visitor& visitor) {
-        visitor.visit(m_seed);
-        visitor.visit(m_num_keys);
-        visitor.visit(m_table_size);
-        visitor.visit(m_bucketer);
-        visitor.visit(m_partitions);
+        visit_impl(visitor, *this);
     }
 
 private:
+    template <typename Visitor, typename T>
+    static void visit_impl(Visitor& visitor, T&& t) {
+        visitor.visit(t.m_seed);
+        visitor.visit(t.m_num_keys);
+        visitor.visit(t.m_table_size);
+        visitor.visit(t.m_bucketer);
+        visitor.visit(t.m_partitions);
+    }
+
     uint64_t m_seed;
     uint64_t m_num_keys;
     uint64_t m_table_size;

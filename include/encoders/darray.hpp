@@ -86,14 +86,24 @@ struct darray {
     }
 
     template <typename Visitor>
+    void visit(Visitor& visitor) const {
+        visit_impl(visitor, *this);
+    }
+
+    template <typename Visitor>
     void visit(Visitor& visitor) {
-        visitor.visit(m_positions);
-        visitor.visit(m_block_inventory);
-        visitor.visit(m_subblock_inventory);
-        visitor.visit(m_overflow_positions);
+        visit_impl(visitor, *this);
     }
 
 protected:
+    template <typename Visitor, typename T>
+    static void visit_impl(Visitor& visitor, T&& t) {
+        visitor.visit(t.m_positions);
+        visitor.visit(t.m_block_inventory);
+        visitor.visit(t.m_subblock_inventory);
+        visitor.visit(t.m_overflow_positions);
+    }
+
     static void flush_cur_block(std::vector<uint64_t>& cur_block_positions,
                                 std::vector<int64_t>& block_inventory,
                                 std::vector<uint16_t>& subblock_inventory,

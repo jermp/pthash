@@ -42,14 +42,24 @@ struct skew_bucketer {
     }
 
     template <typename Visitor>
+    void visit(Visitor& visitor) const {
+        visit_impl(visitor, *this);
+    }
+
+    template <typename Visitor>
     void visit(Visitor& visitor) {
-        visitor.visit(m_num_dense_buckets);
-        visitor.visit(m_num_sparse_buckets);
-        visitor.visit(m_M_num_dense_buckets);
-        visitor.visit(m_M_num_sparse_buckets);
+        visit_impl(visitor, *this);
     }
 
 private:
+    template <typename Visitor, typename T>
+    static void visit_impl(Visitor& visitor, T&& t) {
+        visitor.visit(t.m_num_dense_buckets);
+        visitor.visit(t.m_num_sparse_buckets);
+        visitor.visit(t.m_M_num_dense_buckets);
+        visitor.visit(t.m_M_num_sparse_buckets);
+    }
+
     uint64_t m_num_dense_buckets, m_num_sparse_buckets;
     __uint128_t m_M_num_dense_buckets, m_M_num_sparse_buckets;
 };
@@ -75,12 +85,21 @@ struct uniform_bucketer {
     }
 
     template <typename Visitor>
+    void visit(Visitor& visitor) const {
+        visit_impl(visitor, *this);
+    }
+
+    template <typename Visitor>
     void visit(Visitor& visitor) {
-        visitor.visit(m_num_buckets);
-        visitor.visit(m_M_num_buckets);
+        visit_impl(visitor, *this);
     }
 
 private:
+    template <typename Visitor, typename T>
+    static void visit_impl(Visitor& visitor, T&& t) {
+        visitor.visit(t.m_num_buckets);
+        visitor.visit(t.m_M_num_buckets);
+    }
     uint64_t m_num_buckets;
     __uint128_t m_M_num_buckets;
 };
