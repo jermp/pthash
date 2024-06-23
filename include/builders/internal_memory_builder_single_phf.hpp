@@ -45,7 +45,7 @@ struct internal_memory_builder_single_phf {
     template <typename RandomAccessIterator>
     build_timings build_from_hashes(RandomAccessIterator hashes, uint64_t num_keys,
                                     build_configuration const& config) {
-        assert(num_keys > 1);
+        assert(num_keys > 0);
         util::check_hash_collision_probability<Hasher>(num_keys);
 
         if (config.alpha == 0 or config.alpha > 1.0) {
@@ -60,9 +60,10 @@ struct internal_memory_builder_single_phf {
 
         uint64_t table_size = static_cast<double>(num_keys) / config.alpha;
         if ((table_size & (table_size - 1)) == 0) table_size += 1;
-        uint64_t num_buckets = (config.num_buckets == constants::invalid_num_buckets)
-                                   ? (std::ceil((config.c * num_keys) / std::log2(num_keys)))
-                                   : config.num_buckets;
+        uint64_t num_buckets =
+            (config.num_buckets == constants::invalid_num_buckets)
+                ? (std::ceil((config.c * num_keys) / (num_keys > 1 ? std::log2(num_keys) : 1)))
+                : config.num_buckets;
 
         m_seed = config.seed;
         m_num_keys = num_keys;
@@ -105,7 +106,7 @@ struct internal_memory_builder_single_phf {
             std::cout << " == max bucket size = " << max_bucket_size << std::endl;
 
             // avg. bucket size
-            double lambda = std::log2(num_keys) / config.c;
+            double lambda = (num_keys > 1 ? std::log2(num_keys) : 1) / config.c;
             // avg. bucket size in first p2=b*m buckets containing p1=a*n keys
             double lambda_1 = constants::a / constants::b * lambda;
             // avg. bucket size in the other m-p2=(1-b)*m buckets containing n-p1=(1-a)*n keys
@@ -188,9 +189,10 @@ struct internal_memory_builder_single_phf {
                                                         build_configuration const& config) {
         uint64_t table_size = static_cast<double>(num_keys) / config.alpha;
         if ((table_size & (table_size - 1)) == 0) table_size += 1;
-        uint64_t num_buckets = (config.num_buckets == constants::invalid_num_buckets)
-                                   ? (std::ceil((config.c * num_keys) / std::log2(num_keys)))
-                                   : config.num_buckets;
+        uint64_t num_buckets =
+            (config.num_buckets == constants::invalid_num_buckets)
+                ? (std::ceil((config.c * num_keys) / (num_keys > 1 ? std::log2(num_keys) : 1)))
+                : config.num_buckets;
 
         uint64_t num_bytes_for_map = num_keys * sizeof(bucket_payload_pair)          // pairs
                                      + (num_keys + num_buckets) * sizeof(uint64_t);  // buckets

@@ -21,7 +21,7 @@ struct internal_memory_builder_partitioned_phf {
     template <typename Iterator>
     build_timings build_from_hashes(Iterator hashes, uint64_t num_keys,
                                     build_configuration const& config) {
-        assert(num_keys > 1);
+        assert(num_keys > 0);
         util::check_hash_collision_probability<Hasher>(num_keys);
 
         if (config.num_partitions == 0) {
@@ -60,22 +60,17 @@ struct internal_memory_builder_partitioned_phf {
 
         for (uint64_t i = 0, cumulative_size = 0; i != num_partitions; ++i) {
             auto const& partition = partitions[i];
-
             uint64_t table_size = static_cast<double>(partition.size()) / config.alpha;
             if ((table_size & (table_size - 1)) == 0) table_size += 1;
             m_table_size += table_size;
-
-            if (partition.size() <= 1) {
-                throw std::runtime_error(
-                    "each partition must contain more than one key: use less partitions");
-            }
             m_offsets[i] = cumulative_size;
             cumulative_size += config.minimal_output ? partition.size() : table_size;
         }
 
         auto partition_config = config;
         partition_config.seed = m_seed;
-        uint64_t num_buckets_single_phf = std::ceil((config.c * num_keys) / std::log2(num_keys));
+        uint64_t num_buckets_single_phf =
+            std::ceil((config.c * num_keys) / (num_keys > 1 ? std::log2(num_keys) : 1));
         partition_config.num_buckets = static_cast<double>(num_buckets_single_phf) / num_partitions;
         partition_config.verbose_output = false;
         partition_config.num_threads = 1;
