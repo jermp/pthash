@@ -336,7 +336,7 @@ private:
     void map_parallel(RandomAccessIterator hashes, uint64_t num_keys,
                       std::vector<pairs_t>& pairs_blocks, build_configuration const& config) const {
         pairs_blocks.resize(config.num_threads);
-        uint64_t num_keys_per_thread = (num_keys + config.num_threads - 1) / config.num_threads;
+        uint64_t num_keys_per_thread = num_keys / config.num_threads;
 
         auto exe = [&](uint64_t tid) {
             auto& local_pairs = pairs_blocks[tid];
