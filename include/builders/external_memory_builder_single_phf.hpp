@@ -30,7 +30,7 @@ struct external_memory_builder_single_phf {
     template <typename Iterator>
     build_timings build_from_keys(Iterator keys, uint64_t num_keys,
                                   build_configuration const& config) {
-        assert(num_keys > 1);
+        assert(num_keys > 0);
         util::check_hash_collision_probability<Hasher>(num_keys);
 
         if (config.alpha == 0 or config.alpha > 1.0) {
@@ -40,7 +40,8 @@ struct external_memory_builder_single_phf {
         build_timings time;
         uint64_t table_size = static_cast<double>(num_keys) / config.alpha;
         if ((table_size & (table_size - 1)) == 0) table_size += 1;
-        uint64_t num_buckets = std::ceil((config.c * num_keys) / std::log2(num_keys));
+        const uint64_t num_buckets =
+            std::ceil((config.c * num_keys) / (num_keys > 1 ? std::log2(num_keys) : 1));
 
 #ifndef DPTHASH_ENABLE_LARGE_BUCKET_ID_TYPE
         if (num_buckets >= (1ULL << (sizeof(bucket_id_type) * 8))) {
@@ -58,7 +59,6 @@ struct external_memory_builder_single_phf {
         m_bucketer.init(num_buckets);
 
         uint64_t ram = config.ram;
-
         uint64_t bitmap_taken_bytes = 8 * ((table_size + 63) / 64);
         uint64_t hashed_pilots_cache_bytes = search_cache_size * sizeof(uint64_t);
         if (bitmap_taken_bytes + hashed_pilots_cache_bytes >= ram) {
@@ -682,13 +682,15 @@ private:
 
         uint64_t ram = config.ram;
         uint64_t ram_parallel_merge = 0;
-        if (config.num_threads > 1) {
+        uint64_t num_threads = config.num_threads;
+        if (num_threads > num_keys) num_threads = num_keys;
+        if (num_threads > 1) {
             ram_parallel_merge = ram * 0.01;
             assert(ram_parallel_merge >= MAX_BUCKET_SIZE * sizeof(bucket_payload_pair));
         }
 
         auto writer = tfm.get_multifile_pairs_writer(num_keys, ram - ram_parallel_merge,
-                                                     config.num_threads, ram_parallel_merge);
+                                                     num_threads, ram_parallel_merge);
         try {
             for (uint64_t i = 0; i != num_keys; ++i, ++keys) {
                 auto const& key = *keys;

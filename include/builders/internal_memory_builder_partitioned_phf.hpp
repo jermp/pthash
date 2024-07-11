@@ -31,7 +31,14 @@ struct internal_memory_builder_partitioned_phf {
         auto start = clock_type::now();
 
         build_timings timings;
+
         uint64_t num_partitions = config.num_partitions;
+        double average_partition_size = static_cast<double>(num_keys) / num_partitions;
+        if (average_partition_size < constants::min_partition_size and num_partitions > 1) {
+            num_partitions = 1;
+            average_partition_size = 1.0;
+        }
+
         if (config.verbose_output) std::cout << "num_partitions " << num_partitions << std::endl;
 
         m_seed = config.seed;
@@ -42,10 +49,6 @@ struct internal_memory_builder_partitioned_phf {
         m_offsets.resize(num_partitions);
         m_builders.resize(num_partitions);
 
-        double average_partition_size = static_cast<double>(num_keys) / num_partitions;
-        if (average_partition_size < constants::min_partition_size and num_partitions > 1) {
-            throw std::runtime_error("average partition size is too small: use less partitions");
-        }
         std::vector<std::vector<typename hasher_type::hash_type>> partitions(num_partitions);
         for (auto& partition : partitions) partition.reserve(1.5 * average_partition_size);
 
@@ -68,11 +71,12 @@ struct internal_memory_builder_partitioned_phf {
         }
 
         auto partition_config = config;
+        partition_config.num_partitions = num_partitions;
         partition_config.seed = m_seed;
-        uint64_t num_buckets_single_phf =
+        const uint64_t num_buckets_single_phf =
             std::ceil((config.c * num_keys) / (num_keys > 1 ? std::log2(num_keys) : 1));
         partition_config.num_buckets = static_cast<double>(num_buckets_single_phf) / num_partitions;
-        partition_config.verbose_output = false;
+        partition_config.verbose_output = true;
         partition_config.num_threads = 1;
 
         timings.partitioning_seconds = seconds(clock_type::now() - start);
