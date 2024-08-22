@@ -64,7 +64,7 @@ void test_internal_memory_partitioned_mphf(Iterator keys, uint64_t num_keys) {
 int main() {
     static const uint64_t universe = 1000000;
     for (int i = 0; i != 5; ++i) {
-        uint64_t num_keys = universe;  // random_value() % universe;
+        uint64_t num_keys = random_value() % universe;
         if (num_keys < 2) num_keys = 2;
         std::vector<uint64_t> keys = distinct_keys<uint64_t>(num_keys, random_value());
         assert(keys.size() == num_keys);

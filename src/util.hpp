@@ -172,7 +172,7 @@ bool check(Iterator keys, Function const& f) {
         }
     } else {
         uint64_t m = f.table_size();
-        bit_vector_builder taken(m);
+        bits::bit_vector::builder taken(m);
         for (uint64_t i = 0; i != n; ++i) {
             auto const& key = *keys;
             uint64_t p = f(key);
