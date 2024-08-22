@@ -47,7 +47,7 @@ struct single_phf {
         m_bucketer = builder.bucketer();
         m_pilots.encode(builder.pilots().data(), m_bucketer.num_buckets());
         if (Minimal and m_num_keys < m_table_size) {
-            m_free_slots.encode(builder.free_slots().data(), m_table_size - m_num_keys);
+            m_free_slots.encode(builder.free_slots().begin(), m_table_size - m_num_keys);
         }
         auto stop = clock_type::now();
         return seconds(stop - start);
@@ -71,16 +71,16 @@ struct single_phf {
         return p;
     }
 
-    size_t num_bits_for_pilots() const {
+    uint64_t num_bits_for_pilots() const {
         return 8 * (sizeof(m_seed) + sizeof(m_num_keys) + sizeof(m_table_size) + sizeof(m_M)) +
                m_bucketer.num_bits() + m_pilots.num_bits();
     }
 
-    size_t num_bits_for_mapper() const {
-        return m_free_slots.num_bits();
+    uint64_t num_bits_for_mapper() const {
+        return m_free_slots.num_bytes() * 8;
     }
 
-    size_t num_bits() const {
+    uint64_t num_bits() const {
         return num_bits_for_pilots() + num_bits_for_mapper();
     }
 
@@ -123,7 +123,7 @@ private:
     __uint128_t m_M;
     skew_bucketer m_bucketer;
     Encoder m_pilots;
-    ef_sequence<false> m_free_slots;
+    bits::elias_fano<false, false> m_free_slots;
 };
 
 }  // namespace pthash

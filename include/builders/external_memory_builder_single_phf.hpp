@@ -130,7 +130,7 @@ struct external_memory_builder_single_phf {
 
         try {
             auto start = clock_type::now();
-            bit_vector_builder taken(m_table_size);
+            bits::bit_vector::builder taken(m_table_size);
 
             {  // search
                 auto buckets_iterator = tfm.buckets_iterator();

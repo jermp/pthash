@@ -122,14 +122,14 @@ struct internal_memory_builder_single_phf {
         {
             m_pilots.resize(num_buckets);
             std::fill(m_pilots.begin(), m_pilots.end(), 0);
-            bit_vector_builder taken(m_table_size);
+            bits::bit_vector::builder taken(m_table_size);
             uint64_t num_non_empty_buckets = buckets.num_buckets();
             pilots_wrapper_t pilots_wrapper(m_pilots);
             search(m_num_keys, m_num_buckets, num_non_empty_buckets, m_seed, config,
                    buckets_iterator, taken, pilots_wrapper);
             if (config.minimal_output) {
                 m_free_slots.clear();
-                m_free_slots.reserve(taken.size() - num_keys);
+                m_free_slots.reserve(taken.num_bits() - num_keys);
                 fill_free_slots(taken, num_keys, m_free_slots);
             }
         }

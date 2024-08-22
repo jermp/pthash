@@ -120,22 +120,22 @@ public:
         return p.offset + p.f.position(hash);
     }
 
-    size_t num_bits_for_pilots() const {
-        size_t bits = 8 * (sizeof(m_seed) + sizeof(m_num_keys) + sizeof(m_table_size) +
-                           sizeof(size_t)  // for std::vector::size
-                           ) +
-                      m_bucketer.num_bits();
+    uint64_t num_bits_for_pilots() const {
+        uint64_t bits = 8 * (sizeof(m_seed) + sizeof(m_num_keys) + sizeof(m_table_size) +
+                             sizeof(uint64_t)  // for std::vector::size
+                             ) +
+                        m_bucketer.num_bits();
         for (auto const& p : m_partitions) bits += 8 * sizeof(p.offset) + p.f.num_bits_for_pilots();
         return bits;
     }
 
-    size_t num_bits_for_mapper() const {
-        size_t bits = 0;
+    uint64_t num_bits_for_mapper() const {
+        uint64_t bits = 0;
         for (auto const& p : m_partitions) bits += p.f.num_bits_for_mapper();
         return bits;
     }
 
-    size_t num_bits() const {
+    uint64_t num_bits() const {
         return num_bits_for_pilots() + num_bits_for_mapper();
     }
 

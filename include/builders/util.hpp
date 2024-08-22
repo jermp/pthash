@@ -252,8 +252,10 @@ void merge(std::vector<Pairs> const& pairs_blocks, Merger& merger, bool verbose)
 }
 
 template <typename FreeSlots>
-void fill_free_slots(bit_vector_builder const& taken, uint64_t num_keys, FreeSlots& free_slots) {
-    uint64_t table_size = taken.size();
+void fill_free_slots(bits::bit_vector::builder const& taken,    //
+                     uint64_t num_keys, FreeSlots& free_slots)  //
+{
+    const uint64_t table_size = taken.num_bits();
     if (table_size <= num_keys) return;
 
     uint64_t next_used_slot = num_keys;

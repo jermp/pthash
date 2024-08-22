@@ -47,8 +47,8 @@ if(NOT TARGET PTHASH)
     endif()
   endif()
 
-  add_subdirectory(external/essentials)
-  target_link_libraries(PTHASH INTERFACE ESSENTIALS)
+  add_subdirectory(external/bits)
+  target_link_libraries(PTHASH INTERFACE BITS)
 endif()
 
 # Only add benchmarks and tests when compiling PTHash itself, not when added as a dependency
