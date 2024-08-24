@@ -143,7 +143,7 @@ struct dense_interleaved {
 
     template <typename Visitor>
     void visit(Visitor& visitor) {
-        for (auto& e : m_encoders) e.visit(visitor);
+        visitor.visit(m_encoders);
     }
 
 private:
