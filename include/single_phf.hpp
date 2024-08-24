@@ -1,9 +1,9 @@
 #pragma once
 
-#include "utils/bucketers.hpp"
-#include "builders/util.hpp"
-#include "builders/internal_memory_builder_single_phf.hpp"
-#include "builders/external_memory_builder_single_phf.hpp"
+#include "include/utils/bucketers.hpp"
+#include "include/builders/util.hpp"
+#include "include/builders/internal_memory_builder_single_phf.hpp"
+#include "include/builders/external_memory_builder_single_phf.hpp"
 
 namespace pthash {
 
@@ -31,16 +31,23 @@ struct single_phf {
     }
 
     template <typename Builder>
-    double build(Builder const& builder, build_configuration const&) {
+    double build(Builder const& builder, build_configuration const& config) {
         auto start = clock_type::now();
+        if (Minimal && !config.minimal_output) {
+            throw std::runtime_error(
+                "Cannot build single_phf<..., ..., true> with minimal_output=false");
+        } else if (!Minimal && config.minimal_output) {
+            throw std::runtime_error(
+                "Cannot build single_phf<..., ..., false> with minimal_output=true");
+        }
         m_seed = builder.seed();
         m_num_keys = builder.num_keys();
         m_table_size = builder.table_size();
         m_M = fastmod::computeM_u64(m_table_size);
         m_bucketer = builder.bucketer();
         m_pilots.encode(builder.pilots().data(), m_bucketer.num_buckets());
-        if constexpr (Minimal) {
-            m_free_slots.encode(builder.free_slots().data(), m_table_size - m_num_keys);
+        if (Minimal and m_num_keys < m_table_size) {
+            m_free_slots.encode(builder.free_slots().begin(), m_table_size - m_num_keys);
         }
         auto stop = clock_type::now();
         return seconds(stop - start);
@@ -64,16 +71,16 @@ struct single_phf {
         return p;
     }
 
-    size_t num_bits_for_pilots() const {
+    uint64_t num_bits_for_pilots() const {
         return 8 * (sizeof(m_seed) + sizeof(m_num_keys) + sizeof(m_table_size) + sizeof(m_M)) +
                m_bucketer.num_bits() + m_pilots.num_bits();
     }
 
-    size_t num_bits_for_mapper() const {
-        return m_free_slots.num_bits();
+    uint64_t num_bits_for_mapper() const {
+        return m_free_slots.num_bytes() * 8;
     }
 
-    size_t num_bits() const {
+    uint64_t num_bits() const {
         return num_bits_for_pilots() + num_bits_for_mapper();
     }
 
@@ -85,25 +92,38 @@ struct single_phf {
         return m_table_size;
     }
 
+    inline uint64_t seed() const {
+        return m_seed;
+    }
+
+    template <typename Visitor>
+    void visit(Visitor& visitor) const {
+        visit_impl(visitor, *this);
+    }
+
     template <typename Visitor>
     void visit(Visitor& visitor) {
-        visitor.visit(m_seed);
-        visitor.visit(m_num_keys);
-        visitor.visit(m_table_size);
-        visitor.visit(m_M);
-        visitor.visit(m_bucketer);
-        visitor.visit(m_pilots);
-        visitor.visit(m_free_slots);
+        visit_impl(visitor, *this);
     }
 
 private:
+    template <typename Visitor, typename T>
+    static void visit_impl(Visitor& visitor, T&& t) {
+        visitor.visit(t.m_seed);
+        visitor.visit(t.m_num_keys);
+        visitor.visit(t.m_table_size);
+        visitor.visit(t.m_M);
+        visitor.visit(t.m_bucketer);
+        visitor.visit(t.m_pilots);
+        visitor.visit(t.m_free_slots);
+    }
     uint64_t m_seed;
     uint64_t m_num_keys;
     uint64_t m_table_size;
     __uint128_t m_M;
     skew_bucketer m_bucketer;
     Encoder m_pilots;
-    ef_sequence<false> m_free_slots;
+    bits::elias_fano<false, false> m_free_slots;
 };
 
 }  // namespace pthash

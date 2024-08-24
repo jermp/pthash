@@ -1,21 +1,25 @@
 #pragma once
 
-#include "util.hpp"
+#include "include/utils/util.hpp"
 
 namespace pthash {
 
 struct skew_bucketer {
-    skew_bucketer() {}
+    skew_bucketer()
+        : m_num_dense_buckets(0)
+        , m_num_sparse_buckets(0)
+        , m_M_num_dense_buckets(0)
+        , m_M_num_sparse_buckets(0) {}
 
     void init(uint64_t num_buckets) {
-        m_num_dense_buckets = 0.3 * num_buckets;
+        m_num_dense_buckets = constants::b * num_buckets;
         m_num_sparse_buckets = num_buckets - m_num_dense_buckets;
         m_M_num_dense_buckets = fastmod::computeM_u64(m_num_dense_buckets);
         m_M_num_sparse_buckets = fastmod::computeM_u64(m_num_sparse_buckets);
     }
 
     inline uint64_t bucket(uint64_t hash) const {
-        static const uint64_t T = 0.6 * UINT64_MAX;
+        static const uint64_t T = constants::a * UINT64_MAX;
         return (hash < T) ? fastmod::fastmod_u64(hash, m_M_num_dense_buckets, m_num_dense_buckets)
                           : m_num_dense_buckets + fastmod::fastmod_u64(hash, m_M_num_sparse_buckets,
                                                                        m_num_sparse_buckets);
@@ -38,20 +42,30 @@ struct skew_bucketer {
     }
 
     template <typename Visitor>
+    void visit(Visitor& visitor) const {
+        visit_impl(visitor, *this);
+    }
+
+    template <typename Visitor>
     void visit(Visitor& visitor) {
-        visitor.visit(m_num_dense_buckets);
-        visitor.visit(m_num_sparse_buckets);
-        visitor.visit(m_M_num_dense_buckets);
-        visitor.visit(m_M_num_sparse_buckets);
+        visit_impl(visitor, *this);
     }
 
 private:
+    template <typename Visitor, typename T>
+    static void visit_impl(Visitor& visitor, T&& t) {
+        visitor.visit(t.m_num_dense_buckets);
+        visitor.visit(t.m_num_sparse_buckets);
+        visitor.visit(t.m_M_num_dense_buckets);
+        visitor.visit(t.m_M_num_sparse_buckets);
+    }
+
     uint64_t m_num_dense_buckets, m_num_sparse_buckets;
     __uint128_t m_M_num_dense_buckets, m_M_num_sparse_buckets;
 };
 
 struct uniform_bucketer {
-    uniform_bucketer() {}
+    uniform_bucketer() : m_num_buckets(0), m_M_num_buckets(0) {}
 
     void init(uint64_t num_buckets) {
         m_num_buckets = num_buckets;
@@ -71,12 +85,21 @@ struct uniform_bucketer {
     }
 
     template <typename Visitor>
+    void visit(Visitor& visitor) const {
+        visit_impl(visitor, *this);
+    }
+
+    template <typename Visitor>
     void visit(Visitor& visitor) {
-        visitor.visit(m_num_buckets);
-        visitor.visit(m_M_num_buckets);
+        visit_impl(visitor, *this);
     }
 
 private:
+    template <typename Visitor, typename T>
+    static void visit_impl(Visitor& visitor, T&& t) {
+        visitor.visit(t.m_num_buckets);
+        visitor.visit(t.m_M_num_buckets);
+    }
     uint64_t m_num_buckets;
     __uint128_t m_M_num_buckets;
 };

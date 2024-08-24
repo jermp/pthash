@@ -6,9 +6,13 @@ PTHash
 PTHash is a C++ library implementing fast and compact minimal perfect hash functions as described in the papers
 
 * [*PTHash: Revisiting FCH Minimal Perfect Hashing*](https://dl.acm.org/doi/10.1145/3404835.3462849) [1]
-* [*Parallel and External-Memory Construction of Minimal Perfect Hash Functions with PTHash*](https://arxiv.org/abs/2106.02350) [2]
+* [*Parallel and External-Memory Construction of Minimal Perfect Hash Functions with PTHash*](https://ieeexplore.ieee.org/document/10210677) [2]
 
 Please, cite these papers if you use PTHash.
+
+#### **NEWS**:
+
+- The [PHOBIC](https://github.com/jermp/pthash/tree/phobic) branch of PTHash introduces some algorithmic novelties to build smaller functions and accelerate construction.
 
 #### Features
 - Minimal and Non-Minimal Perfect Hash Functions
@@ -91,12 +95,20 @@ you can compile with
 
 	cmake .. -D PTHASH_ENABLE_ALL_ENCODERS=On
 
+### Enable Large Bucket-Id Type
+By default, PTHash assumes there are less than $2^{32}$ buckets, hence 32-bit integers are used
+for bucket ids. To overcome this, you can either lower the value of `c` or recompile with
+
+    cmake .. -D PTHASH_ENABLE_LARGE_BUCKET_ID_TYPE=On
+
+to use 64-bit integers for bucket ids.
+
 Quick Start
 -----
 
 For a quick start, see the source file `src/example.cpp` (reported below).
 The example shows how to setup a simple build configuration
-for PTHash (parameters, bash hasher, and encoder).
+for PTHash (parameters, base hasher, and encoder).
 
 After compilation, run this example with
 
@@ -183,59 +195,60 @@ Running the command
 	./build --help
 
 shows the usage of the driver program, as reported below.
-
-    Usage: ./build [-h,--help] [-n num_keys] [-c c] [-a alpha] [-e encoder_type] [-p num_partitions] [-s seed] [-t num_threads] [-i input_filename] [-o output_filename] [-d tmp_dir] [-m ram] [--minimal] [--external] [--verbose] [--check] [--lookup]
-
-     [-n num_keys]
-        REQUIRED: The size of the input.
-
-     [-c c]
-        REQUIRED: A constant that trades construction speed for space effectiveness. A reasonable value lies between 3.0 and 10.0.
-
-     [-a alpha]
-        REQUIRED: The table load factor. It must be a quantity > 0 and <= 1.
-
-     [-e encoder_type]
-        REQUIRED: The encoder type. See include/encoders/encoders.hpp for a list of available types.
-
-     [-p num_partitions]
-        Number of partitions.
-
-     [-s seed]
-        Seed to use for construction.
-
-     [-t num_threads]
-        Number of threads to use for construction.
-
-     [-i input_filename]
-        A string input file name. If this is not provided, then num_keys 64-bit random keys will be used as input instead.
-
-     [-o output_filename]
-        Output file name where the function will be serialized.
-
-     [-d tmp_dir]
-        Temporary directory used for building in external memory. Default is directory '.'.
-
-     [-m ram]
-        Number of Giga bytes of RAM to use for construction in external memory.
-
-     [--minimal]
-        Build a minimal PHF.
-
-     [--external]
-        Build the function in external memory.
-
-     [--verbose]
-        Verbose output during construction.
-
-     [--check]
-        Check correctness after construction.
-
-     [--lookup]
-        Measure average lookup time after construction.
-
-     [-h,--help]
-        Print this help text and silently exits.
+	
+	Usage: ./build [-h,--help] [-n num_keys] [-c c] [-a alpha] [-e encoder_type] [-p num_partitions] [-s seed] [-t num_threads] [-i input_filename] [-o output_filename] [-d tmp_dir] [-m ram] [--minimal] [--external] [--verbose] [--check] [--lookup]
+	
+	[-n num_keys]
+	REQUIRED: The size of the input.
+	
+	[-c c]
+	REQUIRED: A constant that trades construction speed for space effectiveness. A reasonable value lies between 3.0 and 10.0.
+	
+	[-a alpha]
+	REQUIRED: The table load factor. It must be a quantity > 0 and <= 1.
+	
+	[-e encoder_type]
+	REQUIRED: The encoder type. Possibile values are: 'compact', 'partitioned_compact', 'compact_compact', 'dictionary', 'dictionary_dictionary', 'elias_fano', 'dictionary_elias_fano', 'sdc', 'all'.
+	The 'all' type will just benchmark all encoders. (Useful for benchmarking purposes.)
+	
+	[-p num_partitions]
+	Number of partitions.
+	
+	[-s seed]
+	Seed to use for construction.
+	
+	[-t num_threads]
+	Number of threads to use for construction.
+	
+	[-i input_filename]
+	A string input file name. If this is not provided, then num_keys 64-bit random keys will be used as input instead.If, instead, the filename is '-', then input is read from standard input.
+	
+	[-o output_filename]
+	Output file name where the function will be serialized.
+	
+	[-d tmp_dir]
+	Temporary directory used for building in external memory. Default is directory '.'.
+	
+	[-m ram]
+	Number of Giga bytes of RAM to use for construction in external memory.
+	
+	[--minimal]
+	Build a minimal PHF.
+	
+	[--external]
+	Build the function in external memory.
+	
+	[--verbose]
+	Verbose output during construction.
+	
+	[--check]
+	Check correctness after construction.
+	
+	[--lookup]
+	Measure average lookup time after construction.
+	
+	[-h,--help]
+	Print this help text and silently exits.
 
 #### Example 1
 
@@ -300,7 +313,28 @@ commands to use 4 parallel threads.
 (Also consult our second paper [2] for more information about parallelism.)
 
 ### Building Perfect Hash Functions (not Minimal)
-Just do not specify the `--minimal` flag when using the `build` utility.
+Just do not specify the `--minimal` flag when using the `build` tool.
+
+### Reading Keys from Standard Input
+You can make the `build` tool read the keys from stardard input using bash pipelining (`|`)
+in combination with option `-i -`. This is very useful when building keys from compressed files.
+
+Some examples below.
+
+	for i in $(seq 1 1000000) ; do echo $i ; done > foo.txt
+	cat foo.txt | ./build --minimal -c 5 -a 0.94 -e dictionary_dictionary -n 1000000 -m 1 -i - -o foo.mph --verbose --external
+
+	gzip foo.txt
+	zcat foo.txt.gz | ./build --minimal -c 5 -a 0.94 -e dictionary_dictionary -n 1000000 -m 1 -i - -o foo.mph --verbose --external
+
+	gunzip foo.txt.gz
+	zstd foo.txt
+	zstdcat foo.txt.zst | ./build --minimal -c 5 -a 0.94 -e dictionary_dictionary -n 1000000 -m 1 -i - -o foo.mph --verbose --external
+
+**Note**: you may need to write `zcat < foo.txt.gz | (...)` on Mac OSX.
+
+One caveat of this approach is that is **not** possible to use `--check` nor `--lookup` because these two options
+need to re-iterate over the keys from the stream.
 
 An Example Benchmark
 -----
@@ -374,4 +408,4 @@ References
 -----
 * [1] Giulio Ermanno Pibiri and Roberto Trani. [*"PTHash: Revisiting FCH Minimal Perfect Hashing"*](https://dl.acm.org/doi/10.1145/3404835.3462849). In Proceedings of the 44th International
 Conference on Research and Development in Information Retrieval (SIGIR). 2021.
-* [2] Giulio Ermanno Pibiri and Roberto Trani. [*"Parallel and External-Memory Construction of Minimal Perfect Hash Functions with PTHash"*](https://arxiv.org/abs/2106.02350). ArXiv. 2021.
+* [2] Giulio Ermanno Pibiri and Roberto Trani. [*"Parallel and External-Memory Construction of Minimal Perfect Hash Functions with PTHash"*](https://ieeexplore.ieee.org/document/10210677). Transactions on Knowledge and Data Engineering (TKDE). 2023.

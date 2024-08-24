@@ -1,10 +1,9 @@
 #pragma once
 
-#include "util.hpp"
-#include "../../external/mm_file/include/mm_file/mm_file.hpp"
-
-#include "internal_memory_builder_single_phf.hpp"
-#include "internal_memory_builder_partitioned_phf.hpp"
+#include "include/builders/util.hpp"
+#include "external/mm_file/include/mm_file/mm_file.hpp"
+#include "include/builders/internal_memory_builder_single_phf.hpp"
+#include "include/builders/internal_memory_builder_partitioned_phf.hpp"
 
 namespace pthash {
 
@@ -16,7 +15,7 @@ struct external_memory_builder_partitioned_phf {
     template <typename Iterator>
     build_timings build_from_keys(Iterator keys, uint64_t num_keys,
                                   build_configuration const& config) {
-        assert(num_keys > 1);
+        assert(num_keys > 0);
         util::check_hash_collision_probability<Hasher>(num_keys);
 
         if (config.num_partitions == 0) {
@@ -25,8 +24,14 @@ struct external_memory_builder_partitioned_phf {
 
         auto start = clock_type::now();
 
-        build_timings timings;
         uint64_t num_partitions = config.num_partitions;
+        double average_partition_size = static_cast<double>(num_keys) / num_partitions;
+        if (average_partition_size < constants::min_partition_size and num_partitions > 1) {
+            num_partitions = 1;
+            average_partition_size = 1.0;
+        }
+
+        build_timings timings;
         if (config.verbose_output) {
             std::cout << "num_partitions " << num_partitions << std::endl;
             std::cout << "using " << static_cast<double>(config.ram) / 1000000000 << " GB of RAM"
@@ -45,10 +50,7 @@ struct external_memory_builder_partitioned_phf {
 
         std::vector<meta_partition> partitions;
         partitions.reserve(num_partitions);
-        double average_partition_size = static_cast<double>(num_keys) / num_partitions;
-        if (average_partition_size < 10000 and num_partitions > 1) {
-            throw std::runtime_error("average partition size is too small: use less partitions");
-        }
+
         for (uint64_t id = 0; id != num_partitions; ++id) {
             partitions.emplace_back(config.tmp_dir, id);
             partitions.back().reserve(1.5 * average_partition_size);
@@ -82,7 +84,7 @@ struct external_memory_builder_partitioned_phf {
             if ((table_size & (table_size - 1)) == 0) table_size += 1;
             m_table_size += table_size;
 
-            if (partition.size() <= 1) {
+            if (partition.size() < 1) {
                 failure = true;
                 break;
             }
@@ -95,12 +97,13 @@ struct external_memory_builder_partitioned_phf {
                 std::remove(partitions[i].filename().c_str());
             }
             throw std::runtime_error(
-                "each partition must contain more than one key: use less partitions");
+                "each partition must contain at least one key: use less partitions");
         }
 
         auto partition_config = config;
         partition_config.seed = m_seed;
-        uint64_t num_buckets_single_phf = std::ceil((config.c * num_keys) / std::log2(num_keys));
+        const uint64_t num_buckets_single_phf =
+            std::ceil((config.c * num_keys) / (num_keys > 1 ? std::log2(num_keys) : 1));
         partition_config.num_buckets = static_cast<double>(num_buckets_single_phf) / num_partitions;
         partition_config.num_threads = 1;
         partition_config.verbose_output = false;

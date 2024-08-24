@@ -1,12 +1,11 @@
 #pragma once
 
-#include "util.hpp"
-#include "search.hpp"
-#include "../../external/mm_file/include/mm_file/mm_file.hpp"
-
-#include "../utils/bucketers.hpp"
-#include "../utils/logger.hpp"
-#include "../utils/hasher.hpp"
+#include "include/builders/util.hpp"
+#include "include/builders/search.hpp"
+#include "external/mm_file/include/mm_file/mm_file.hpp"
+#include "include/utils/bucketers.hpp"
+#include "include/utils/logger.hpp"
+#include "include/utils/hasher.hpp"
 
 namespace pthash {
 
@@ -31,7 +30,7 @@ struct external_memory_builder_single_phf {
     template <typename Iterator>
     build_timings build_from_keys(Iterator keys, uint64_t num_keys,
                                   build_configuration const& config) {
-        assert(num_keys > 1);
+        assert(num_keys > 0);
         util::check_hash_collision_probability<Hasher>(num_keys);
 
         if (config.alpha == 0 or config.alpha > 1.0) {
@@ -41,13 +40,17 @@ struct external_memory_builder_single_phf {
         build_timings time;
         uint64_t table_size = static_cast<double>(num_keys) / config.alpha;
         if ((table_size & (table_size - 1)) == 0) table_size += 1;
-        uint64_t num_buckets = std::ceil((config.c * num_keys) / std::log2(num_keys));
+        const uint64_t num_buckets =
+            std::ceil((config.c * num_keys) / (num_keys > 1 ? std::log2(num_keys) : 1));
 
-        if (sizeof(bucket_id_type) != sizeof(uint64_t) and
-            num_buckets > (1ULL << (sizeof(bucket_id_type) * 8))) {
+#ifndef DPTHASH_ENABLE_LARGE_BUCKET_ID_TYPE
+        if (num_buckets >= (1ULL << (sizeof(bucket_id_type) * 8))) {
             throw std::runtime_error(
-                "using too many buckets: change bucket_id_type to uint64_t or use a smaller c");
+                "using too many buckets: recompile the library with 'cmake .. "
+                "-D PTHASH_ENABLE_LARGE_BUCKET_ID_TYPE=On' to change bucket_id_type to uint64_t or "
+                "use a smaller c");
         }
+#endif
 
         m_num_keys = num_keys;
         m_table_size = table_size;
@@ -56,7 +59,6 @@ struct external_memory_builder_single_phf {
         m_bucketer.init(num_buckets);
 
         uint64_t ram = config.ram;
-
         uint64_t bitmap_taken_bytes = 8 * ((table_size + 63) / 64);
         uint64_t hashed_pilots_cache_bytes = search_cache_size * sizeof(uint64_t);
         if (bitmap_taken_bytes + hashed_pilots_cache_bytes >= ram) {
@@ -128,7 +130,7 @@ struct external_memory_builder_single_phf {
 
         try {
             auto start = clock_type::now();
-            bit_vector_builder taken(m_table_size);
+            bits::bit_vector::builder taken(m_table_size);
 
             {  // search
                 auto buckets_iterator = tfm.buckets_iterator();
@@ -156,7 +158,7 @@ struct external_memory_builder_single_phf {
                 tfm.remove_all_merge_files();
             }
 
-            if (config.minimal_output) {  // fill free slots
+            if (config.minimal_output and num_keys < table_size) {  // fill free slots
                 // write all free slots to file
                 buffered_file_t<uint64_t> writer(tfm.get_free_slots_filename(),
                                                  ram - bitmap_taken_bytes);
@@ -504,15 +506,20 @@ private:
             if (m_num_threads_sort > 1) {  // parallel
                 std::vector<memory_view<bucket_payload_pair>> blocks;
                 uint64_t num_keys_per_thread = (size + m_num_threads_sort - 1) / m_num_threads_sort;
-                auto exe = [&](uint64_t tid) { std::sort(blocks[tid].begin(), blocks[tid].end()); };
-
-                std::vector<std::thread> threads(m_num_threads_sort);
                 for (uint64_t i = 0; i != m_num_threads_sort; ++i) {
                     auto begin = buffer.data() + i * num_keys_per_thread;
                     auto end = buffer.data() + std::min((i + 1) * num_keys_per_thread, size);
                     uint64_t block_size = std::distance(begin, end);
-
                     blocks.emplace_back(begin, block_size);
+                }
+
+                auto exe = [&](uint64_t tid) {
+                    assert(tid < blocks.size());
+                    std::sort(blocks[tid].begin(), blocks[tid].end());
+                };
+
+                std::vector<std::thread> threads(m_num_threads_sort);
+                for (uint64_t i = 0; i != m_num_threads_sort; ++i) {
                     threads[i] = std::thread(exe, i);
                 }
                 for (uint64_t i = 0; i != m_num_threads_sort; ++i) {
@@ -675,13 +682,15 @@ private:
 
         uint64_t ram = config.ram;
         uint64_t ram_parallel_merge = 0;
-        if (config.num_threads > 1) {
+        uint64_t num_threads = config.num_threads;
+        if (num_threads > num_keys) num_threads = num_keys;
+        if (num_threads > 1) {
             ram_parallel_merge = ram * 0.01;
             assert(ram_parallel_merge >= MAX_BUCKET_SIZE * sizeof(bucket_payload_pair));
         }
 
         auto writer = tfm.get_multifile_pairs_writer(num_keys, ram - ram_parallel_merge,
-                                                     config.num_threads, ram_parallel_merge);
+                                                     num_threads, ram_parallel_merge);
         try {
             for (uint64_t i = 0; i != num_keys; ++i, ++keys) {
                 auto const& key = *keys;

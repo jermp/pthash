@@ -1,8 +1,7 @@
 #pragma once
 
-#include "compact_vector.hpp"
-#include "ef_sequence.hpp"
-#include "sdc_sequence.hpp"
+#include "external/bits/include/compact_vector.hpp"
+#include "external/bits/include/elias_fano.hpp"
 
 #include <vector>
 #include <unordered_map>
@@ -20,16 +19,21 @@ struct compact {
         return "compact";
     }
 
-    size_t size() const {
+    uint64_t size() const {
         return m_values.size();
     }
 
-    size_t num_bits() const {
-        return m_values.bytes() * 8;
+    uint64_t num_bits() const {
+        return m_values.num_bytes() * 8;
     }
 
     uint64_t access(uint64_t i) const {
         return m_values.access(i);
+    }
+
+    template <typename Visitor>
+    void visit(Visitor& visitor) const {
+        visitor.visit(m_values);
     }
 
     template <typename Visitor>
@@ -38,7 +42,7 @@ struct compact {
     }
 
 private:
-    compact_vector m_values;
+    bits::compact_vector m_values;
 };
 
 struct partitioned_compact {
@@ -48,7 +52,7 @@ struct partitioned_compact {
     template <typename Iterator>
     void encode(Iterator begin, uint64_t n) {
         uint64_t num_partitions = (n + partition_size - 1) / partition_size;
-        bit_vector_builder bvb;
+        bits::bit_vector::builder bvb;
         bvb.reserve(32 * n);
         m_bits_per_value.reserve(num_partitions + 1);
         m_bits_per_value.push_back(0);
@@ -72,20 +76,20 @@ struct partitioned_compact {
             m_bits_per_value.push_back(m_bits_per_value.back() + num_bits);
             begin_partition = end_partition;
         }
-        m_values.build(&bvb);
+        bvb.build(m_values);
     }
 
     static std::string name() {
         return "partitioned_compact";
     }
 
-    size_t size() const {
+    uint64_t size() const {
         return m_size;
     }
 
-    size_t num_bits() const {
+    uint64_t num_bits() const {
         return (sizeof(m_size) + m_bits_per_value.size() * sizeof(m_bits_per_value.front()) +
-                m_values.bytes()) *
+                m_values.num_bytes()) *
                8;
     }
 
@@ -98,16 +102,25 @@ struct partitioned_compact {
     }
 
     template <typename Visitor>
+    void visit(Visitor& visitor) const {
+        visit_impl(visitor, *this);
+    }
+
+    template <typename Visitor>
     void visit(Visitor& visitor) {
-        visitor.visit(m_size);
-        visitor.visit(m_bits_per_value);
-        visitor.visit(m_values);
+        visit_impl(visitor, *this);
     }
 
 private:
+    template <typename Visitor, typename T>
+    static void visit_impl(Visitor& visitor, T&& t) {
+        visitor.visit(t.m_size);
+        visitor.visit(t.m_bits_per_value);
+        visitor.visit(t.m_values);
+    }
     uint64_t m_size;
     std::vector<uint32_t> m_bits_per_value;
-    bit_vector m_values;
+    bits::bit_vector m_values;
 };
 
 template <typename Iterator>
@@ -156,12 +169,12 @@ struct dictionary {
         return "dictionary";
     }
 
-    size_t size() const {
+    uint64_t size() const {
         return m_ranks.size();
     }
 
-    size_t num_bits() const {
-        return (m_ranks.bytes() + m_dict.bytes()) * 8;
+    uint64_t num_bits() const {
+        return (m_ranks.num_bytes() + m_dict.num_bytes()) * 8;
     }
 
     uint64_t access(uint64_t i) const {
@@ -170,14 +183,23 @@ struct dictionary {
     }
 
     template <typename Visitor>
+    void visit(Visitor& visitor) const {
+        visit_impl(visitor, *this);
+    }
+
+    template <typename Visitor>
     void visit(Visitor& visitor) {
-        visitor.visit(m_ranks);
-        visitor.visit(m_dict);
+        visit_impl(visitor, *this);
     }
 
 private:
-    compact_vector m_ranks;
-    compact_vector m_dict;
+    template <typename Visitor, typename T>
+    static void visit_impl(Visitor& visitor, T&& t) {
+        visitor.visit(t.m_ranks);
+        visitor.visit(t.m_dict);
+    }
+    bits::compact_vector m_ranks;
+    bits::compact_vector m_dict;
 };
 
 struct elias_fano {
@@ -190,12 +212,12 @@ struct elias_fano {
         return "elias_fano";
     }
 
-    size_t size() const {
+    uint64_t size() const {
         return m_values.size();
     }
 
-    size_t num_bits() const {
-        return m_values.num_bits();
+    uint64_t num_bits() const {
+        return m_values.num_bytes() * 8;
     }
 
     uint64_t access(uint64_t i) const {
@@ -204,12 +226,76 @@ struct elias_fano {
     }
 
     template <typename Visitor>
+    void visit(Visitor& visitor) const {
+        visitor.visit(m_values);
+    }
+
+    template <typename Visitor>
     void visit(Visitor& visitor) {
         visitor.visit(m_values);
     }
 
 private:
-    ef_sequence<true> m_values;
+    bits::elias_fano<false, true> m_values;
+};
+
+struct sdc_sequence {
+    sdc_sequence() : m_size(0) {}
+
+    template <typename Iterator>
+    void build(Iterator begin, uint64_t n) {
+        m_size = n;
+        auto start = begin;
+        uint64_t bits = 0;
+        for (uint64_t i = 0; i < n; ++i, ++start) bits += std::floor(std::log2(*start + 1));
+        bits::bit_vector::builder bvb(bits);
+        std::vector<uint64_t> lengths;
+        lengths.reserve(n + 1);
+        uint64_t pos = 0;
+        for (uint64_t i = 0; i < n; ++i, ++begin) {
+            auto v = *begin;
+            uint64_t len = std::floor(std::log2(v + 1));
+            assert(len <= 64);
+            uint64_t cw = v + 1 - (uint64_t(1) << len);
+            if (len > 0) bvb.set_bits(pos, cw, len);
+            lengths.push_back(pos);
+            pos += len;
+        }
+        assert(pos == bits);
+        lengths.push_back(pos);
+        bvb.build(m_codewords);
+        m_index.encode(lengths.begin(), lengths.size());
+    }
+
+    inline uint64_t access(uint64_t i) const {
+        assert(i < size());
+        uint64_t pos = m_index.access(i);
+        uint64_t len = m_index.access(i + 1) - pos;
+        assert(len < 64);
+        uint64_t cw = m_codewords.get_bits(pos, len);
+        uint64_t value = cw + (uint64_t(1) << len) - 1;
+        return value;
+    }
+
+    uint64_t size() const {
+        return m_size;
+    }
+
+    uint64_t num_bytes() const {
+        return sizeof(m_size) + m_codewords.num_bytes() + m_index.num_bytes();
+    }
+
+    template <typename Visitor>
+    void visit(Visitor& visitor) {
+        visitor.visit(m_size);
+        visitor.visit(m_codewords);
+        visitor.visit(m_index);
+    }
+
+private:
+    uint64_t m_size;
+    bits::bit_vector m_codewords;
+    bits::elias_fano<false, false> m_index;
 };
 
 struct sdc {
@@ -224,12 +310,12 @@ struct sdc {
         return "sdc";
     }
 
-    size_t size() const {
+    uint64_t size() const {
         return m_ranks.size();
     }
 
-    size_t num_bits() const {
-        return (m_ranks.bytes() + m_dict.bytes()) * 8;
+    uint64_t num_bits() const {
+        return (m_ranks.num_bytes() + m_dict.num_bytes()) * 8;
     }
 
     uint64_t access(uint64_t i) const {
@@ -245,14 +331,14 @@ struct sdc {
 
 private:
     sdc_sequence m_ranks;
-    compact_vector m_dict;
+    bits::compact_vector m_dict;
 };
 
 template <typename Front, typename Back>
 struct dual {
     template <typename Iterator>
     void encode(Iterator begin, uint64_t n) {
-        size_t front_size = n * 0.3;
+        uint64_t front_size = n * 0.3;
         m_front.encode(begin, front_size);
         m_back.encode(begin + front_size, n - front_size);
     }
@@ -261,7 +347,7 @@ struct dual {
         return Front::name() + "-" + Back::name();
     }
 
-    size_t num_bits() const {
+    uint64_t num_bits() const {
         return m_front.num_bits() + m_back.num_bits();
     }
 
@@ -271,12 +357,22 @@ struct dual {
     }
 
     template <typename Visitor>
+    void visit(Visitor& visitor) const {
+        visit_impl(visitor, *this);
+    }
+
+    template <typename Visitor>
     void visit(Visitor& visitor) {
-        visitor.visit(m_front);
-        visitor.visit(m_back);
+        visit_impl(visitor, *this);
     }
 
 private:
+    template <typename Visitor, typename T>
+    static void visit_impl(Visitor& visitor, T&& t) {
+        visitor.visit(t.m_front);
+        visitor.visit(t.m_back);
+    }
+
     Front m_front;
     Back m_back;
 };

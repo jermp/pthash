@@ -2,9 +2,9 @@
 
 #include <thread>
 
-#include "single_phf.hpp"
-#include "builders/internal_memory_builder_partitioned_phf.hpp"
-#include "builders/external_memory_builder_partitioned_phf.hpp"
+#include "include/single_phf.hpp"
+#include "include/builders/internal_memory_builder_partitioned_phf.hpp"
+#include "include/builders/external_memory_builder_partitioned_phf.hpp"
 
 namespace pthash {
 
@@ -13,13 +13,24 @@ struct partitioned_phf {
 private:
     struct partition {
         template <typename Visitor>
+        void visit(Visitor& visitor) const {
+            visit_impl(visitor, *this);
+        }
+
+        template <typename Visitor>
         void visit(Visitor& visitor) {
-            visitor.visit(offset);
-            visitor.visit(f);
+            visit_impl(visitor, *this);
         }
 
         uint64_t offset;
         single_phf<Hasher, Encoder, Minimal> f;
+
+    private:
+        template <typename Visitor, typename T>
+        static void visit_impl(Visitor& visitor, T&& t) {
+            visitor.visit(t.offset);
+            visitor.visit(t.f);
+        }
     };
 
 public:
@@ -47,6 +58,13 @@ public:
     template <typename Builder>
     double build(Builder& builder, build_configuration const& config) {
         auto start = clock_type::now();
+        if (Minimal && !config.minimal_output) {
+            throw std::runtime_error(
+                "Cannot build partitioned_phf<..., ..., true> with minimal_output=false");
+        } else if (!Minimal && config.minimal_output) {
+            throw std::runtime_error(
+                "Cannot build partitioned_phf<..., ..., false> with minimal_output=true");
+        }
         uint64_t num_partitions = builder.num_partitions();
 
         m_seed = builder.seed();
@@ -93,24 +111,31 @@ public:
     template <typename T>
     uint64_t operator()(T const& key) const {
         auto hash = Hasher::hash(key, m_seed);
+        return position(hash);
+    }
+
+    uint64_t position(typename Hasher::hash_type hash) const {
         auto b = m_bucketer.bucket(hash.mix());
         auto const& p = m_partitions[b];
         return p.offset + p.f.position(hash);
     }
 
-    size_t num_bits_for_pilots() const {
-        size_t bits = 8 * (sizeof(m_seed) + sizeof(m_num_keys)) + m_bucketer.num_bits();
+    uint64_t num_bits_for_pilots() const {
+        uint64_t bits = 8 * (sizeof(m_seed) + sizeof(m_num_keys) + sizeof(m_table_size) +
+                             sizeof(uint64_t)  // for std::vector::size
+                             ) +
+                        m_bucketer.num_bits();
         for (auto const& p : m_partitions) bits += 8 * sizeof(p.offset) + p.f.num_bits_for_pilots();
         return bits;
     }
 
-    size_t num_bits_for_mapper() const {
-        size_t bits = 0;
+    uint64_t num_bits_for_mapper() const {
+        uint64_t bits = 0;
         for (auto const& p : m_partitions) bits += p.f.num_bits_for_mapper();
         return bits;
     }
 
-    size_t num_bits() const {
+    uint64_t num_bits() const {
         return num_bits_for_pilots() + num_bits_for_mapper();
     }
 
@@ -122,16 +147,30 @@ public:
         return m_table_size;
     }
 
+    inline uint64_t seed() const {
+        return m_seed;
+    }
+
+    template <typename Visitor>
+    void visit(Visitor& visitor) const {
+        visit_impl(visitor, *this);
+    }
+
     template <typename Visitor>
     void visit(Visitor& visitor) {
-        visitor.visit(m_seed);
-        visitor.visit(m_num_keys);
-        visitor.visit(m_table_size);
-        visitor.visit(m_bucketer);
-        visitor.visit(m_partitions);
+        visit_impl(visitor, *this);
     }
 
 private:
+    template <typename Visitor, typename T>
+    static void visit_impl(Visitor& visitor, T&& t) {
+        visitor.visit(t.m_seed);
+        visitor.visit(t.m_num_keys);
+        visitor.visit(t.m_table_size);
+        visitor.visit(t.m_bucketer);
+        visitor.visit(t.m_partitions);
+    }
+
     uint64_t m_seed;
     uint64_t m_num_keys;
     uint64_t m_table_size;

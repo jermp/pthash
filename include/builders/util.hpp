@@ -4,11 +4,15 @@
 #include <thread>
 #include <cmath>  // for exp, log, lgamma
 
-#include "../utils/logger.hpp"
+#include "include/utils/logger.hpp"
 
 namespace pthash {
 
+#ifdef DPTHASH_ENABLE_LARGE_BUCKET_ID_TYPE
+typedef uint64_t bucket_id_type;
+#else
 typedef uint32_t bucket_id_type;
+#endif
 typedef uint8_t bucket_size_type;
 constexpr bucket_size_type MAX_BUCKET_SIZE = 100;
 
@@ -248,8 +252,10 @@ void merge(std::vector<Pairs> const& pairs_blocks, Merger& merger, bool verbose)
 }
 
 template <typename FreeSlots>
-void fill_free_slots(bit_vector_builder const& taken, uint64_t num_keys, FreeSlots& free_slots) {
-    uint64_t table_size = taken.size();
+void fill_free_slots(bits::bit_vector::builder const& taken,    //
+                     uint64_t num_keys, FreeSlots& free_slots)  //
+{
+    const uint64_t table_size = taken.num_bits();
     if (table_size <= num_keys) return;
 
     uint64_t next_used_slot = num_keys;
@@ -281,5 +287,26 @@ void fill_free_slots(bit_vector_builder const& taken, uint64_t num_keys, FreeSlo
     }
     assert(next_used_slot == table_size);
 }
+
+template <typename RandomAccessIterator, typename Hasher>
+struct hash_generator {
+    hash_generator(RandomAccessIterator keys, uint64_t seed) : m_iterator(keys), m_seed(seed) {}
+
+    inline auto operator*() {
+        return Hasher::hash(*m_iterator, m_seed);
+    }
+
+    inline void operator++() {
+        ++m_iterator;
+    }
+
+    inline hash_generator operator+(uint64_t offset) const {
+        return hash_generator(m_iterator + offset, m_seed);
+    }
+
+private:
+    RandomAccessIterator m_iterator;
+    uint64_t m_seed;
+};
 
 }  // namespace pthash

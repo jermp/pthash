@@ -1,10 +1,10 @@
 #pragma once
 
-#include "util.hpp"
-#include "search.hpp"
-#include "../utils/bucketers.hpp"
-#include "../utils/logger.hpp"
-#include "../utils/hasher.hpp"
+#include "include/builders/util.hpp"
+#include "include/builders/search.hpp"
+#include "include/utils/bucketers.hpp"
+#include "include/utils/logger.hpp"
+#include "include/utils/hasher.hpp"
 
 namespace pthash {
 
@@ -12,30 +12,40 @@ template <typename Hasher>
 struct internal_memory_builder_single_phf {
     typedef Hasher hasher_type;
 
+    internal_memory_builder_single_phf()
+        : m_seed(constants::invalid_seed)
+        , m_num_keys(0)
+        , m_num_buckets(0)
+        , m_table_size(0)
+        , m_bucketer()
+        , m_pilots()
+        , m_free_slots() {}
+
     template <typename RandomAccessIterator>
     build_timings build_from_keys(RandomAccessIterator keys, uint64_t num_keys,
                                   build_configuration const& config) {
         if (config.seed == constants::invalid_seed) {
+            build_configuration actual_config = config;
             for (auto attempt = 0; attempt < 10; ++attempt) {
-                m_seed = random_value();
+                actual_config.seed = random_value();
                 try {
-                    return build_from_hashes(hash_generator<RandomAccessIterator>(keys, m_seed),
-                                             num_keys, config);
+                    return build_from_hashes(
+                        hash_generator<RandomAccessIterator, hasher_type>(keys, actual_config.seed),
+                        num_keys, actual_config);
                 } catch (seed_runtime_error const& error) {
                     std::cout << "attempt " << attempt + 1 << " failed" << std::endl;
                 }
             }
             throw seed_runtime_error();
         }
-        m_seed = config.seed;
-        return build_from_hashes(hash_generator<RandomAccessIterator>(keys, m_seed), num_keys,
-                                 config);
+        return build_from_hashes(
+            hash_generator<RandomAccessIterator, hasher_type>(keys, config.seed), num_keys, config);
     }
 
     template <typename RandomAccessIterator>
     build_timings build_from_hashes(RandomAccessIterator hashes, uint64_t num_keys,
                                     build_configuration const& config) {
-        assert(num_keys > 1);
+        assert(num_keys > 0);
         util::check_hash_collision_probability<Hasher>(num_keys);
 
         if (config.alpha == 0 or config.alpha > 1.0) {
@@ -50,10 +60,12 @@ struct internal_memory_builder_single_phf {
 
         uint64_t table_size = static_cast<double>(num_keys) / config.alpha;
         if ((table_size & (table_size - 1)) == 0) table_size += 1;
-        uint64_t num_buckets = (config.num_buckets == constants::invalid_num_buckets)
-                                   ? (std::ceil((config.c * num_keys) / std::log2(num_keys)))
-                                   : config.num_buckets;
+        uint64_t num_buckets =
+            (config.num_buckets == constants::invalid_num_buckets)
+                ? (std::ceil((config.c * num_keys) / (num_keys > 1 ? std::log2(num_keys) : 1)))
+                : config.num_buckets;
 
+        m_seed = config.seed;
         m_num_keys = num_keys;
         m_table_size = table_size;
         m_num_buckets = num_buckets;
@@ -94,11 +106,11 @@ struct internal_memory_builder_single_phf {
             std::cout << " == max bucket size = " << max_bucket_size << std::endl;
 
             // avg. bucket size
-            double lambda = std::log2(num_keys) / config.c;
-            // avg. bucket size in first 30% of buckets (60% of keys)
-            double lambda_1 = 2.0 * lambda;
-            // avg. bucket size in last 70% of buckets (40% of keys)
-            double lambda_2 = 4.0 * lambda / 7.0;
+            double lambda = (num_keys > 1 ? std::log2(num_keys) : 1) / config.c;
+            // avg. bucket size in first p2=b*m buckets containing p1=a*n keys
+            double lambda_1 = constants::a / constants::b * lambda;
+            // avg. bucket size in the other m-p2=(1-b)*m buckets containing n-p1=(1-a)*n keys
+            double lambda_2 = (1 - constants::a) / (1 - constants::b) * lambda;
             std::cout << " == lambda = " << lambda << std::endl;
             std::cout << " == lambda_1 = " << lambda_1 << std::endl;
             std::cout << " == lambda_2 = " << lambda_2 << std::endl;
@@ -110,14 +122,14 @@ struct internal_memory_builder_single_phf {
         {
             m_pilots.resize(num_buckets);
             std::fill(m_pilots.begin(), m_pilots.end(), 0);
-            bit_vector_builder taken(m_table_size);
+            bits::bit_vector::builder taken(m_table_size);
             uint64_t num_non_empty_buckets = buckets.num_buckets();
             pilots_wrapper_t pilots_wrapper(m_pilots);
             search(m_num_keys, m_num_buckets, num_non_empty_buckets, m_seed, config,
                    buckets_iterator, taken, pilots_wrapper);
             if (config.minimal_output) {
                 m_free_slots.clear();
-                m_free_slots.reserve(taken.size() - num_keys);
+                m_free_slots.reserve(taken.num_bits() - num_keys);
                 fill_free_slots(taken, num_keys, m_free_slots);
             }
         }
@@ -164,23 +176,23 @@ struct internal_memory_builder_single_phf {
     }
 
     template <typename Visitor>
+    void visit(Visitor& visitor) const {
+        visit_impl(visitor, *this);
+    }
+
+    template <typename Visitor>
     void visit(Visitor& visitor) {
-        visitor.visit(m_seed);
-        visitor.visit(m_num_keys);
-        visitor.visit(m_num_buckets);
-        visitor.visit(m_table_size);
-        visitor.visit(m_bucketer);
-        visitor.visit(m_pilots);
-        visitor.visit(m_free_slots);
+        visit_impl(visitor, *this);
     }
 
     static uint64_t estimate_num_bytes_for_construction(uint64_t num_keys,
                                                         build_configuration const& config) {
         uint64_t table_size = static_cast<double>(num_keys) / config.alpha;
         if ((table_size & (table_size - 1)) == 0) table_size += 1;
-        uint64_t num_buckets = (config.num_buckets == constants::invalid_num_buckets)
-                                   ? (std::ceil((config.c * num_keys) / std::log2(num_keys)))
-                                   : config.num_buckets;
+        uint64_t num_buckets =
+            (config.num_buckets == constants::invalid_num_buckets)
+                ? (std::ceil((config.c * num_keys) / (num_keys > 1 ? std::log2(num_keys) : 1)))
+                : config.num_buckets;
 
         uint64_t num_bytes_for_map = num_keys * sizeof(bucket_payload_pair)          // pairs
                                      + (num_keys + num_buckets) * sizeof(uint64_t);  // buckets
@@ -197,6 +209,17 @@ struct internal_memory_builder_single_phf {
     }
 
 private:
+    template <typename Visitor, typename T>
+    static void visit_impl(Visitor& visitor, T&& t) {
+        visitor.visit(t.m_seed);
+        visitor.visit(t.m_num_keys);
+        visitor.visit(t.m_num_buckets);
+        visitor.visit(t.m_table_size);
+        visitor.visit(t.m_bucketer);
+        visitor.visit(t.m_pilots);
+        visitor.visit(t.m_free_slots);
+    }
+
     uint64_t m_seed;
     uint64_t m_num_keys;
     uint64_t m_num_buckets;
@@ -204,27 +227,6 @@ private:
     skew_bucketer m_bucketer;
     std::vector<uint64_t> m_pilots;
     std::vector<uint64_t> m_free_slots;
-
-    template <typename RandomAccessIterator>
-    struct hash_generator {
-        hash_generator(RandomAccessIterator keys, uint64_t seed) : m_iterator(keys), m_seed(seed) {}
-
-        inline auto operator*() {
-            return hasher_type::hash(*m_iterator, m_seed);
-        }
-
-        inline void operator++() {
-            ++m_iterator;
-        }
-
-        inline hash_generator operator+(uint64_t offset) const {
-            return hash_generator(m_iterator + offset, m_seed);
-        }
-
-    private:
-        RandomAccessIterator m_iterator;
-        uint64_t m_seed;
-    };
 
     typedef std::vector<bucket_payload_pair> pairs_t;
 
@@ -290,7 +292,8 @@ private:
                 uint64_t t = i + 1;
                 uint64_t num_buckets_of_size_t = m_buffers[i].size() / (t + 1);
                 uint64_t estimated_num_buckets_of_size_t =
-                    ((3.0 * poisson_pmf(t, lambda_1) + 7.0 * poisson_pmf(t, lambda_2)) / 10.0) *
+                    (constants::b * poisson_pmf(t, lambda_1) +
+                     (1 - constants::b) * poisson_pmf(t, lambda_2)) *
                     num_buckets;
                 std::cout << " == num_buckets of size " << t << " = " << num_buckets_of_size_t
                           << " (estimated with Poisson = " << estimated_num_buckets_of_size_t << ")"
@@ -333,7 +336,7 @@ private:
     void map_parallel(RandomAccessIterator hashes, uint64_t num_keys,
                       std::vector<pairs_t>& pairs_blocks, build_configuration const& config) const {
         pairs_blocks.resize(config.num_threads);
-        uint64_t num_keys_per_thread = (num_keys + config.num_threads - 1) / config.num_threads;
+        uint64_t num_keys_per_thread = num_keys / config.num_threads;
 
         auto exe = [&](uint64_t tid) {
             auto& local_pairs = pairs_blocks[tid];

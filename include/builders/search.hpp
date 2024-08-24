@@ -4,11 +4,11 @@
 #include <sstream>  // for stringbuf
 #include <atomic>   // for std::atomic
 #include <vector>
-#include "../../external/essentials/include/essentials.hpp"
 
-#include "util.hpp"
-#include "../encoders/bit_vector.hpp"
-#include "../utils/hasher.hpp"
+#include "external/bits/include/bit_vector.hpp"
+
+#include "include/builders/util.hpp"
+#include "include/utils/hasher.hpp"
 
 namespace pthash {
 
@@ -111,12 +111,13 @@ private:
 template <typename BucketsIterator, typename PilotsBuffer>
 void search_sequential(uint64_t num_keys, uint64_t num_buckets, uint64_t num_non_empty_buckets,
                        uint64_t seed, build_configuration const& config, BucketsIterator& buckets,
-                       bit_vector_builder& taken, PilotsBuffer& pilots) {
-    uint64_t max_bucket_size = (*buckets).size();
-    uint64_t table_size = taken.size();
+                       bits::bit_vector::builder& taken, PilotsBuffer& pilots) {
+    const uint64_t max_bucket_size = (*buckets).size();
+    const uint64_t table_size = taken.num_bits();
+    const __uint128_t M = fastmod::computeM_u64(table_size);
+
     std::vector<uint64_t> positions;
     positions.reserve(max_bucket_size);
-    __uint128_t M = fastmod::computeM_u64(table_size);
 
     std::vector<uint64_t> hashed_pilots_cache(search_cache_size);
     for (uint64_t pilot = 0; pilot != search_cache_size; ++pilot) {
@@ -171,10 +172,10 @@ void search_sequential(uint64_t num_keys, uint64_t num_buckets, uint64_t num_non
 template <typename BucketsIterator, typename PilotsBuffer>
 void search_parallel(uint64_t num_keys, uint64_t num_buckets, uint64_t num_non_empty_buckets,
                      uint64_t seed, build_configuration const& config, BucketsIterator& buckets,
-                     bit_vector_builder& taken, PilotsBuffer& pilots) {
-    uint64_t max_bucket_size = (*buckets).size();
-    uint64_t table_size = taken.size();
-    __uint128_t M = fastmod::computeM_u64(table_size);
+                     bits::bit_vector::builder& taken, PilotsBuffer& pilots) {
+    const uint64_t max_bucket_size = (*buckets).size();
+    const uint64_t table_size = taken.num_bits();
+    const __uint128_t M = fastmod::computeM_u64(table_size);
 
     const uint64_t num_threads = config.num_threads;
     std::vector<uint64_t> hashed_pilots_cache(search_cache_size);
@@ -293,8 +294,8 @@ void search_parallel(uint64_t num_keys, uint64_t num_buckets, uint64_t num_non_e
 
 template <typename BucketsIterator, typename PilotsBuffer>
 void search(uint64_t num_keys, uint64_t num_buckets, uint64_t num_non_empty_buckets, uint64_t seed,
-            build_configuration const& config, BucketsIterator& buckets, bit_vector_builder& taken,
-            PilotsBuffer& pilots) {
+            build_configuration const& config, BucketsIterator& buckets,
+            bits::bit_vector::builder& taken, PilotsBuffer& pilots) {
     if (config.num_threads > 1) {
         if (config.num_threads > std::thread::hardware_concurrency()) {
             throw std::invalid_argument("parallel search should use at most " +
