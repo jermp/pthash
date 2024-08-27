@@ -17,7 +17,7 @@ struct dense_partitioned_phf {
                                            build_configuration const& config) {
         assert(Search == config.search);
         assert(config.dense_partitioning == true);
-        assert(config.avg_partition_size < 10000); // Unlike partitioned, must use small partitions
+        assert(config.avg_partition_size < 10000);  // Unlike partitioned, must use small partitions
         internal_memory_builder_partitioned_phf<Hasher, Bucketer> builder;
         auto timings = builder.build_from_keys(keys, num_keys, config);
         timings.encoding_microseconds = build(builder, config);
@@ -25,7 +25,7 @@ struct dense_partitioned_phf {
     }
 
     template <typename Builder>
-    double build(Builder& builder, build_configuration const&  config)  //
+    double build(Builder& builder, build_configuration const& config)  //
     {
         auto start = clock_type::now();
 
@@ -45,9 +45,12 @@ struct dense_partitioned_phf {
         m_offsets.encode(offsets.begin(), offsets.size(), increment);
         m_pilots.encode(builder.interleaving_pilots_iterator_begin(), num_partitions,
                         num_buckets_per_partition, config.num_threads);
+
         if constexpr (needsFreeArray) {
+            std::cout << "building free slots..." << std::endl;
             assert(builder.free_slots().size() == m_table_size - m_num_keys);
             m_free_slots.encode(builder.free_slots().data(), m_table_size - m_num_keys);
+            std::cout << "DONE" << std::endl;
         }
 
         auto stop = clock_type::now();
@@ -76,7 +79,6 @@ struct dense_partitioned_phf {
     {
         const uint64_t bucket = m_bucketer.bucket(hash.first());
         const uint64_t pilot = m_pilots.access(partition, bucket);
-
         if constexpr (Search == pthash_search_type::xor_displacement) {
             /* xor displacement */
             const __uint128_t M = fastmod::computeM_u64(partition_size);
@@ -97,7 +99,8 @@ struct dense_partitioned_phf {
     }
 
     size_t num_bits_for_mapper() const {
-        return m_partitioner.num_bits() + m_bucketer.num_bits()  + m_offsets.num_bits() + (needsFreeArray ? m_free_slots.num_bits() : 0);
+        return m_partitioner.num_bits() + m_bucketer.num_bits() + m_offsets.num_bits() +
+               (needsFreeArray ? m_free_slots.num_bits() : 0);
     }
 
     size_t num_bits() const {
@@ -121,8 +124,7 @@ struct dense_partitioned_phf {
         visitor.visit(m_bucketer);
         visitor.visit(m_pilots);
         visitor.visit(m_offsets);
-        if(needsFreeArray)
-            visitor.visit(m_free_slots);
+        if (needsFreeArray) visitor.visit(m_free_slots);
     }
 
 private:
@@ -137,6 +139,8 @@ private:
 };
 
 template <typename Hasher, typename Encoder>
-using phobic = dense_partitioned_phf<Hasher, table_bucketer<opt_bucketer>,
-    dense_interleaved<Encoder>, false, pthash_search_type::add_displacement>;
+using phobic =
+    dense_partitioned_phf<Hasher, table_bucketer<opt_bucketer>, dense_interleaved<Encoder>, false,
+                          pthash_search_type::add_displacement>;
+
 }  // namespace pthash

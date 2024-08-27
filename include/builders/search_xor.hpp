@@ -13,7 +13,8 @@ template <typename BucketsIterator, typename PilotsBuffer>
 void search_sequential_xor(const uint64_t num_keys, const uint64_t num_buckets,
                            const uint64_t num_non_empty_buckets, const uint64_t seed,
                            build_configuration const& config, BucketsIterator& buckets,
-                           bit_vector_builder& taken, PilotsBuffer& pilots) {
+                           bit_vector_builder& taken, PilotsBuffer& pilots)  //
+{
     const uint64_t max_bucket_size = (*buckets).size();
     const uint64_t table_size = taken.size();
     const __uint128_t M = fastmod::computeM_u64(table_size);
@@ -75,7 +76,8 @@ template <typename BucketsIterator, typename PilotsBuffer>
 void search_parallel_xor(const uint64_t num_keys, const uint64_t num_buckets,
                          const uint64_t num_non_empty_buckets, const uint64_t seed,
                          build_configuration const& config, BucketsIterator& buckets,
-                         bit_vector_builder& taken, PilotsBuffer& pilots) {
+                         bit_vector_builder& taken, PilotsBuffer& pilots)  //
+{
     const uint64_t max_bucket_size = (*buckets).size();
     const uint64_t table_size = taken.size();
     const __uint128_t M = fastmod::computeM_u64(table_size);

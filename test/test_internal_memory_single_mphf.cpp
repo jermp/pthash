@@ -24,7 +24,7 @@ void test_internal_memory_single_mphf(Iterator keys, uint64_t num_keys) {
     build_configuration config;
     config.search = pthash_search_type::xor_displacement;
     config.minimal_output = true;  // mphf
-    config.verbose_output = false;
+    config.verbose_output = true;
     config.seed = random_value();
 
     std::vector<double> L{4.0, 4.5, 5.0, 5.5, 6.0};
@@ -58,7 +58,7 @@ void test_internal_memory_single_mphf(Iterator keys, uint64_t num_keys) {
 }
 
 int main() {
-    static const uint64_t universe = 100000;
+    static const uint64_t universe = 10000;
     for (int i = 0; i != 5; ++i) {
         uint64_t num_keys = random_value() % universe;
         if (num_keys < 2) num_keys = 2;

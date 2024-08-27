@@ -19,28 +19,35 @@ int main() {
     config.lambda = 6;
     config.alpha = 0.97;
     config.search = pthash_search_type::add_displacement;
-    config.dense_partitioning = true;
     config.avg_partition_size = 3000;
     config.minimal_output = true;  // mphf
     config.verbose_output = true;
 
     /* Declare the PTHash function. */
-    // typedef single_phf<
-    //     murmurhash2_64,                                                       // base hasher
-    //     skew_bucketer,                                                        // bucketer type
-    //     dictionary_dictionary,                                                // encoder type
-    //     true,                                                                 // minimal
-    //     pthash_search_type::add_displacement                                  // xor displacement
-    //                                                                           // search
-    //     >
-    typedef dense_partitioned_phf<murmurhash2_64,                       // base hasher
-                                  opt_bucketer,                         // bucketer type
-                                  mono_EF,                              // encoder type
-                                  true,                                 // minimal
-                                  pthash_search_type::add_displacement  // additive
-                                                                        // displacement search
-                                  >
+
+    /*
+        Caveat:
+        when using single_phf, config.dense_partitioning must be set to false;
+        when using dense_partitioned_phf, config.dense_partitioning must be set to true.
+    */
+
+    typedef single_phf<murmurhash2_64,                       // base hasher
+                       skew_bucketer,                        // bucketer type
+                       dictionary_dictionary,                // encoder type
+                       true,                                 // minimal
+                       pthash_search_type::add_displacement  // additive displacement
+                       >
         pthash_type;
+    config.dense_partitioning = false;
+
+    // typedef dense_partitioned_phf<murmurhash2_64,                       // base hasher
+    //                               opt_bucketer,                         // bucketer type
+    //                               mono_EF,                              // encoder type
+    //                               true,                                 // minimal
+    //                               pthash_search_type::add_displacement  // additive displacement
+    //                               >
+    //     pthash_type;
+    // config.dense_partitioning = true;
 
     pthash_type f;
 

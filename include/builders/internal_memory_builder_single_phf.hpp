@@ -109,7 +109,7 @@ struct internal_memory_builder_single_phf {
             pilots_wrapper_t pilots_wrapper(m_pilots);
             search(m_num_keys, m_num_buckets, num_non_empty_buckets, m_seed, config,
                    buckets_iterator, m_taken, pilots_wrapper);
-            if (config.minimal_output and !config.dense_partitioning) {
+            if (config.minimal_output) {
                 m_free_slots.clear();
                 m_free_slots.reserve(m_taken.size() - num_keys);
                 fill_free_slots(m_taken, num_keys, m_free_slots);

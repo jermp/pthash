@@ -39,8 +39,9 @@ struct internal_memory_builder_partitioned_phf {
 
         std::vector<std::vector<typename hasher_type::hash_type>> partitions(num_partitions);
         for (auto& partition : partitions) partition.reserve(1.1 * config.avg_partition_size);
-        if(config.num_threads > 1) {
-            parallelHashAndPartition(keys, partitions, num_keys, config.num_threads, m_seed, num_partitions, m_bucketer);
+        if (config.num_threads > 1) {
+            parallelHashAndPartition(keys, partitions, num_keys, config.num_threads, m_seed,
+                                     num_partitions, m_bucketer);
         } else {
             for (uint64_t i = 0; i != num_keys; ++i, ++keys) {
                 auto const& key = *keys;
@@ -103,21 +104,21 @@ struct internal_memory_builder_partitioned_phf {
         return timings;
     }
     template <typename KeyIterator>
-    static void parallelHashAndPartition(KeyIterator keys, std::vector<std::vector<typename hasher_type::hash_type>> &partitions, const uint64_t num_keys, const uint64_t num_threads, const uint64_t m_seed, const uint64_t numPartitions, const range_bucketer partitioner) {
+    static void parallelHashAndPartition(
+        KeyIterator keys, std::vector<std::vector<typename hasher_type::hash_type>>& partitions,
+        const uint64_t num_keys, const uint64_t num_threads, const uint64_t m_seed,
+        const uint64_t numPartitions, const range_bucketer partitioner) {
         std::vector<std::vector<std::vector<typename hasher_type::hash_type>>> split;
         split.resize(num_threads);
-        uint64_t partitionsPerThread = (numPartitions +num_threads-1) / num_threads;
+        uint64_t partitionsPerThread = (numPartitions + num_threads - 1) / num_threads;
         uint64_t expectedCellSize = num_keys / (num_threads * num_threads);
         uint64_t cellReserve = expectedCellSize + expectedCellSize / 20;
-        for(auto &v : split) {
+        for (auto& v : split) {
             v.resize(num_threads);
-            for(auto &c :v) {
-                c.reserve(cellReserve);
-            }
+            for (auto& c : v) { c.reserve(cellReserve); }
         }
 
-
-        auto hashAndSplit = [&](uint64_t  id, uint64_t begin, uint64_t end ) {
+        auto hashAndSplit = [&](uint64_t id, uint64_t begin, uint64_t end) {
             for (; begin != end; ++begin) {
                 typename hasher_type::hash_type hash = hasher_type::hash(keys[begin], m_seed);
                 uint64_t partition = partitioner.bucket(hash.mix());
@@ -128,7 +129,7 @@ struct internal_memory_builder_partitioned_phf {
 
         auto mergeAndCollect = [&](uint64_t id) {
             for (uint64_t row = 0; row < num_threads; ++row) {
-                for(typename hasher_type::hash_type hash : split[row][id]) {
+                for (typename hasher_type::hash_type hash : split[row][id]) {
                     uint64_t partition = partitioner.bucket(hash.mix());
                     partitions[partition].push_back(hash);
                 }
@@ -136,8 +137,7 @@ struct internal_memory_builder_partitioned_phf {
         };
 
         std::vector<std::thread> threads(num_threads);
-        const uint64_t num_keys_per_thread =
-            (num_keys + num_threads - 1) / num_threads;
+        const uint64_t num_keys_per_thread = (num_keys + num_threads - 1) / num_threads;
         for (uint64_t i = 0, begin = 0; i != num_threads; ++i) {
             uint64_t end = begin + num_keys_per_thread;
             if (end > num_keys) end = num_keys;
@@ -155,7 +155,6 @@ struct internal_memory_builder_partitioned_phf {
             if (t.joinable()) t.join();
         }
     }
-
 
     template <typename PartitionsIterator, typename BuildersIterator>
     static build_timings build_partitions(PartitionsIterator partitions, BuildersIterator builders,
