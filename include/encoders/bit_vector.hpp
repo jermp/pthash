@@ -15,7 +15,8 @@ struct bit_vector_builder {
 
     void initialize(uint64_t size = 0, bool init = 0) {
         m_size = size;
-        m_bits.resize(essentials::words_for(size), uint64_t(-init));
+        m_bits.resize(essentials::words_for(size));
+        std::fill(m_bits.begin(), m_bits.end(), uint64_t(-init));
         if (size) {
             m_cur_word = &m_bits.back();
             // clear padding bits
