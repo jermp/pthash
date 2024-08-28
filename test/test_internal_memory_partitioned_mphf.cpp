@@ -24,7 +24,7 @@ void test_internal_memory_partitioned_mphf(Iterator keys, uint64_t num_keys) {
     build_configuration config;
     config.search = pthash_search_type::xor_displacement;
     config.minimal_output = true;  // mphf
-    config.verbose_output = true;
+    config.verbose_output = false;
     config.seed = random_value();
 
     std::vector<uint64_t> avg_partition_size{1000, 10000, 100000, 1000000};
@@ -42,6 +42,8 @@ void test_internal_memory_partitioned_mphf(Iterator keys, uint64_t num_keys) {
                           << "; num_partitions="
                           << compute_num_partitions(num_keys, config.avg_partition_size) << ")..."
                           << std::endl;
+
+                // config.print();
 
                 builder_64.build_from_keys(keys, num_keys, config);
                 test_encoder<compact>(builder_64, config, keys, num_keys);
@@ -68,7 +70,7 @@ void test_internal_memory_partitioned_mphf(Iterator keys, uint64_t num_keys) {
 }
 
 int main() {
-    static const uint64_t universe = 10000;
+    static const uint64_t universe = 100000;
     for (int i = 0; i != 5; ++i) {
         uint64_t num_keys = random_value() % universe;
         if (num_keys < 2) num_keys = 2;

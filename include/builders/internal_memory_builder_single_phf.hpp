@@ -65,6 +65,7 @@ struct internal_memory_builder_single_phf {
                         config.alpha);
 
         if (config.verbose_output) {
+            std::cout << "seed " << m_seed << std::endl;
             std::cout << "lambda (avg. bucket size) = " << config.lambda << std::endl;
             std::cout << "alpha (load factor) = " << config.alpha << std::endl;
             std::cout << "num_keys = " << num_keys << std::endl;

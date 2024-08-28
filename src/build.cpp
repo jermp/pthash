@@ -26,7 +26,10 @@ enum phf_type { single, partitioned, dense_partitioned };
 
 template <typename Function, typename Builder, typename Iterator>
 void build_benchmark(Builder& builder, build_timings const& timings,
-                     build_parameters<Iterator> const& params, build_configuration const& config) {
+                     build_parameters<Iterator> const& params,
+                     build_configuration const& config)  //
+{
+    // config.print();
     Function f;
     double encoding_microseconds = f.build(builder, config);
 

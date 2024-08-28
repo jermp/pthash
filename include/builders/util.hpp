@@ -65,6 +65,22 @@ struct build_configuration {
     bool dense_partitioning;
     bool minimal_output;
     bool verbose_output;
+
+    // void print() const {
+    //     std::cout << "lambda " << lambda << '\n';
+    //     std::cout << "alpha " << alpha << '\n';
+    //     std::cout << "search " << search << '\n';
+    //     std::cout << "avg_partition_size " << avg_partition_size << '\n';
+    //     std::cout << "num_buckets " << num_buckets << '\n';
+    //     std::cout << "num_threads " << num_threads << '\n';
+    //     std::cout << "seed " << seed << '\n';
+    //     std::cout << "ram " << ram << '\n';
+    //     std::cout << "tmp_dir " << tmp_dir << '\n';
+    //     std::cout << "secondary_sort " << int(secondary_sort) << '\n';
+    //     std::cout << "dense_partitioning " << int(dense_partitioning) << '\n';
+    //     std::cout << "minimal_output " << int(minimal_output) << '\n';
+    //     std::cout << "verbose_output " << int(verbose_output) << std::endl;
+    // }
 };
 
 static uint64_t compute_num_buckets(const uint64_t num_keys, const double avg_bucket_size) {

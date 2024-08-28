@@ -103,6 +103,16 @@ shows the usage of the driver program.
 
 #### Example
 
-	./build -n 100000 -l 4 -a 0.99 -r xor -e D-D -b skew -q 10000 -s 0 --verbose --check
+	./build -n 1000000 -l 5 -a 1.00 -r add -e inter-R -b opt -q 1000000 -p 3000 -s 0 --dense --verbose --check
 
-This example builds a MPHF over 1M random strings, using l = 4.5, alpha = 0.99, seed 0 (`-s`), with xor-type search, compressing the MPHF data structure with the encoder `dictionary_dictionary`, and using the skew bucketer. Also, it will perform 10000 queries (`-q`) and check correctness.
+This example builds a PHOBIC (options `-p` and `--dense`) function over 1M random strings, with:
+
+- average partition size = 3000 (`-p`)
+- lambda = 5 (`-l`),
+- alpha = 1.0 (`-a`),
+- seed = 0 (`-s`),
+- additive displacement as pilot search algorithm (`-r add`),
+- encoder `inter-R` (interleaved Rice coding) to compress the data structure,
+- the "optimal" bucketer (`-b`).
+
+Also, it will perform 1M lookup queries (`-q`) and check the correctness of the data structure.

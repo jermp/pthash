@@ -47,10 +47,8 @@ struct dense_partitioned_phf {
                         num_buckets_per_partition, config.num_threads);
 
         if constexpr (needsFreeArray) {
-            std::cout << "building free slots..." << std::endl;
             assert(builder.free_slots().size() == m_table_size - m_num_keys);
             m_free_slots.encode(builder.free_slots().data(), m_table_size - m_num_keys);
-            std::cout << "DONE" << std::endl;
         }
 
         auto stop = clock_type::now();
