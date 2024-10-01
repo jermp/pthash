@@ -28,21 +28,21 @@ template <typename Function, typename Builder, typename Iterator>
 void build_benchmark(Builder& builder, build_timings const& timings,
                      build_parameters<Iterator> const& params, build_configuration const& config) {
     Function f;
-    double encoding_microseconds = f.build(builder, config);
+    double encoding_seconds = f.build(builder, config) / 1000000;
 
     // timings breakdown
-    double total_microseconds = timings.partitioning_microseconds +
-                                timings.mapping_ordering_microseconds +
-                                timings.searching_microseconds + encoding_microseconds;
+    double total_seconds = timings.partitioning_seconds+
+                                timings.mapping_ordering_seconds +
+                                timings.searching_seconds + encoding_seconds;
     if (config.verbose_output) {
-        std::cout << "partitioning: " << timings.partitioning_microseconds / 1000000 << " [sec]"
+        std::cout << "partitioning: " << timings.partitioning_seconds << " [sec]"
                   << std::endl;
-        std::cout << "mapping+ordering: " << timings.mapping_ordering_microseconds / 1000000
+        std::cout << "mapping+ordering: " << timings.mapping_ordering_seconds
                   << " [sec]" << std::endl;
-        std::cout << "searching: " << timings.searching_microseconds / 1000000 << " [sec]"
+        std::cout << "searching: " << timings.searching_seconds << " [sec]"
                   << std::endl;
-        std::cout << "encoding: " << encoding_microseconds / 1000000 << " [sec]" << std::endl;
-        std::cout << "total: " << total_microseconds / 1000000 << " [sec]" << std::endl;
+        std::cout << "encoding: " << encoding_seconds  << " [sec]" << std::endl;
+        std::cout << "total: " << total_seconds << " [sec]" << std::endl;
     }
 
     // space breakdown
@@ -108,11 +108,11 @@ void build_benchmark(Builder& builder, build_timings const& timings,
     result.add("num_threads", config.num_threads);
     result.add("external_memory", params.external_memory ? "true" : "false");
 
-    result.add("partitioning_seconds", timings.partitioning_microseconds / 1000000);
-    result.add("mapping_ordering_seconds", timings.mapping_ordering_microseconds / 1000000);
-    result.add("searching_seconds", timings.searching_microseconds / 1000000);
-    result.add("encoding_seconds", encoding_microseconds / 1000000);
-    result.add("total_seconds", total_microseconds / 1000000);
+    result.add("partitioning_seconds", timings.partitioning_seconds);
+    result.add("mapping_ordering_seconds", timings.mapping_ordering_seconds);
+    result.add("searching_seconds", timings.searching_seconds);
+    result.add("encoding_seconds", timings.encoding_seconds);
+    result.add("total_seconds", timings.partitioning_seconds+timings.mapping_ordering_seconds+timings.searching_seconds+timings.encoding_seconds);
     result.add("pt_bits_per_key", pt_bits_per_key);
     result.add("mapper_bits_per_key", mapper_bits_per_key);
     result.add("bits_per_key", bits_per_key);
@@ -284,13 +284,23 @@ void choose_encoder(build_parameters<Iterator> const& params, build_configuratio
     }
 }
 
+template <phf_type t, typename Builder, typename Iterator>
+void choose_search(build_parameters<Iterator> const& params, build_configuration const& config) {
+    if (config.search == pthash_search_type::xor_displacement) {
+        choose_encoder<t, Builder, pthash_search_type::xor_displacement>(params, config);
+    } else if (config.search == pthash_search_type::add_displacement) {
+        choose_encoder<t, Builder, pthash_search_type::add_displacement>(params, config);
+    } else {
+        assert(false);
+    }
+}
+
 template <typename Hasher, typename Bucketer, typename Iterator>
 void choose_builder(build_parameters<Iterator> const& params, build_configuration const& config) {
     if (config.avg_partition_size != 0) {
         if (config.dense_partitioning) {
             if (params.external_memory) {
-                choose_search<phf_type::dense_partitioned,  //
-                          external_memory_builder_partitioned_phf<Hasher, Bucketer>>(params, config);
+                assert(false); // not implemented
             } else {
                 choose_search<phf_type::dense_partitioned,  //
                               internal_memory_builder_partitioned_phf<Hasher, Bucketer>>(params,

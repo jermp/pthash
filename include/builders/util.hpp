@@ -269,7 +269,7 @@ void merge(std::vector<Pairs> const& pairs_blocks, Merger& merger, bool verbose)
 }
 
 template <typename Taken, typename FreeSlots>
-void fill_free_slots(bits::bit_vector::builder const& taken, uint64_t num_keys, FreeSlots& free_slots) {
+void fill_free_slots(Taken const& taken, uint64_t num_keys, FreeSlots& free_slots) {
     const uint64_t table_size = taken.num_bits();
     if (table_size <= num_keys) return;
 

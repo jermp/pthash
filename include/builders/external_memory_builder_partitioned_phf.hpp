@@ -7,9 +7,10 @@
 
 namespace pthash {
 
-template <typename Hasher>
+template <typename Hasher, typename Bucketer>
 struct external_memory_builder_partitioned_phf {
     typedef Hasher hasher_type;
+    typedef Bucketer bucketer_type;
     typedef typename hasher_type::hash_type hash_type;
 
     template <typename Iterator>

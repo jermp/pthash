@@ -4,8 +4,6 @@
 
 #include "essentials.hpp"
 #include "util.hpp"
-#include "encoders/bit_vector.hpp"
-#include "utils/hasher.hpp"
 
 namespace pthash {
 
@@ -13,10 +11,10 @@ template <typename BucketsIterator, typename PilotsBuffer>
 void search_sequential_xor(const uint64_t num_keys, const uint64_t num_buckets,
                            const uint64_t num_non_empty_buckets, const uint64_t seed,
                            build_configuration const& config, BucketsIterator& buckets,
-                           bit_vector_builder& taken, PilotsBuffer& pilots)  //
+                           bits::bit_vector::builder& taken, PilotsBuffer& pilots)  //
 {
     const uint64_t max_bucket_size = (*buckets).size();
-    const uint64_t table_size = taken.size();
+    const uint64_t table_size = taken.num_bits();
     const __uint128_t M = fastmod::computeM_u64(table_size);
 
     std::vector<uint64_t> positions;
@@ -76,10 +74,10 @@ template <typename BucketsIterator, typename PilotsBuffer>
 void search_parallel_xor(const uint64_t num_keys, const uint64_t num_buckets,
                          const uint64_t num_non_empty_buckets, const uint64_t seed,
                          build_configuration const& config, BucketsIterator& buckets,
-                         bit_vector_builder& taken, PilotsBuffer& pilots)  //
+                         bits::bit_vector::builder& taken, PilotsBuffer& pilots)  //
 {
     const uint64_t max_bucket_size = (*buckets).size();
-    const uint64_t table_size = taken.size();
+    const uint64_t table_size = taken.num_bits();
     const __uint128_t M = fastmod::computeM_u64(table_size);
     const uint64_t num_threads = config.num_threads;
 

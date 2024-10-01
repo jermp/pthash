@@ -9,9 +9,10 @@
 
 namespace pthash {
 
-template <typename Hasher>
+template <typename Hasher, typename Bucketer>
 struct external_memory_builder_single_phf {
     typedef Hasher hasher_type;
+    typedef Bucketer bucketer_type;
 
     external_memory_builder_single_phf() : m_pilots_filename(""), m_free_slots_filename("") {}
     // non construction-copyable

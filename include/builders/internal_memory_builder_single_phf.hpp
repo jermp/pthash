@@ -31,7 +31,7 @@ struct internal_memory_builder_single_phf {
                 actual_config.seed = random_value();
                 try {
                     return build_from_hashes(
-                        hash_generator<RandomAccessIterator, hasher_type>(keys, actual_config.seed),
+                        hash_generator<RandomAccessIterator>(keys, actual_config.seed),
                         num_keys, actual_config);
                 } catch (seed_runtime_error const& error) {
                     std::cout << "attempt " << attempt + 1 << " failed" << std::endl;
@@ -120,7 +120,7 @@ struct internal_memory_builder_single_phf {
                    buckets_iterator, m_taken, pilots_wrapper);
             if (config.minimal_output) {
                 m_free_slots.clear();
-                m_free_slots.reserve(m_taken.size() - num_keys);
+                m_free_slots.reserve(m_taken.num_bits() - num_keys);
                 fill_free_slots(m_taken, num_keys, m_free_slots);
             }
         }
@@ -152,7 +152,7 @@ struct internal_memory_builder_single_phf {
         return m_pilots;
     }
 
-    bit_vector_builder const& taken() const {
+    bits::bit_vector::builder const& taken() const {
         return m_taken;
     }
 
@@ -180,29 +180,6 @@ struct internal_memory_builder_single_phf {
         visit_impl(visitor, *this);
     }
 
-    static uint64_t estimate_num_bytes_for_construction(uint64_t num_keys,
-                                                        build_configuration const& config) {
-        uint64_t table_size = static_cast<double>(num_keys) / config.alpha;
-        if ((table_size & (table_size - 1)) == 0) table_size += 1;
-        uint64_t num_buckets =
-            (config.num_buckets == constants::invalid_num_buckets)
-                ? (std::ceil((config.c * num_keys) / (num_keys > 1 ? std::log2(num_keys) : 1)))
-                : config.num_buckets;
-
-        uint64_t num_bytes_for_map = num_keys * sizeof(bucket_payload_pair)          // pairs
-                                     + (num_keys + num_buckets) * sizeof(uint64_t);  // buckets
-
-        uint64_t num_bytes_for_search =
-            num_buckets * sizeof(uint64_t)    // pilots
-            + num_buckets * sizeof(uint64_t)  // buckets
-            +
-            (config.minimal_output ? (table_size - num_keys) * sizeof(uint64_t) : 0)  // free_slots
-            + num_keys * sizeof(uint64_t)                                             // hashes
-            + table_size / 8;  // bitmap taken
-
-        return std::max<uint64_t>(num_bytes_for_map, num_bytes_for_search);
-    }
-
 private:
     template <typename Visitor, typename T>
     static void visit_impl(Visitor& visitor, T&& t) {
@@ -220,7 +197,7 @@ private:
     uint64_t m_num_buckets;
     uint64_t m_table_size;
     Bucketer m_bucketer;
-    bit_vector_builder m_taken;
+    bits::bit_vector::builder m_taken;
     std::vector<uint64_t> m_pilots;
     std::vector<uint64_t> m_free_slots;
 
