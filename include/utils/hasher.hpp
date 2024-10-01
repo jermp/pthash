@@ -2,6 +2,8 @@
 
 // See also https://github.com/jermp/bench_hash_functions
 
+#include <xxhash.h>
+#include <xxh3.h>
 namespace pthash {
 
 namespace util {
@@ -145,6 +147,7 @@ private:
 
 struct hash128 {
     hash128() {}
+    hash128(XXH128_hash_t xxhash) : m_first(xxhash.high64), m_second(xxhash.low64) {}
     hash128(uint64_t first, uint64_t second) : m_first(first), m_second(second) {}
 
     inline uint64_t first() const {
@@ -201,6 +204,25 @@ struct murmurhash2_128 {
     static inline hash128 hash(uint64_t val, uint64_t seed) {
         return {MurmurHash2_64(reinterpret_cast<char const*>(&val), sizeof(val), seed),
                 MurmurHash2_64(reinterpret_cast<char const*>(&val), sizeof(val), ~seed)};
+    }
+};
+
+struct xxhash128 {
+    typedef hash128 hash_type;
+
+    // specialization for std::string
+    static inline hash_type hash(std::string const& val, uint64_t seed) {
+        return XXH128(val.data(), val.size(), seed);
+    }
+
+    // specialization for uint64_t
+    static inline hash_type hash(uint64_t val, uint64_t seed) {
+        return XXH128(&val, sizeof(val), seed);
+    }
+
+    // specialization for std::pair<uint64_t, uint64_t>
+    static inline hash_type hash(std::pair<uint64_t, uint64_t> val, uint64_t seed) {
+        return XXH128(&val, sizeof(val), seed);
     }
 };
 

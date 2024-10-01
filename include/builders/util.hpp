@@ -14,7 +14,10 @@ typedef uint64_t bucket_id_type;
 typedef uint32_t bucket_id_type;
 #endif
 typedef uint8_t bucket_size_type;
-constexpr bucket_size_type MAX_BUCKET_SIZE = 100;
+
+constexpr bucket_size_type MAX_BUCKET_SIZE = 255;
+
+enum pthash_search_type { xor_displacement, add_displacement };
 
 static inline std::string get_tmp_builder_filename(std::string const& dir_name, uint64_t id) {
     return dir_name + "/pthash.temp." + std::to_string(id) + ".builder";
@@ -45,28 +48,42 @@ struct build_timings {
 
 struct build_configuration {
     build_configuration()
-        : c(4.5)
+        : lambda(4.5)
         , alpha(0.98)
-        , num_partitions(1)
+        , search(pthash_search_type::xor_displacement)
+        , avg_partition_size(0)  // not partitioned
         , num_buckets(constants::invalid_num_buckets)
         , num_threads(1)
         , seed(constants::invalid_seed)
         , ram(static_cast<double>(constants::available_ram) * 0.75)
         , tmp_dir(constants::default_tmp_dirname)
-        , minimal_output(false)
+        , secondary_sort(false)
+        , dense_partitioning(false)
+        , minimal_output(true)
         , verbose_output(true) {}
 
-    double c;
-    double alpha;
-    uint64_t num_partitions;
+    double lambda;  // avg. bucket size
+    double alpha;   // load factor
+    pthash_search_type search;
+    uint64_t avg_partition_size;
     uint64_t num_buckets;
     uint64_t num_threads;
     uint64_t seed;
     uint64_t ram;
     std::string tmp_dir;
+    bool secondary_sort;
+    bool dense_partitioning;
     bool minimal_output;
     bool verbose_output;
 };
+
+static uint64_t compute_num_buckets(const uint64_t num_keys, const double avg_bucket_size) {
+    return std::ceil(static_cast<double>(num_keys) / avg_bucket_size);
+}
+
+static uint64_t compute_num_partitions(const uint64_t num_keys, const uint64_t avg_partition_size) {
+    return std::ceil(static_cast<double>(num_keys) / avg_partition_size);
+}
 
 struct seed_runtime_error : public std::runtime_error {
     seed_runtime_error() : std::runtime_error("seed did not work") {}
@@ -251,27 +268,33 @@ void merge(std::vector<Pairs> const& pairs_blocks, Merger& merger, bool verbose)
     }
 }
 
-template <typename FreeSlots>
-void fill_free_slots(bits::bit_vector::builder const& taken,    //
-                     uint64_t num_keys, FreeSlots& free_slots)  //
-{
+template <typename Taken, typename FreeSlots>
+void fill_free_slots(bits::bit_vector::builder const& taken, uint64_t num_keys, FreeSlots& free_slots) {
     const uint64_t table_size = taken.num_bits();
     if (table_size <= num_keys) return;
 
     uint64_t next_used_slot = num_keys;
     uint64_t last_free_slot = 0, last_valid_free_slot = 0;
 
+    auto last_free_slot_iter = taken.at(last_free_slot);
+    auto next_used_slot_iter = taken.at(next_used_slot);
+
     while (true) {
         // find the next free slot (on the left)
-        while (last_free_slot < num_keys && taken.get(last_free_slot)) ++last_free_slot;
-        // exit condition
+        while (last_free_slot < num_keys && *last_free_slot_iter) {
+            ++last_free_slot;
+            ++last_free_slot_iter;
+        }
+
         if (last_free_slot == num_keys) break;
+
         // fill with the last free slot (on the left) until I find a new used slot (on the right)
         // note: since I found a free slot on the left, there must be an used slot on the right
         assert(next_used_slot < table_size);
-        while (!taken.get(next_used_slot)) {
+        while (!*next_used_slot_iter) {
             free_slots.emplace_back(last_free_slot);
             ++next_used_slot;
+            ++next_used_slot_iter;
         }
         assert(next_used_slot < table_size);
         // fill the used slot (on the right) with the last free slot and advance all cursors
@@ -279,6 +302,8 @@ void fill_free_slots(bits::bit_vector::builder const& taken,    //
         last_valid_free_slot = last_free_slot;
         ++next_used_slot;
         ++last_free_slot;
+        ++last_free_slot_iter;
+        ++next_used_slot_iter;
     }
     // fill the tail with the last valid slot that I found
     while (next_used_slot != table_size) {

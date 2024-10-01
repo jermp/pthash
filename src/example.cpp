@@ -15,25 +15,39 @@ int main() {
 
     /* Set up a build configuration. */
     build_configuration config;
-    config.c = 6.0;
-    config.alpha = 0.94;
+    config.seed = seed;
+    config.lambda = 6;
+    config.alpha = 0.97;
+    config.search = pthash_search_type::add_displacement;
+    config.avg_partition_size = 3000;
     config.minimal_output = true;  // mphf
     config.verbose_output = true;
 
     /* Declare the PTHash function. */
-    typedef single_phf<murmurhash2_64,         // base hasher
-                       dictionary_dictionary,  // encoder type
-                       true                    // minimal
+
+    /*
+        Caveat:
+        when using single_phf, config.dense_partitioning must be set to false;
+        when using dense_partitioned_phf, config.dense_partitioning must be set to true.
+    */
+
+    typedef single_phf<murmurhash2_64,                       // base hasher
+                       skew_bucketer,                        // bucketer type
+                       dictionary_dictionary,                // encoder type
+                       true,                                 // minimal
+                       pthash_search_type::add_displacement  // additive displacement
                        >
         pthash_type;
+    config.dense_partitioning = false;
 
-    // config.num_partitions = 50;
-    // config.num_threads = 4;
-    // typedef partitioned_phf<murmurhash2_64,        // base hasher
-    //                         dictionary_dictionary, // encoder type
-    //                         true
-    //                         >
+    // typedef dense_partitioned_phf<murmurhash2_64,                       // base hasher
+    //                               opt_bucketer,                         // bucketer type
+    //                               mono_EF,                              // encoder type
+    //                               true,                                 // minimal
+    //                               pthash_search_type::add_displacement  // additive displacement
+    //                               >
     //     pthash_type;
+    // config.dense_partitioning = true;
 
     pthash_type f;
 
@@ -41,12 +55,12 @@ int main() {
     std::cout << "building the function..." << std::endl;
     auto start = clock_type::now();
     auto timings = f.build_in_internal_memory(keys.begin(), keys.size(), config);
-    // auto timings = f.build_in_external_memory(keys.begin(), keys.size(), config);
-    double total_seconds = timings.partitioning_seconds + timings.mapping_ordering_seconds +
-                           timings.searching_seconds + timings.encoding_seconds;
-    std::cout << "function built in " << seconds(clock_type::now() - start) << " seconds"
-              << std::endl;
-    std::cout << "computed: " << total_seconds << " seconds" << std::endl;
+    double total_microseconds = timings.partitioning_microseconds +
+                                timings.mapping_ordering_microseconds +
+                                timings.searching_microseconds + timings.encoding_microseconds;
+    std::cout << "function built in " << to_microseconds(clock_type::now() - start) / 1000000
+              << " seconds" << std::endl;
+    std::cout << "computed: " << total_microseconds / 1000000 << " seconds" << std::endl;
     /* Compute and print the number of bits spent per key. */
     double bits_per_key = static_cast<double>(f.num_bits()) / f.num_keys();
     std::cout << "function uses " << bits_per_key << " [bits/key]" << std::endl;
