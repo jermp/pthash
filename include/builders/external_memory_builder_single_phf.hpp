@@ -9,9 +9,10 @@
 
 namespace pthash {
 
-template <typename Hasher>
+template <typename Hasher, typename Bucketer>
 struct external_memory_builder_single_phf {
     typedef Hasher hasher_type;
+    typedef Bucketer bucketer_type;
 
     external_memory_builder_single_phf() : m_pilots_filename(""), m_free_slots_filename("") {}
     // non construction-copyable
@@ -40,8 +41,9 @@ struct external_memory_builder_single_phf {
         build_timings time;
         uint64_t table_size = static_cast<double>(num_keys) / config.alpha;
         if ((table_size & (table_size - 1)) == 0) table_size += 1;
-        const uint64_t num_buckets =
-            std::ceil((config.c * num_keys) / (num_keys > 1 ? std::log2(num_keys) : 1));
+        const uint64_t num_buckets = (config.num_buckets == constants::invalid_num_buckets)
+                                         ? compute_num_buckets(num_keys, config.lambda)
+                                         : config.num_buckets;
 
 #ifndef DPTHASH_ENABLE_LARGE_BUCKET_ID_TYPE
         if (num_buckets >= (1ULL << (sizeof(bucket_id_type) * 8))) {
@@ -72,7 +74,7 @@ struct external_memory_builder_single_phf {
             constexpr uint64_t GB = 1000000000;
             uint64_t peak = num_keys * (sizeof(bucket_payload_pair) + sizeof(uint64_t)) +
                             (num_keys + num_buckets) * sizeof(uint64_t);
-            std::cout << "c = " << config.c << std::endl;
+            std::cout << "lambda (avg. bucket size) = " << config.lambda << std::endl;
             std::cout << "alpha = " << config.alpha << std::endl;
             std::cout << "num_keys = " << num_keys << std::endl;
             std::cout << "table_size = " << table_size << std::endl;
@@ -195,7 +197,7 @@ struct external_memory_builder_single_phf {
         return m_table_size;
     }
 
-    skew_bucketer bucketer() const {
+    Bucketer bucketer() const {
         return m_bucketer;
     }
 
@@ -212,7 +214,7 @@ private:
     uint64_t m_num_keys;
     uint64_t m_table_size;
     uint64_t m_num_buckets;
-    skew_bucketer m_bucketer;
+    Bucketer m_bucketer;
     std::string m_pilots_filename;
     std::string m_free_slots_filename;
 

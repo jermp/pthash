@@ -37,6 +37,7 @@ if(NOT TARGET PTHASH)
   if (UNIX)
     MESSAGE(STATUS "Compiling with flags: -std=c++17 -ggdb -pthread -Wall -Wextra -Wno-missing-braces -Wno-unknown-attributes -Wno-unused-function")
 
+    target_compile_options(PTHASH INTERFACE -std=c++17)
     target_compile_options(PTHASH INTERFACE -pthread)
     target_compile_options(PTHASH INTERFACE -ggdb)
     target_compile_options(PTHASH INTERFACE -Wall -Wextra -Wno-missing-braces -Wno-unknown-attributes -Wno-unused-function)
@@ -49,6 +50,8 @@ if(NOT TARGET PTHASH)
 
   add_subdirectory(external/bits)
   target_link_libraries(PTHASH INTERFACE BITS)
+
+  target_include_directories(PTHASH SYSTEM INTERFACE external/xxHash)
 endif()
 
 # Only add benchmarks and tests when compiling PTHash itself, not when added as a dependency

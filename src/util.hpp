@@ -151,6 +151,64 @@ std::vector<Uint> distinct_keys(uint64_t num_keys, uint64_t seed = constants::in
     return keys;
 }
 
+class XorShift64 {
+private:
+    uint64_t x64;
+
+public:
+    explicit XorShift64(uint64_t seed = 88172645463325252ull) : x64(seed) {}
+
+    inline uint64_t operator()() {
+        x64 ^= x64 << 13;
+        x64 ^= x64 >> 7;
+        x64 ^= x64 << 17;
+        return x64;
+    }
+
+    inline uint64_t operator()(uint64_t range) {
+#ifdef __SIZEOF_INT128__  // then we know we have a 128-bit int
+        return (uint64_t)(((__uint128_t) operator()() * (__uint128_t)range) >> 64);
+#elif defined(_MSC_VER) && defined(_WIN64)
+        // supported in Visual Studio 2005 and better
+        uint64_t highProduct;
+        _umul128(operator()(), range, &highProduct);  // ignore output
+        return highProduct;
+        unsigned __int64 _umul128(unsigned __int64 Multiplier, unsigned __int64 Multiplicand,
+                                  unsigned __int64* HighProduct);
+#else
+        return word / (UINT64_MAX / p);  // fallback
+#endif  // __SIZEOF_INT128__
+    }
+};
+
+std::vector<std::string> generateBenchmarkInput(size_t n) {
+    std::vector<std::string> inputData;
+    inputData.reserve(n);
+    auto time = std::chrono::system_clock::now();
+    long constructionTime =
+        std::chrono::duration_cast<std::chrono::milliseconds>(time.time_since_epoch()).count();
+    XorShift64 prng(constructionTime);
+    std::cout << "Generating input" << std::flush;
+    char string[200];
+    for (size_t i = 0; i < n; i++) {
+        if ((i % (n / 5)) == 0) {
+            std::cout << "\rGenerating input: " << 100l * i / n << "%" << std::flush;
+        }
+        size_t length = 10 + prng((30 - 10) * 2);
+        for (std::size_t k = 0; k < (length + sizeof(uint64_t)) / sizeof(uint64_t); ++k) {
+            ((uint64_t*)string)[k] = prng();
+        }
+        // Repair null bytes
+        for (std::size_t k = 0; k < length; ++k) {
+            if (string[k] == 0) { string[k] = 1 + prng(254); }
+        }
+        string[length] = 0;
+        inputData.emplace_back(string, length);
+    }
+    std::cout << "\rInput generation complete." << std::endl;
+    return inputData;
+}
+
 template <typename Function, typename Iterator>
 bool check(Iterator keys, Function const& f) {
     __uint128_t n = f.num_keys();
