@@ -48,6 +48,9 @@ void search_sequential_xor(const uint64_t num_keys, const uint64_t num_buckets,
                 positions.push_back(p);
             }
 
+
+
+
             if (bucket_begin == bucket_end) {  // all keys do not have collisions with taken
 
                 // check for in-bucket collisions

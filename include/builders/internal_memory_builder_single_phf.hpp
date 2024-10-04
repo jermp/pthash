@@ -39,7 +39,7 @@ struct internal_memory_builder_single_phf {
             }
             throw seed_runtime_error();
         }
-        return build_from_hashes(hash_generator<RandomAccessIterator>(keys, m_seed), num_keys,
+        return build_from_hashes(hash_generator<RandomAccessIterator>(keys, config.seed), num_keys,
                                  config);
     }
 
@@ -113,7 +113,7 @@ struct internal_memory_builder_single_phf {
         {
             m_pilots.resize(num_buckets);
             std::fill(m_pilots.begin(), m_pilots.end(), 0);
-            m_taken.initialize(m_table_size);
+            m_taken.resize(m_table_size);
             uint64_t num_non_empty_buckets = buckets.num_buckets();
             pilots_wrapper_t pilots_wrapper(m_pilots);
             search(m_num_keys, m_num_buckets, num_non_empty_buckets, m_seed, config,
@@ -121,7 +121,9 @@ struct internal_memory_builder_single_phf {
             if (config.minimal_output) {
                 m_free_slots.clear();
                 m_free_slots.reserve(m_taken.num_bits() - num_keys);
-                fill_free_slots(m_taken, num_keys, m_free_slots);
+                bits::bit_vector m_taken_builded;
+                m_taken.build(m_taken_builded);
+                fill_free_slots(m_taken_builded, num_keys, m_free_slots, table_size);
             }
         }
         time.searching_seconds = seconds(clock_type::now() - start);
@@ -130,6 +132,10 @@ struct internal_memory_builder_single_phf {
         }
 
         return time;
+    }
+
+    void set_seed(const uint64_t seed) {
+        m_seed = seed;
     }
 
     uint64_t seed() const {

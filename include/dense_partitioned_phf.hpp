@@ -12,6 +12,8 @@ struct dense_partitioned_phf {
     typedef Encoder encoder_type;
     static constexpr bool needsFreeArray = NeedsFreeArray;
 
+    static constexpr bool minimal = true; // ToDO
+
     template <typename Iterator>
     build_timings build_in_internal_memory(Iterator keys, const uint64_t num_keys,
                                            build_configuration const& config) {
@@ -20,7 +22,7 @@ struct dense_partitioned_phf {
         assert(config.avg_partition_size < 10000);  // Unlike partitioned, must use small partitions
         internal_memory_builder_partitioned_phf<Hasher, Bucketer> builder;
         auto timings = builder.build_from_keys(keys, num_keys, config);
-        timings.encoding_microseconds = build(builder, config);
+        timings.encoding_seconds = build(builder, config);
         return timings;
     }
 
@@ -55,7 +57,7 @@ struct dense_partitioned_phf {
 
         auto stop = clock_type::now();
 
-        return to_microseconds(stop - start);
+        return seconds(stop - start);
     }
 
     template <typename T>
@@ -100,7 +102,7 @@ struct dense_partitioned_phf {
 
     size_t num_bits_for_mapper() const {
         return m_partitioner.num_bits() + m_bucketer.num_bits() + m_offsets.num_bits() +
-               (needsFreeArray ? m_free_slots.num_bits() : 0);
+               (needsFreeArray ? m_free_slots.num_bytes() * 8 : 0);
     }
 
     size_t num_bits() const {
@@ -116,18 +118,28 @@ struct dense_partitioned_phf {
     }
 
     template <typename Visitor>
+    void visit(Visitor& visitor) const {
+        visit_impl(visitor, *this);
+    }
+
+    template <typename Visitor>
     void visit(Visitor& visitor) {
-        visitor.visit(m_seed);
-        visitor.visit(m_num_keys);
-        visitor.visit(m_table_size);
-        visitor.visit(m_partitioner);
-        visitor.visit(m_bucketer);
-        visitor.visit(m_pilots);
-        visitor.visit(m_offsets);
-        if (needsFreeArray) visitor.visit(m_free_slots);
+        visit_impl(visitor, *this);
     }
 
 private:
+    template <typename Visitor, typename T>
+    static void visit_impl(Visitor& visitor, T&& t) {
+        visitor.visit(t.m_seed);
+        visitor.visit(t.m_num_keys);
+        visitor.visit(t.m_table_size);
+        visitor.visit(t.m_partitioner);
+        visitor.visit(t.m_bucketer);
+        visitor.visit(t.m_pilots);
+        visitor.visit(t.m_offsets);
+        if (needsFreeArray) visitor.visit(t.m_free_slots);
+    }
+
     uint64_t m_seed;
     uint64_t m_num_keys;
     uint64_t m_table_size;
@@ -135,7 +147,7 @@ private:
     Bucketer m_bucketer;
     Encoder m_pilots;
     diff<compact> m_offsets;
-    ef_sequence<false> m_free_slots;
+    bits::elias_fano<false, false> m_free_slots;
 };
 
 template <typename Hasher, typename Encoder>

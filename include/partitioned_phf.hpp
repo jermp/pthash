@@ -111,7 +111,7 @@ public:
     }
 
     uint64_t position(typename Hasher::hash_type hash) const {
-        auto b = m_bucketer.bucket(hash.mix());
+        auto b = m_partitioner.bucket(hash.mix());
         auto const& p = m_partitions[b];
         return p.offset + p.f.position(hash);
     }

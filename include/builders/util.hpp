@@ -269,15 +269,14 @@ void merge(std::vector<Pairs> const& pairs_blocks, Merger& merger, bool verbose)
 }
 
 template <typename Taken, typename FreeSlots>
-void fill_free_slots(Taken const& taken, uint64_t num_keys, FreeSlots& free_slots) {
-    const uint64_t table_size = taken.num_bits();
+void fill_free_slots(Taken const& taken, uint64_t num_keys, FreeSlots& free_slots, const uint64_t table_size) {
     if (table_size <= num_keys) return;
 
     uint64_t next_used_slot = num_keys;
     uint64_t last_free_slot = 0, last_valid_free_slot = 0;
 
-    auto last_free_slot_iter = taken.at(last_free_slot);
-    auto next_used_slot_iter = taken.at(next_used_slot);
+    auto last_free_slot_iter = taken.get_iterator_at(last_free_slot);
+    auto next_used_slot_iter = taken.get_iterator_at(next_used_slot);
 
     while (true) {
         // find the next free slot (on the left)

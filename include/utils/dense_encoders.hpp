@@ -3,6 +3,7 @@
 #include <vector>
 #include <cassert>
 #include <thread>
+#include "encoders.hpp"
 
 namespace pthash {
 
@@ -39,12 +40,21 @@ struct diff {
     }
 
     template <typename Visitor>
+    void visit(Visitor& visitor) const {
+        visit_impl(visitor, *this);
+    }
+
+    template <typename Visitor>
     void visit(Visitor& visitor) {
-        visitor.visit(m_increment);
-        visitor.visit(m_encoder);
+        visit_impl(visitor, *this);
     }
 
 private:
+    template <typename Visitor, typename T>
+    static void visit_impl(Visitor& visitor, T&& t) {
+        visitor.visit(t.m_increment);
+        visitor.visit(t.m_encoder);
+    }
     uint64_t m_increment;
     Encoder m_encoder;
 };
@@ -81,12 +91,22 @@ struct dense_mono : dense_encoder {
     }
 
     template <typename Visitor>
+    void visit(Visitor& visitor) const {
+        visit_impl(visitor, *this);
+    }
+
+    template <typename Visitor>
     void visit(Visitor& visitor) {
-        visitor.visit(m_num_partitions);
-        visitor.visit(m_encoder);
+        visit_impl(visitor, *this);
     }
 
 private:
+    template <typename Visitor, typename T>
+    static void visit_impl(Visitor& visitor, T&& t) {
+        visitor.visit(t.m_num_partitions);
+        visitor.visit(t.m_encoder);
+    }
+
     uint64_t m_num_partitions;
     Encoder m_encoder;
 };
@@ -145,11 +165,20 @@ struct dense_interleaved : dense_encoder {
     }
 
     template <typename Visitor>
+    void visit(Visitor& visitor) const {
+        visit_impl(visitor, *this);
+    }
+
+    template <typename Visitor>
     void visit(Visitor& visitor) {
-        visitor.visit(m_encoders);
+        visit_impl(visitor, *this);
     }
 
 private:
+    template <typename Visitor, typename T>
+    static void visit_impl(Visitor& visitor, T&& t) {
+        visitor.visit(t.m_encoders);
+    }
     std::vector<Encoder> m_encoders;
 };
 
@@ -198,13 +227,22 @@ struct dense_dual : dense_encoder {
     }
 
     template <typename Visitor>
+    void visit(Visitor& visitor) const {
+        visit_impl(visitor, *this);
+    }
+
+    template <typename Visitor>
     void visit(Visitor& visitor) {
-        visitor.visit(m_front_size);
-        visitor.visit(m_front);
-        visitor.visit(m_back);
+        visit_impl(visitor, *this);
     }
 
 private:
+    template <typename Visitor, typename T>
+    static void visit_impl(Visitor& visitor, T&& t) {
+        visitor.visit(t.m_front_size);
+        visitor.visit(t.m_front);
+        visitor.visit(t.m_back);
+    }
     uint64_t m_front_size;
     Front m_front;
     Back m_back;

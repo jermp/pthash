@@ -22,7 +22,7 @@ struct single_phf {
         assert(Search == config.search);
         internal_memory_builder_single_phf<Hasher, Bucketer> builder;
         auto timings = builder.build_from_keys(keys, num_keys, config);
-        timings.encoding_microseconds = build(builder, config);
+        timings.encoding_seconds = build(builder, config);
         return timings;
     }
 
@@ -45,7 +45,7 @@ struct single_phf {
         m_pilots.encode(builder.pilots().data(), m_bucketer.num_buckets());
         if (Minimal and m_num_keys < m_table_size) {
             assert(builder.free_slots().size() == m_table_size - m_num_keys);
-            m_free_slots.encode(builder.free_slots().data(), m_table_size - m_num_keys);
+            m_free_slots.encode(builder.free_slots().begin(), m_table_size - m_num_keys);
         }
         auto stop = clock_type::now();
         return seconds(stop - start);
@@ -64,6 +64,7 @@ struct single_phf {
         uint64_t p = 0;
         if constexpr (Search == pthash_search_type::xor_displacement) {
             const uint64_t hashed_pilot = default_hash64(pilot, m_seed);
+
             p = fastmod::fastmod_u64(hash.second() ^ hashed_pilot, m_M_128, m_table_size);
         } else /* Search == pthash_search_type::add_displacement */ {
             const uint64_t s = fastmod::fastdiv_u32(pilot, m_M_64);
@@ -86,7 +87,7 @@ struct single_phf {
     }
 
     uint64_t num_bits_for_mapper() const {
-        return m_bucketer.num_bits() + m_free_slots.num_bits();
+        return m_bucketer.num_bits() + m_free_slots.num_bytes() * 8;
     }
 
     uint64_t num_bits() const {
@@ -121,8 +122,8 @@ private:
         visitor.visit(t.m_seed);
         visitor.visit(t.m_num_keys);
         visitor.visit(t.m_table_size);
-        visitor.visit(m_M_128);
-        visitor.visit(m_M_64);
+        visitor.visit(t.m_M_128);
+        visitor.visit(t.m_M_64);
         visitor.visit(t.m_bucketer);
         visitor.visit(t.m_pilots);
         visitor.visit(t.m_free_slots);

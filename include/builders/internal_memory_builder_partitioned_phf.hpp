@@ -97,7 +97,7 @@ struct internal_memory_builder_partitioned_phf {
             m_free_slots.clear();
             taken t(m_builders);
             m_free_slots.reserve(t.size() - num_keys);
-            fill_free_slots(t, num_keys, m_free_slots);
+            fill_free_slots(t, num_keys, m_free_slots, m_table_size);
             auto stop = clock_type::now();
             timings.searching_seconds += seconds(stop - start);
         }
@@ -252,25 +252,25 @@ struct internal_memory_builder_partitioned_phf {
 
     struct interleaving_pilots_iterator {
         interleaving_pilots_iterator(
-            std::vector<internal_memory_builder_single_phf<hasher_type, bucketer_type>> const&
-                builders,
+            std::vector<internal_memory_builder_single_phf<hasher_type, bucketer_type>> *builders,
             uint64_t m_curr_partition = 0, uint64_t curr_bucket_in_partition = 0)
             : m_builders(builders)
             , m_curr_partition(m_curr_partition)
             , m_curr_bucket_in_partition(curr_bucket_in_partition)
-            , m_num_partitions(builders.size()) {}
+            , m_num_partitions(builders->size()) {}
 
         uint64_t operator*() const {
-            auto const& pilots_of_partition = m_builders[m_curr_partition].pilots();
+            auto const& pilots_of_partition = (*m_builders)[m_curr_partition].pilots();
             return pilots_of_partition[m_curr_bucket_in_partition];
         }
 
-        void operator++() {
+        interleaving_pilots_iterator& operator++() {
             m_curr_partition += 1;
             if (m_curr_partition == m_num_partitions) {
                 m_curr_partition = 0;
                 m_curr_bucket_in_partition += 1;
             }
+            return *this;
         }
 
         bool operator==(interleaving_pilots_iterator const& rhs) const {
@@ -290,8 +290,7 @@ struct internal_memory_builder_partitioned_phf {
         }
 
     private:
-        std::vector<internal_memory_builder_single_phf<hasher_type, bucketer_type>> const&
-            m_builders;
+        std::vector<internal_memory_builder_single_phf<hasher_type, bucketer_type>> *m_builders;
         uint64_t m_curr_partition;
         uint64_t m_curr_bucket_in_partition;
         uint64_t m_num_partitions;
@@ -304,7 +303,7 @@ struct internal_memory_builder_partitioned_phf {
         taken(std::vector<internal_memory_builder_single_phf<hasher_type, bucketer_type>> const&
                   builders)
             : m_builders(builders), m_size(0) {
-            for (auto const& b : m_builders) m_size += b.taken().size();
+            for (auto const& b : m_builders) m_size += b.taken().num_bits();
         }
 
         struct iterator {
@@ -315,8 +314,8 @@ struct internal_memory_builder_partitioned_phf {
                 , m_curr_partition(0)  //
             {
                 while (m_curr_pos >=
-                       m_curr_offset + m_taken->m_builders[m_curr_partition].taken().size()) {
-                    m_curr_offset += m_taken->m_builders[m_curr_partition].taken().size();
+                       m_curr_offset + m_taken->m_builders[m_curr_partition].taken().num_bits()) {
+                    m_curr_offset += m_taken->m_builders[m_curr_partition].taken().num_bits();
                     m_curr_partition += 1;
                 }
                 assert(m_curr_partition < m_taken->m_builders.size());
@@ -326,14 +325,14 @@ struct internal_memory_builder_partitioned_phf {
                 assert(m_curr_pos < m_taken->size());
                 assert(m_curr_pos >= m_curr_offset);
                 uint64_t offset = m_curr_pos - m_curr_offset;
-                if (offset == m_taken->m_builders[m_curr_partition].taken().size()) {
-                    m_curr_offset += m_taken->m_builders[m_curr_partition].taken().size();
+                if (offset == m_taken->m_builders[m_curr_partition].taken().num_bits()) {
+                    m_curr_offset += m_taken->m_builders[m_curr_partition].taken().num_bits();
                     m_curr_partition += 1;
                     offset = 0;
                 }
                 assert(m_curr_partition < m_taken->m_builders.size());
                 auto const& t = m_taken->m_builders[m_curr_partition].taken();
-                assert(offset < t.size());
+                assert(offset < t.num_bits());
                 return t.get(offset);
             }
 
@@ -348,7 +347,7 @@ struct internal_memory_builder_partitioned_phf {
             uint64_t m_curr_partition;
         };
 
-        iterator at(const uint64_t pos) {
+        iterator get_iterator_at(const uint64_t pos) const {
             return iterator(this, pos);
         }
 
@@ -362,8 +361,8 @@ struct internal_memory_builder_partitioned_phf {
         uint64_t m_size;
     };
 
-    interleaving_pilots_iterator interleaving_pilots_iterator_begin() const {
-        return interleaving_pilots_iterator(m_builders);
+    interleaving_pilots_iterator interleaving_pilots_iterator_begin() {
+        return interleaving_pilots_iterator(&m_builders);
     }
 
 private:

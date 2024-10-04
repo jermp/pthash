@@ -39,13 +39,24 @@ struct table_bucketer {
         return base.num_buckets() + fulcrums.size() * 64;
     }
 
+
+    template <typename Visitor>
+    void visit(Visitor& visitor) const {
+        visit_impl(visitor, *this);
+    }
+
     template <typename Visitor>
     void visit(Visitor& visitor) {
-        visitor.visit(fulcrums);
-        visitor.visit(base);
+        visit_impl(visitor, *this);
     }
 
 private:
+    template <typename Visitor, typename T>
+    static void visit_impl(Visitor& visitor, T&& t) {
+        visitor.visit(t.fulcrums);
+        visitor.visit(t.base);
+    }
+
     Bucketer base;
     static const uint64_t FULCS = 2048;
     std::vector<uint64_t> fulcrums;
@@ -93,14 +104,23 @@ struct opt_bucketer {
     }
 
     template <typename Visitor>
+    void visit(Visitor& visitor) const {
+        visit_impl(visitor, *this);
+    }
+
+    template <typename Visitor>
     void visit(Visitor& visitor) {
-        visitor.visit(m_num_buckets);
-        visitor.visit(c);
-        visitor.visit(m_alpha);
-        visitor.visit(m_alpha_factor);
+        visit_impl(visitor, *this);
     }
 
 private:
+    template <typename Visitor, typename T>
+    static void visit_impl(Visitor& visitor, T&& t) {
+        visitor.visit(t.m_num_buckets);
+        visitor.visit(t.c);
+        visitor.visit(t.m_alpha);
+        visitor.visit(t.m_alpha_factor);
+    }
     double c;
     uint64_t m_num_buckets;
     double m_alpha;
@@ -188,12 +208,22 @@ struct range_bucketer {
     }
 
     template <typename Visitor>
+    void visit(Visitor& visitor) const {
+        visit_impl(visitor, *this);
+    }
+
+    template <typename Visitor>
     void visit(Visitor& visitor) {
-        visitor.visit(m_num_buckets);
-        visitor.visit(m_M_num_buckets);
+        visit_impl(visitor, *this);
     }
 
 private:
+    template <typename Visitor, typename T>
+    static void visit_impl(Visitor& visitor, T&& t) {
+        visitor.visit(t.m_num_buckets);
+        visitor.visit(t.m_M_num_buckets);
+    }
+
     uint64_t m_num_buckets{};
     __uint128_t m_M_num_buckets{};
 };
