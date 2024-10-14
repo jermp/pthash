@@ -17,7 +17,7 @@ int main() {
     build_configuration config;
     config.seed = seed;
     config.lambda = 5;
-    config.alpha = 1.0;
+    config.alpha = 0.97;
     config.search = pthash_search_type::add_displacement;
     config.minimal_output = true;  // mphf
     config.verbose_output = true;
@@ -44,7 +44,7 @@ int main() {
     typedef dense_partitioned_phf<xxhash128,                            // base hasher
                                   opt_bucketer,                         // bucketer
                                   inter_R,                              // encoder type
-                                  true,                                 // minimal
+                                  true,                                 // needsFreeArray
                                   pthash_search_type::add_displacement  // additive displacement
                                   >
         pthash_type;

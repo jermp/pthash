@@ -18,8 +18,10 @@ namespace pthash {
 template <typename BucketsIterator, typename PilotsBuffer>
 void search(const uint64_t num_keys, const uint64_t num_buckets,
             const uint64_t num_non_empty_buckets, const uint64_t seed,
-            build_configuration const& config, BucketsIterator& buckets, bits::bit_vector::builder& taken,
-            PilotsBuffer& pilots) {
+            build_configuration const& config, BucketsIterator& buckets,
+            bits::bit_vector::builder& taken,
+            PilotsBuffer& pilots)  //
+{
     if (config.num_threads > 1) {
         if (config.num_threads > std::thread::hardware_concurrency()) {
             throw std::invalid_argument("parallel search should use at most " +

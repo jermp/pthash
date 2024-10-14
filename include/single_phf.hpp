@@ -7,20 +7,38 @@
 
 namespace pthash {
 
-template <typename Hasher, typename Bucketer, typename Encoder, bool Minimal,
+template <typename Hasher,    //
+          typename Bucketer,  //
+          typename Encoder,   //
+          bool Minimal,
           pthash_search_type Search>
-struct single_phf {
-    static_assert(!std::is_base_of<dense_encoder, Encoder>::value,
-                  "Dense encoders are only for dense PTHash. Select another encoder.");
+struct single_phf  //
+{
+    static_assert(
+        !std::is_base_of<dense_encoder, Encoder>::value,
+        "Dense encoders are only valid for dense_partitioned_phf. Select another encoder.");
     typedef Encoder encoder_type;
     static constexpr bool minimal = Minimal;
 
     template <typename Iterator>
     build_timings build_in_internal_memory(Iterator keys, const uint64_t num_keys,
-                                           build_configuration const& config) {
+                                           build_configuration const& config)  //
+    {
         assert(Minimal == config.minimal_output);
         assert(Search == config.search);
         internal_memory_builder_single_phf<Hasher, Bucketer> builder;
+        auto timings = builder.build_from_keys(keys, num_keys, config);
+        timings.encoding_microseconds = build(builder, config);
+        return timings;
+    }
+
+    template <typename Iterator>
+    build_timings build_in_external_memory(Iterator keys, const uint64_t num_keys,
+                                           build_configuration const& config)  //
+    {
+        assert(Minimal == config.minimal_output);
+        assert(Search == config.search);
+        external_memory_builder_single_phf<Hasher, Bucketer> builder;
         auto timings = builder.build_from_keys(keys, num_keys, config);
         timings.encoding_microseconds = build(builder, config);
         return timings;
@@ -31,10 +49,10 @@ struct single_phf {
         auto start = clock_type::now();
         if (Minimal && !config.minimal_output) {
             throw std::runtime_error(
-                "Cannot build single_phf<..., ..., true> with minimal_output=false");
+                "Cannot build single_phf<..., minimal=true, ...> with minimal_output=false");
         } else if (!Minimal && config.minimal_output) {
             throw std::runtime_error(
-                "Cannot build single_phf<..., ..., false> with minimal_output=true");
+                "Cannot build single_phf<..., minimal=false, ...> with minimal_output=true");
         }
         m_seed = builder.seed();
         m_num_keys = builder.num_keys();
@@ -63,10 +81,11 @@ struct single_phf {
 
         uint64_t p = 0;
         if constexpr (Search == pthash_search_type::xor_displacement) {
+            /* xor displacement */
             const uint64_t hashed_pilot = default_hash64(pilot, m_seed);
-
             p = fastmod::fastmod_u64(hash.second() ^ hashed_pilot, m_M_128, m_table_size);
-        } else /* Search == pthash_search_type::add_displacement */ {
+        } else {
+            /* additive displacement */
             const uint64_t s = fastmod::fastdiv_u32(pilot, m_M_64);
             p = fastmod::fastmod_u32(((hash64(hash.second() + s).mix()) >> 33) + pilot, m_M_64,
                                      m_table_size);
@@ -94,15 +113,15 @@ struct single_phf {
         return num_bits_for_pilots() + num_bits_for_mapper();
     }
 
-    inline uint64_t num_keys() const {
+    uint64_t num_keys() const {
         return m_num_keys;
     }
 
-    inline uint64_t table_size() const {
+    uint64_t table_size() const {
         return m_table_size;
     }
 
-    inline uint64_t seed() const {
+    uint64_t seed() const {
         return m_seed;
     }
 
@@ -128,6 +147,7 @@ private:
         visitor.visit(t.m_pilots);
         visitor.visit(t.m_free_slots);
     }
+
     uint64_t m_seed;
     uint64_t m_num_keys;
     uint64_t m_table_size;

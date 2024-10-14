@@ -60,8 +60,9 @@ struct internal_memory_builder_partitioned_phf {
             }
             uint64_t table_size = static_cast<double>(partition.size()) / config.alpha;
             if (config.search == pthash_search_type::xor_displacement &&
-                ((table_size & (table_size - 1)) == 0))
+                ((table_size & (table_size - 1)) == 0)) {
                 table_size += 1;
+            }
             m_table_size += table_size;
             m_offsets[i] = cumulative_size;
             if (config.dense_partitioning) {
@@ -90,11 +91,14 @@ struct internal_memory_builder_partitioned_phf {
         timings.searching_microseconds = t.searching_microseconds;
 
         /* fill free slots for dense partitioning */
-        if (config.dense_partitioning && ((config.minimal_output && config.alpha < 0.99999) ||
-                                          config.search == pthash_search_type::xor_displacement)) {
+        if (config.dense_partitioning &&
+            ((config.minimal_output && config.alpha < 0.99999) ||
+             config.search == pthash_search_type::xor_displacement))  //
+        {
             auto start = clock_type::now();
             m_free_slots.clear();
             taken t(m_builders);
+            assert(t.size() >= num_keys);
             m_free_slots.reserve(t.size() - num_keys);
             fill_free_slots(t, num_keys, m_free_slots, m_table_size);
             auto stop = clock_type::now();

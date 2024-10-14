@@ -11,7 +11,8 @@ template <typename BucketsIterator, typename PilotsBuffer>
 void search_sequential_add(const uint64_t num_keys, const uint64_t num_buckets,
                            const uint64_t num_non_empty_buckets, const uint64_t /* seed */,
                            build_configuration const& config, BucketsIterator& buckets,
-                           bits::bit_vector::builder& taken, PilotsBuffer& pilots) {
+                           bits::bit_vector::builder& taken, PilotsBuffer& pilots)  //
+{
     const uint64_t max_bucket_size = (*buckets).size();
     const uint64_t table_size = taken.num_bits();
     const uint64_t M = fastmod::computeM_u32(table_size);

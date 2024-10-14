@@ -90,22 +90,23 @@ struct internal_memory_builder_single_phf {
             map(hashes, num_keys, pairs_blocks, config);
             auto elapsed = to_microseconds(clock_type::now() - start);
             if (config.verbose_output) {
-                std::cout << " == map+sort took: " << elapsed << " seconds" << std::endl;
+                std::cout << " == map+sort took: " << elapsed / 1000000 << " seconds" << std::endl;
             }
 
             start = clock_type::now();
             merge(pairs_blocks, buckets, config.verbose_output);
             elapsed = to_microseconds(clock_type::now() - start);
             if (config.verbose_output) {
-                std::cout << " == merge+check took: " << elapsed << " seconds" << std::endl;
+                std::cout << " == merge+check took: " << elapsed / 1000000 << " seconds"
+                          << std::endl;
             }
         }
 
         auto buckets_iterator = buckets.begin();
         time.mapping_ordering_microseconds = to_microseconds(clock_type::now() - start);
         if (config.verbose_output) {
-            std::cout << " == mapping+ordering took " << time.mapping_ordering_microseconds
-                      << " seconds " << std::endl;
+            std::cout << " == mapping+ordering took "
+                      << time.mapping_ordering_microseconds / 1000000 << " seconds " << std::endl;
             buckets.print_bucket_size_distribution();
         }
 
@@ -113,22 +114,22 @@ struct internal_memory_builder_single_phf {
         {
             m_pilots.resize(num_buckets);
             std::fill(m_pilots.begin(), m_pilots.end(), 0);
-            m_taken.resize(m_table_size);
+            bits::bit_vector::builder taken_bvb(m_table_size);
             uint64_t num_non_empty_buckets = buckets.num_buckets();
             pilots_wrapper_t pilots_wrapper(m_pilots);
             search(m_num_keys, m_num_buckets, num_non_empty_buckets, m_seed, config,
-                   buckets_iterator, m_taken, pilots_wrapper);
+                   buckets_iterator, taken_bvb, pilots_wrapper);
+            taken_bvb.build(m_taken);
             if (config.minimal_output) {
                 m_free_slots.clear();
+                assert(m_taken.num_bits() >= num_keys);
                 m_free_slots.reserve(m_taken.num_bits() - num_keys);
-                bits::bit_vector taken_built;
-                m_taken.build(taken_built);
-                fill_free_slots(taken_built, num_keys, m_free_slots, table_size);
+                fill_free_slots(m_taken, num_keys, m_free_slots, table_size);
             }
         }
         time.searching_microseconds = to_microseconds(clock_type::now() - start);
         if (config.verbose_output) {
-            std::cout << " == search took " << time.searching_microseconds << " seconds"
+            std::cout << " == search took " << time.searching_microseconds / 1000000 << " seconds"
                       << std::endl;
         }
 
@@ -159,7 +160,7 @@ struct internal_memory_builder_single_phf {
         return m_pilots;
     }
 
-    bits::bit_vector::builder const& taken() const {
+    bits::bit_vector const& taken() const {
         return m_taken;
     }
 
@@ -204,7 +205,7 @@ private:
     uint64_t m_num_buckets;
     uint64_t m_table_size;
     Bucketer m_bucketer;
-    bits::bit_vector::builder m_taken;
+    bits::bit_vector m_taken;
     std::vector<uint64_t> m_pilots;
     std::vector<uint64_t> m_free_slots;
 

@@ -8,11 +8,16 @@
 
 namespace pthash {
 
-template <typename Hasher, typename Bucketer, typename Encoder, bool Minimal,
+template <typename Hasher,    //
+          typename Bucketer,  //
+          typename Encoder,   //
+          bool Minimal,       //
           pthash_search_type Search>
-struct partitioned_phf {
-    static_assert(!std::is_base_of<dense_encoder, Encoder>::value,
-                  "Dense encoders are only for dense PTHash. Select another encoder.");
+struct partitioned_phf  //
+{
+    static_assert(
+        !std::is_base_of<dense_encoder, Encoder>::value,
+        "Dense encoders are only valid for dense_partitioned_phf. Select another encoder.");
 
 private:
     struct partition {
@@ -43,8 +48,23 @@ public:
 
     template <typename Iterator>
     build_timings build_in_internal_memory(Iterator keys, const uint64_t num_keys,
-                                           build_configuration const& config) {
+                                           build_configuration const& config)  //
+    {
+        assert(Minimal == config.minimal_output);
+        assert(Search == config.search);
         internal_memory_builder_partitioned_phf<Hasher, Bucketer> builder;
+        auto timings = builder.build_from_keys(keys, num_keys, config);
+        timings.encoding_microseconds = build(builder, config);
+        return timings;
+    }
+
+    template <typename Iterator>
+    build_timings build_in_external_memory(Iterator keys, const uint64_t num_keys,
+                                           build_configuration const& config)  //
+    {
+        assert(Minimal == config.minimal_output);
+        assert(Search == config.search);
+        external_memory_builder_partitioned_phf<Hasher, Bucketer> builder;
         auto timings = builder.build_from_keys(keys, num_keys, config);
         timings.encoding_microseconds = build(builder, config);
         return timings;
@@ -55,10 +75,10 @@ public:
         auto start = clock_type::now();
         if (Minimal && !config.minimal_output) {
             throw std::runtime_error(
-                "Cannot build partitioned_phf<..., ..., true> with minimal_output=false");
+                "Cannot build partitioned_phf<..., minimal=true, ...> with minimal_output=false");
         } else if (!Minimal && config.minimal_output) {
             throw std::runtime_error(
-                "Cannot build partitioned_phf<..., ..., false> with minimal_output=true");
+                "Cannot build partitioned_phf<..., minimal=false, ...> with minimal_output=true");
         }
         uint64_t num_partitions = builder.num_partitions();
 
@@ -70,7 +90,6 @@ public:
 
         auto const& offsets = builder.offsets();
         auto const& builders = builder.builders();
-
         const uint64_t num_threads = config.num_threads;
 
         if (num_threads > 1) {
@@ -117,8 +136,8 @@ public:
         return p.offset + p.f.position(hash);
     }
 
-    size_t num_bits_for_pilots() const {
-        size_t bits =
+    uint64_t num_bits_for_pilots() const {
+        uint64_t bits =
             8 * (sizeof(m_seed) + sizeof(m_num_keys) + sizeof(uint64_t)  // for std::vector::size
                  ) +
             m_partitioner.num_bits();
@@ -136,15 +155,15 @@ public:
         return num_bits_for_pilots() + num_bits_for_mapper();
     }
 
-    inline uint64_t num_keys() const {
+    uint64_t num_keys() const {
         return m_num_keys;
     }
 
-    inline uint64_t table_size() const {
+    uint64_t table_size() const {
         return m_table_size;
     }
 
-    inline uint64_t seed() const {
+    uint64_t seed() const {
         return m_seed;
     }
 

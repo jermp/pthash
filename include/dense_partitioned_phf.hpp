@@ -4,15 +4,32 @@
 
 namespace pthash {
 
-template <typename Hasher, typename Bucketer, typename Encoder, bool NeedsFreeArray,
+template <typename Hasher,      //
+          typename Bucketer,    //
+          typename Encoder,     //
+          bool NeedsFreeArray,  //
           pthash_search_type Search>
-struct dense_partitioned_phf {
-    static_assert(std::is_base_of<dense_encoder, Encoder>::value,
-                  "Needs a dense encoder for dense partitioned PTHash. Select another encoder.");
+struct dense_partitioned_phf  //
+{
+    static_assert(
+        std::is_base_of<dense_encoder, Encoder>::value,
+        "A dense encoder must be specified for dense_partitioned_phf. Select another encoder.");
     typedef Encoder encoder_type;
     static constexpr bool needsFreeArray = NeedsFreeArray;
 
     static constexpr bool minimal = true;  // ToDO
+
+    // TODO!
+    // template <typename Iterator>
+    // build_timings build_in_external_memory(Iterator keys, const uint64_t num_keys,
+    //                                        build_configuration const& config) {
+    //     assert(Search == config.search);
+    //     assert(config.dense_partitioning == true);
+    //     assert(config.avg_partition_size < 10000);  // Unlike partitioned, must use small
+    //     partitions external_memory_builder_partitioned_phf<Hasher, Bucketer> builder; auto
+    //     timings = builder.build_from_keys(keys, num_keys, config); timings.encoding_microseconds
+    //     = build(builder, config); return timings;
+    // }
 
     template <typename Iterator>
     build_timings build_in_internal_memory(Iterator keys, const uint64_t num_keys,
@@ -93,25 +110,25 @@ struct dense_partitioned_phf {
         }
     }
 
-    size_t num_bits_for_pilots() const {
+    uint64_t num_bits_for_pilots() const {
         return 8 * (sizeof(m_seed) + sizeof(m_num_keys) + sizeof(m_table_size)) +
                m_pilots.num_bits();
     }
 
-    size_t num_bits_for_mapper() const {
+    uint64_t num_bits_for_mapper() const {
         return m_partitioner.num_bits() + m_bucketer.num_bits() + m_offsets.num_bits() +
                (needsFreeArray ? m_free_slots.num_bytes() * 8 : 0);
     }
 
-    size_t num_bits() const {
+    uint64_t num_bits() const {
         return num_bits_for_pilots() + num_bits_for_mapper();
     }
 
-    inline uint64_t num_keys() const {
+    uint64_t num_keys() const {
         return m_num_keys;
     }
 
-    inline uint64_t table_size() const {
+    uint64_t table_size() const {
         return m_table_size;
     }
 
