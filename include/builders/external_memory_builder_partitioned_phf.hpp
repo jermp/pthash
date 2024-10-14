@@ -22,7 +22,6 @@ struct external_memory_builder_partitioned_phf {
         const uint64_t num_partitions = compute_num_partitions(num_keys, config.avg_partition_size);
         if (num_partitions == 0) throw std::invalid_argument("number of partitions must be > 0");
 
-
         auto start = clock_type::now();
 
         build_timings timings;
@@ -96,11 +95,12 @@ struct external_memory_builder_partitioned_phf {
 
         auto partition_config = config;
         partition_config.seed = m_seed;
-        partition_config.num_buckets = compute_num_buckets(config.avg_partition_size, config.lambda);
+        partition_config.num_buckets =
+            compute_num_buckets(config.avg_partition_size, config.lambda);
         partition_config.num_threads = 1;
         partition_config.verbose_output = false;
 
-        timings.partitioning_seconds += seconds(clock_type::now() - start);
+        timings.partitioning_microseconds += to_microseconds(clock_type::now() - start);
 
         if (config.num_threads > 1) {  // parallel
             start = clock_type::now();
@@ -114,14 +114,15 @@ struct external_memory_builder_partitioned_phf {
                     std::cout << "processing " << in_memory_partitions.size() << "/"
                               << num_partitions << " partitions..." << std::endl;
                 }
-                std::vector<internal_memory_builder_single_phf<hasher_type, Bucketer>> in_memory_builders(
-                    in_memory_partitions.size());
+                std::vector<internal_memory_builder_single_phf<hasher_type, Bucketer>>
+                    in_memory_builders(in_memory_partitions.size());
                 num_partitions = in_memory_partitions.size();
-                auto t = internal_memory_builder_partitioned_phf<hasher_type, Bucketer>::build_partitions(
-                    in_memory_partitions.begin(), in_memory_builders.begin(), partition_config,
-                    config.num_threads);
-                timings.mapping_ordering_seconds += t.mapping_ordering_seconds;
-                timings.searching_seconds += t.searching_seconds;
+                auto t = internal_memory_builder_partitioned_phf<
+                    hasher_type, Bucketer>::build_partitions(in_memory_partitions.begin(),
+                                                             in_memory_builders.begin(),
+                                                             partition_config, config.num_threads);
+                timings.mapping_ordering_microseconds += t.mapping_ordering_microseconds;
+                timings.searching_microseconds += t.searching_microseconds;
                 in_memory_partitions.clear();
                 bytes = num_partitions * sizeof(meta_partition);
 
@@ -135,16 +136,17 @@ struct external_memory_builder_partitioned_phf {
                     internal_memory_builder_single_phf<hasher_type, Bucketer>().swap(builder);
                     ++id;
                 }
-                timings.partitioning_seconds += seconds(clock_type::now() - start);
+                timings.partitioning_microseconds += to_microseconds(clock_type::now() - start);
                 assert(id == i);
             };
 
             for (; i != num_partitions; ++i) {
                 uint64_t size = partitions[i].size();
                 uint64_t partition_bytes = internal_memory_builder_single_phf<
-                    hasher_type, Bucketer>::estimate_num_bytes_for_construction(size, partition_config);
+                    hasher_type, Bucketer>::estimate_num_bytes_for_construction(size,
+                                                                                partition_config);
                 if (bytes + partition_bytes >= config.ram) {
-                    timings.partitioning_seconds += seconds(clock_type::now() - start);
+                    timings.partitioning_microseconds += to_microseconds(clock_type::now() - start);
                     build_partitions();
                     start = clock_type::now();
                 }
@@ -158,7 +160,7 @@ struct external_memory_builder_partitioned_phf {
                 in_memory_partitions.push_back(std::move(p));
                 bytes += partition_bytes;
             }
-            timings.partitioning_seconds += seconds(clock_type::now() - start);
+            timings.partitioning_microseconds += to_microseconds(clock_type::now() - start);
             if (!in_memory_partitions.empty()) build_partitions();
             std::vector<std::vector<hash_type>>().swap(in_memory_partitions);
 
@@ -176,9 +178,9 @@ struct external_memory_builder_partitioned_phf {
                 start = clock_type::now();
                 std::remove(partitions[i].filename().c_str());
                 m_builders.save(b, i);
-                timings.partitioning_seconds += seconds(clock_type::now() - start);
-                timings.mapping_ordering_seconds += t.mapping_ordering_seconds;
-                timings.searching_seconds += t.searching_seconds;
+                timings.partitioning_microseconds += to_microseconds(clock_type::now() - start);
+                timings.mapping_ordering_microseconds += t.mapping_ordering_microseconds;
+                timings.searching_microseconds += t.searching_microseconds;
             }
         }
 
@@ -259,8 +261,8 @@ private:
     };
 
 public:
-    builders_files_manager<internal_memory_builder_single_phf<hasher_type, Bucketer>> const& builders()
-        const {
+    builders_files_manager<internal_memory_builder_single_phf<hasher_type, Bucketer>> const&
+    builders() const {
         return m_builders;
     }
 

@@ -83,12 +83,12 @@ struct internal_memory_builder_partitioned_phf {
         partition_config.verbose_output = false;
         partition_config.num_threads = 1;
 
-        timings.partitioning_seconds = seconds(clock_type::now() - start);
+        timings.partitioning_microseconds = to_microseconds(clock_type::now() - start);
 
         auto t = build_partitions(partitions.begin(), m_builders.begin(), partition_config,
                                   config.num_threads, num_partitions);
-        timings.mapping_ordering_seconds = t.mapping_ordering_seconds;
-        timings.searching_seconds = t.searching_seconds;
+        timings.mapping_ordering_microseconds = t.mapping_ordering_microseconds;
+        timings.searching_microseconds = t.searching_microseconds;
 
         /* fill free slots for dense partitioning */
         if (config.dense_partitioning && ((config.minimal_output && config.alpha < 0.99999) ||
@@ -99,7 +99,7 @@ struct internal_memory_builder_partitioned_phf {
             m_free_slots.reserve(t.size() - num_keys);
             fill_free_slots(t, num_keys, m_free_slots, m_table_size);
             auto stop = clock_type::now();
-            timings.searching_seconds += seconds(stop - start);
+            timings.searching_microseconds += to_microseconds(stop - start);
         }
 
         return timings;
@@ -175,9 +175,9 @@ struct internal_memory_builder_partitioned_phf {
                     builders[begin].set_seed(config.seed);
                     auto t = builders[begin].build_from_hashes(partition.begin(), partition.size(),
                                                                config);
-                    thread_timings[i].mapping_ordering_seconds +=
-                        t.mapping_ordering_seconds;
-                    thread_timings[i].searching_seconds += t.searching_seconds;
+                    thread_timings[i].mapping_ordering_microseconds +=
+                        t.mapping_ordering_microseconds;
+                    thread_timings[i].searching_microseconds += t.searching_microseconds;
                 }
             };
 
@@ -195,18 +195,18 @@ struct internal_memory_builder_partitioned_phf {
             }
 
             for (auto const& t : thread_timings) {
-                if (t.mapping_ordering_seconds > timings.mapping_ordering_seconds)
-                    timings.mapping_ordering_seconds = t.mapping_ordering_seconds;
-                if (t.searching_seconds > timings.searching_seconds)
-                    timings.searching_seconds = t.searching_seconds;
+                if (t.mapping_ordering_microseconds > timings.mapping_ordering_microseconds)
+                    timings.mapping_ordering_microseconds = t.mapping_ordering_microseconds;
+                if (t.searching_microseconds > timings.searching_microseconds)
+                    timings.searching_microseconds = t.searching_microseconds;
             }
         } else {  // sequential
             for (uint64_t i = 0; i != num_partitions; ++i) {
                 auto const& partition = partitions[i];
                 builders[i].set_seed(config.seed);
                 auto t = builders[i].build_from_hashes(partition.begin(), partition.size(), config);
-                timings.mapping_ordering_seconds += t.mapping_ordering_seconds;
-                timings.searching_seconds += t.searching_seconds;
+                timings.mapping_ordering_microseconds += t.mapping_ordering_microseconds;
+                timings.searching_microseconds += t.searching_microseconds;
             }
         }
 
@@ -252,7 +252,7 @@ struct internal_memory_builder_partitioned_phf {
 
     struct interleaving_pilots_iterator {
         interleaving_pilots_iterator(
-            std::vector<internal_memory_builder_single_phf<hasher_type, bucketer_type>> *builders,
+            std::vector<internal_memory_builder_single_phf<hasher_type, bucketer_type>>* builders,
             uint64_t m_curr_partition = 0, uint64_t curr_bucket_in_partition = 0)
             : m_builders(builders)
             , m_curr_partition(m_curr_partition)
@@ -290,7 +290,7 @@ struct internal_memory_builder_partitioned_phf {
         }
 
     private:
-        std::vector<internal_memory_builder_single_phf<hasher_type, bucketer_type>> *m_builders;
+        std::vector<internal_memory_builder_single_phf<hasher_type, bucketer_type>>* m_builders;
         uint64_t m_curr_partition;
         uint64_t m_curr_bucket_in_partition;
         uint64_t m_num_partitions;

@@ -13,6 +13,7 @@ template <typename Hasher, typename Bucketer, typename Encoder, bool Minimal,
 struct partitioned_phf {
     static_assert(!std::is_base_of<dense_encoder, Encoder>::value,
                   "Dense encoders are only for dense PTHash. Select another encoder.");
+
 private:
     struct partition {
         template <typename Visitor>
@@ -101,7 +102,7 @@ public:
         }
 
         auto stop = clock_type::now();
-        return seconds(stop - start);
+        return to_microseconds(stop - start);
     }
 
     template <typename T>
@@ -117,9 +118,10 @@ public:
     }
 
     size_t num_bits_for_pilots() const {
-        size_t bits = 8 * (sizeof(m_seed) + sizeof(m_num_keys)
-                        + sizeof(uint64_t)  // for std::vector::size
-                      ) +  m_partitioner.num_bits();
+        size_t bits =
+            8 * (sizeof(m_seed) + sizeof(m_num_keys) + sizeof(uint64_t)  // for std::vector::size
+                 ) +
+            m_partitioner.num_bits();
         for (auto const& p : m_partitions) bits += 8 * sizeof(p.offset) + p.f.num_bits_for_pilots();
         return bits;
     }

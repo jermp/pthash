@@ -35,9 +35,8 @@ static inline uint64_t random_value() {
 }
 
 template <typename DurationType>
-double seconds(DurationType const& d) {
-    return static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(d).count()) /
-           1000;  // better resolution than std::chrono::seconds
+double to_microseconds(DurationType const& d) {
+    return static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(d).count());
 }
 
 }  // namespace pthash

@@ -22,7 +22,7 @@ struct single_phf {
         assert(Search == config.search);
         internal_memory_builder_single_phf<Hasher, Bucketer> builder;
         auto timings = builder.build_from_keys(keys, num_keys, config);
-        timings.encoding_seconds = build(builder, config);
+        timings.encoding_microseconds = build(builder, config);
         return timings;
     }
 
@@ -48,7 +48,7 @@ struct single_phf {
             m_free_slots.encode(builder.free_slots().begin(), m_table_size - m_num_keys);
         }
         auto stop = clock_type::now();
-        return seconds(stop - start);
+        return to_microseconds(stop - start);
     }
 
     template <typename T>

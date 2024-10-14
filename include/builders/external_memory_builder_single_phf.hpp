@@ -100,8 +100,8 @@ struct external_memory_builder_single_phf {
                 auto stop = clock_type::now();
                 if (config.verbose_output) {
                     std::cout << " == map+sort " << tfm.get_num_pairs_files()
-                              << " files(s) took: " << seconds(stop - start) << " seconds"
-                              << std::endl;
+                              << " files(s) took: " << to_microseconds(stop - start) / 1000000
+                              << " seconds" << std::endl;
                 }
                 start = clock_type::now();
                 buckets_t buckets = tfm.buckets(config);
@@ -112,17 +112,17 @@ struct external_memory_builder_single_phf {
                 tfm.remove_all_pairs_files();
                 stop = clock_type::now();
                 if (config.verbose_output) {
-                    std::cout << " == merge+check took: " << seconds(stop - start) << " seconds"
-                              << std::endl;
+                    std::cout << " == merge+check took: " << to_microseconds(stop - start) / 1000000
+                              << " seconds" << std::endl;
                     std::cout << " == max bucket size = " << int(tfm.max_bucket_size())
                               << std::endl;
                 }
             }
             auto stop = clock_type::now();
-            time.mapping_ordering_seconds = seconds(stop - start);
+            time.mapping_ordering_microseconds = to_microseconds(stop - start);
             if (config.verbose_output) {
-                std::cout << " == map+ordering took " << time.mapping_ordering_seconds << " seconds"
-                          << std::endl;
+                std::cout << " == map+ordering took " << time.mapping_ordering_microseconds
+                          << " seconds" << std::endl;
             }
         } catch (...) {
             tfm.remove_all_pairs_files();
@@ -171,9 +171,9 @@ struct external_memory_builder_single_phf {
             }
 
             auto stop = clock_type::now();
-            time.searching_seconds = seconds(stop - start);
+            time.searching_microseconds = to_microseconds(stop - start);
             if (config.verbose_output) {
-                std::cout << " == search took " << time.searching_seconds << " seconds"
+                std::cout << " == search took " << time.searching_microseconds << " seconds"
                           << std::endl;
             }
         } catch (...) {

@@ -31,8 +31,8 @@ struct internal_memory_builder_single_phf {
                 actual_config.seed = random_value();
                 try {
                     return build_from_hashes(
-                        hash_generator<RandomAccessIterator>(keys, actual_config.seed),
-                        num_keys, actual_config);
+                        hash_generator<RandomAccessIterator>(keys, actual_config.seed), num_keys,
+                        actual_config);
                 } catch (seed_runtime_error const& error) {
                     std::cout << "attempt " << attempt + 1 << " failed" << std::endl;
                 }
@@ -88,24 +88,24 @@ struct internal_memory_builder_single_phf {
             auto start = clock_type::now();
             std::vector<pairs_t> pairs_blocks;
             map(hashes, num_keys, pairs_blocks, config);
-            auto elapsed = seconds(clock_type::now() - start);
+            auto elapsed = to_microseconds(clock_type::now() - start);
             if (config.verbose_output) {
                 std::cout << " == map+sort took: " << elapsed << " seconds" << std::endl;
             }
 
             start = clock_type::now();
             merge(pairs_blocks, buckets, config.verbose_output);
-            elapsed = seconds(clock_type::now() - start);
+            elapsed = to_microseconds(clock_type::now() - start);
             if (config.verbose_output) {
                 std::cout << " == merge+check took: " << elapsed << " seconds" << std::endl;
             }
         }
 
         auto buckets_iterator = buckets.begin();
-        time.mapping_ordering_seconds = seconds(clock_type::now() - start);
+        time.mapping_ordering_microseconds = to_microseconds(clock_type::now() - start);
         if (config.verbose_output) {
-            std::cout << " == mapping+ordering took "
-                      << time.mapping_ordering_seconds << " seconds " << std::endl;
+            std::cout << " == mapping+ordering took " << time.mapping_ordering_microseconds
+                      << " seconds " << std::endl;
             buckets.print_bucket_size_distribution();
         }
 
@@ -121,14 +121,15 @@ struct internal_memory_builder_single_phf {
             if (config.minimal_output) {
                 m_free_slots.clear();
                 m_free_slots.reserve(m_taken.num_bits() - num_keys);
-                bits::bit_vector m_taken_builded;
-                m_taken.build(m_taken_builded);
-                fill_free_slots(m_taken_builded, num_keys, m_free_slots, table_size);
+                bits::bit_vector taken_built;
+                m_taken.build(taken_built);
+                fill_free_slots(taken_built, num_keys, m_free_slots, table_size);
             }
         }
-        time.searching_seconds = seconds(clock_type::now() - start);
+        time.searching_microseconds = to_microseconds(clock_type::now() - start);
         if (config.verbose_output) {
-            std::cout << " == search took " << time.searching_seconds << " seconds" << std::endl;
+            std::cout << " == search took " << time.searching_microseconds << " seconds"
+                      << std::endl;
         }
 
         return time;

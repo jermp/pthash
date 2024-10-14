@@ -12,7 +12,7 @@ struct dense_partitioned_phf {
     typedef Encoder encoder_type;
     static constexpr bool needsFreeArray = NeedsFreeArray;
 
-    static constexpr bool minimal = true; // ToDO
+    static constexpr bool minimal = true;  // ToDO
 
     template <typename Iterator>
     build_timings build_in_internal_memory(Iterator keys, const uint64_t num_keys,
@@ -22,7 +22,7 @@ struct dense_partitioned_phf {
         assert(config.avg_partition_size < 10000);  // Unlike partitioned, must use small partitions
         internal_memory_builder_partitioned_phf<Hasher, Bucketer> builder;
         auto timings = builder.build_from_keys(keys, num_keys, config);
-        timings.encoding_seconds = build(builder, config);
+        timings.encoding_microseconds = build(builder, config);
         return timings;
     }
 
@@ -57,7 +57,7 @@ struct dense_partitioned_phf {
 
         auto stop = clock_type::now();
 
-        return seconds(stop - start);
+        return to_microseconds(stop - start);
     }
 
     template <typename T>

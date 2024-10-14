@@ -35,15 +35,15 @@ static inline double poisson_pmf(double k, double lambda) {
 
 struct build_timings {
     build_timings()
-        : partitioning_seconds(0.0)
-        , mapping_ordering_seconds(0.0)
-        , searching_seconds(0.0)
-        , encoding_seconds(0.0) {}
+        : partitioning_microseconds(0.0)
+        , mapping_ordering_microseconds(0.0)
+        , searching_microseconds(0.0)
+        , encoding_microseconds(0.0) {}
 
-    double partitioning_seconds;
-    double mapping_ordering_seconds;
-    double searching_seconds;
-    double encoding_seconds;
+    double partitioning_microseconds;
+    double mapping_ordering_microseconds;
+    double searching_microseconds;
+    double encoding_microseconds;
 };
 
 struct build_configuration {
@@ -269,7 +269,8 @@ void merge(std::vector<Pairs> const& pairs_blocks, Merger& merger, bool verbose)
 }
 
 template <typename Taken, typename FreeSlots>
-void fill_free_slots(Taken const& taken, uint64_t num_keys, FreeSlots& free_slots, const uint64_t table_size) {
+void fill_free_slots(Taken const& taken, uint64_t num_keys, FreeSlots& free_slots,
+                     const uint64_t table_size) {
     if (table_size <= num_keys) return;
 
     uint64_t next_used_slot = num_keys;

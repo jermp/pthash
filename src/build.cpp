@@ -28,20 +28,18 @@ template <typename Function, typename Builder, typename Iterator>
 void build_benchmark(Builder& builder, build_timings const& timings,
                      build_parameters<Iterator> const& params, build_configuration const& config) {
     Function f;
-    double encoding_seconds = f.build(builder, config) / 1000000;
+    double encoding_microseconds = f.build(builder, config) / 1000000;
 
     // timings breakdown
-    double total_seconds = timings.partitioning_seconds+
-                                timings.mapping_ordering_seconds +
-                                timings.searching_seconds + encoding_seconds;
+    double total_seconds = timings.partitioning_microseconds +
+                           timings.mapping_ordering_microseconds + timings.searching_microseconds +
+                           encoding_microseconds;
     if (config.verbose_output) {
-        std::cout << "partitioning: " << timings.partitioning_seconds << " [sec]"
+        std::cout << "partitioning: " << timings.partitioning_microseconds << " [sec]" << std::endl;
+        std::cout << "mapping+ordering: " << timings.mapping_ordering_microseconds << " [sec]"
                   << std::endl;
-        std::cout << "mapping+ordering: " << timings.mapping_ordering_seconds
-                  << " [sec]" << std::endl;
-        std::cout << "searching: " << timings.searching_seconds << " [sec]"
-                  << std::endl;
-        std::cout << "encoding: " << encoding_seconds  << " [sec]" << std::endl;
+        std::cout << "searching: " << timings.searching_microseconds << " [sec]" << std::endl;
+        std::cout << "encoding: " << encoding_microseconds << " [sec]" << std::endl;
         std::cout << "total: " << total_seconds << " [sec]" << std::endl;
     }
 
@@ -108,11 +106,13 @@ void build_benchmark(Builder& builder, build_timings const& timings,
     result.add("num_threads", config.num_threads);
     result.add("external_memory", params.external_memory ? "true" : "false");
 
-    result.add("partitioning_seconds", timings.partitioning_seconds);
-    result.add("mapping_ordering_seconds", timings.mapping_ordering_seconds);
-    result.add("searching_seconds", timings.searching_seconds);
-    result.add("encoding_seconds", timings.encoding_seconds);
-    result.add("total_seconds", timings.partitioning_seconds+timings.mapping_ordering_seconds+timings.searching_seconds+timings.encoding_seconds);
+    result.add("partitioning_microseconds", timings.partitioning_microseconds);
+    result.add("mapping_ordering_microseconds", timings.mapping_ordering_microseconds);
+    result.add("searching_microseconds", timings.searching_microseconds);
+    result.add("encoding_microseconds", timings.encoding_microseconds);
+    result.add("total_seconds", timings.partitioning_microseconds +
+                                    timings.mapping_ordering_microseconds +
+                                    timings.searching_microseconds + timings.encoding_microseconds);
     result.add("pt_bits_per_key", pt_bits_per_key);
     result.add("mapper_bits_per_key", mapper_bits_per_key);
     result.add("bits_per_key", bits_per_key);
@@ -300,7 +300,7 @@ void choose_builder(build_parameters<Iterator> const& params, build_configuratio
     if (config.avg_partition_size != 0) {
         if (config.dense_partitioning) {
             if (params.external_memory) {
-                assert(false); // not implemented
+                assert(false);  // not implemented
             } else {
                 choose_search<phf_type::dense_partitioned,  //
                               internal_memory_builder_partitioned_phf<Hasher, Bucketer>>(params,
@@ -309,7 +309,8 @@ void choose_builder(build_parameters<Iterator> const& params, build_configuratio
         } else {
             if (params.external_memory) {
                 choose_search<phf_type::partitioned,  //
-                          external_memory_builder_partitioned_phf<Hasher, Bucketer>>(params, config);
+                              external_memory_builder_partitioned_phf<Hasher, Bucketer>>(params,
+                                                                                         config);
             } else {
                 choose_search<phf_type::partitioned,  //
                               internal_memory_builder_partitioned_phf<Hasher, Bucketer>>(params,
@@ -366,11 +367,10 @@ void build(cmd_line_parser::parser const& parser, Iterator keys, uint64_t num_ke
 #endif
 
             /* only for dense partitioning  */
-            "inter-R", "inter-C", "inter-D", "inter-EF",
-            "inter-C-inter-R",
+            "inter-R", "inter-C", "inter-D", "inter-EF", "inter-C-inter-R",
 #ifdef PTHASH_ENABLE_ALL_ENCODERS
-            "mono-R", "mono-C", "mono-D", "mono-EF",
-            "mono-C-mono-R",  "mono-D-mono-R", "inter-D-inter-R",  // dual
+            "mono-R", "mono-C", "mono-D", "mono-EF", "mono-C-mono-R", "mono-D-mono-R",
+            "inter-D-inter-R",  // dual
 #endif
             /**/
             "all"  //
