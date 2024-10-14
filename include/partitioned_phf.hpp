@@ -8,8 +8,11 @@
 
 namespace pthash {
 
-template <typename Hasher, typename Encoder, bool Minimal>
+template <typename Hasher, typename Bucketer, typename Encoder, bool Minimal,
+          pthash_search_type Search>
 struct partitioned_phf {
+    static_assert(!std::is_base_of<dense_encoder, Encoder>::value,
+                  "Dense encoders are only for dense PTHash. Select another encoder.");
 private:
     struct partition {
         template <typename Visitor>
@@ -23,7 +26,7 @@ private:
         }
 
         uint64_t offset;
-        single_phf<Hasher, Encoder, Minimal> f;
+        single_phf<Hasher, Bucketer, Encoder, Minimal, Search> f;
 
     private:
         template <typename Visitor, typename T>
@@ -38,20 +41,11 @@ public:
     static constexpr bool minimal = Minimal;
 
     template <typename Iterator>
-    build_timings build_in_internal_memory(Iterator keys, uint64_t num_keys,
+    build_timings build_in_internal_memory(Iterator keys, const uint64_t num_keys,
                                            build_configuration const& config) {
-        internal_memory_builder_partitioned_phf<Hasher> builder;
+        internal_memory_builder_partitioned_phf<Hasher, Bucketer> builder;
         auto timings = builder.build_from_keys(keys, num_keys, config);
-        timings.encoding_seconds = build(builder, config);
-        return timings;
-    }
-
-    template <typename Iterator>
-    build_timings build_in_external_memory(Iterator keys, uint64_t num_keys,
-                                           build_configuration const& config) {
-        external_memory_builder_partitioned_phf<Hasher> builder;
-        auto timings = builder.build_from_keys(keys, num_keys, config);
-        timings.encoding_seconds = build(builder, config);
+        timings.encoding_microseconds = build(builder, config);
         return timings;
     }
 
@@ -70,12 +64,13 @@ public:
         m_seed = builder.seed();
         m_num_keys = builder.num_keys();
         m_table_size = builder.table_size();
-        m_bucketer = builder.bucketer();
+        m_partitioner = builder.bucketer();
         m_partitions.resize(num_partitions);
 
         auto const& offsets = builder.offsets();
         auto const& builders = builder.builders();
-        uint64_t num_threads = config.num_threads;
+
+        const uint64_t num_threads = config.num_threads;
 
         if (num_threads > 1) {
             std::vector<std::thread> threads(num_threads);
@@ -86,7 +81,8 @@ public:
                 }
             };
 
-            uint64_t num_partitions_per_thread = (num_partitions + num_threads - 1) / num_threads;
+            const uint64_t num_partitions_per_thread =
+                (num_partitions + num_threads - 1) / num_threads;
             for (uint64_t t = 0, begin = 0; t != num_threads; ++t) {
                 uint64_t end = begin + num_partitions_per_thread;
                 if (end > num_partitions) end = num_partitions;
@@ -115,16 +111,15 @@ public:
     }
 
     uint64_t position(typename Hasher::hash_type hash) const {
-        auto b = m_bucketer.bucket(hash.mix());
+        auto b = m_partitioner.bucket(hash.mix());
         auto const& p = m_partitions[b];
         return p.offset + p.f.position(hash);
     }
 
-    uint64_t num_bits_for_pilots() const {
-        uint64_t bits = 8 * (sizeof(m_seed) + sizeof(m_num_keys) + sizeof(m_table_size) +
-                             sizeof(uint64_t)  // for std::vector::size
-                             ) +
-                        m_bucketer.num_bits();
+    size_t num_bits_for_pilots() const {
+        size_t bits = 8 * (sizeof(m_seed) + sizeof(m_num_keys)
+                        + sizeof(uint64_t)  // for std::vector::size
+                      ) +  m_partitioner.num_bits();
         for (auto const& p : m_partitions) bits += 8 * sizeof(p.offset) + p.f.num_bits_for_pilots();
         return bits;
     }
@@ -167,14 +162,14 @@ private:
         visitor.visit(t.m_seed);
         visitor.visit(t.m_num_keys);
         visitor.visit(t.m_table_size);
-        visitor.visit(t.m_bucketer);
+        visitor.visit(t.m_partitioner);
         visitor.visit(t.m_partitions);
     }
 
     uint64_t m_seed;
     uint64_t m_num_keys;
     uint64_t m_table_size;
-    uniform_bucketer m_bucketer;
+    range_bucketer m_partitioner;
     std::vector<partition> m_partitions;
 };
 

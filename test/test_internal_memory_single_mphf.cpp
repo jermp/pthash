@@ -1,32 +1,36 @@
 #include "common.hpp"
 
 using namespace pthash;
+using bucketer_type = skew_bucketer;
 
 template <typename Encoder, typename Builder, typename Iterator>
 void test_encoder(Builder const& builder, build_configuration const& config, Iterator keys,
                   uint64_t num_keys) {
-    single_phf<typename Builder::hasher_type, Encoder, true> f;
-    f.build(builder, config);
-    testing::require_equal(f.num_keys(), num_keys);
-    check(keys, f);
+    single_phf<typename Builder::hasher_type, bucketer_type, Encoder, true,
+               pthash_search_type::xor_displacement>
+        f_xor;
+    f_xor.build(builder, config);
+    testing::require_equal(f_xor.num_keys(), num_keys);
+    check(keys, f_xor);
 }
 
 template <typename Iterator>
 void test_internal_memory_single_mphf(Iterator keys, uint64_t num_keys) {
     std::cout << "testing on " << num_keys << " keys..." << std::endl;
 
-    internal_memory_builder_single_phf<murmurhash2_64> builder_64;
-    internal_memory_builder_single_phf<murmurhash2_128> builder_128;
+    internal_memory_builder_single_phf<murmurhash2_64, bucketer_type> builder_64;
+    internal_memory_builder_single_phf<murmurhash2_128, bucketer_type> builder_128;
 
     build_configuration config;
+    config.search = pthash_search_type::xor_displacement;
     config.minimal_output = true;  // mphf
-    config.verbose_output = false;
+    config.verbose_output = true;
     config.seed = random_value();
 
-    std::vector<double> C{4.0, 4.5, 5.0, 5.5, 6.0};
+    std::vector<double> L{4.0, 4.5, 5.0, 5.5, 6.0};
     std::vector<double> A{1.0, 0.99, 0.98, 0.97, 0.96};
-    for (auto c : C) {
-        config.c = c;
+    for (auto lambda : L) {
+        config.lambda = lambda;
         for (auto alpha : A) {
             config.alpha = alpha;
 
@@ -54,7 +58,7 @@ void test_internal_memory_single_mphf(Iterator keys, uint64_t num_keys) {
 }
 
 int main() {
-    static const uint64_t universe = 100000;
+    static const uint64_t universe = 10000;
     for (int i = 0; i != 5; ++i) {
         uint64_t num_keys = random_value() % universe;
         if (num_keys < 2) num_keys = 2;
