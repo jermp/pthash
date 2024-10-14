@@ -59,14 +59,13 @@ private:
     Encoder m_encoder;
 };
 
-struct dense_encoder {
-};
+struct dense_encoder {};
 
 template <typename Encoder>
 struct dense_mono : dense_encoder {
     template <typename Iterator>
-    void encode(Iterator begin,                            //
-                const uint64_t num_partitions,             //
+    void encode(Iterator begin,                                                            //
+                const uint64_t num_partitions,                                             //
                 const uint64_t num_buckets_per_partition, const uint64_t /*num_threads*/)  //
     {
         m_num_partitions = num_partitions;
@@ -114,19 +113,20 @@ private:
 template <typename Encoder>
 struct dense_interleaved : dense_encoder {
     template <typename Iterator>
-    void encode(Iterator begin,                            //
-                const uint64_t num_partitions,             //
+    void encode(Iterator begin,                                                        //
+                const uint64_t num_partitions,                                         //
                 const uint64_t num_buckets_per_partition, const uint64_t num_threads)  //
     {
         m_encoders.resize(num_buckets_per_partition);
-        if(num_threads==1) {
+        if (num_threads == 1) {
             for (uint64_t i = 0; i != num_buckets_per_partition; ++i) {
                 m_encoders[i].encode(begin + i * num_partitions, num_partitions);
             }
         } else {
             auto exe = [&](uint64_t beginEncoder, uint64_t endEncoder) {
                 for (; beginEncoder != endEncoder; ++beginEncoder) {
-                    m_encoders[beginEncoder].encode(begin + beginEncoder * num_partitions, num_partitions);
+                    m_encoders[beginEncoder].encode(begin + beginEncoder * num_partitions,
+                                                    num_partitions);
                 }
             };
 
@@ -145,7 +145,6 @@ struct dense_interleaved : dense_encoder {
             for (auto& t : threads) {
                 if (t.joinable()) t.join();
             }
-
         }
     }
 
@@ -185,31 +184,36 @@ private:
 template <typename Front, typename Back, uint64_t numerator = 1, uint64_t denominator = 3>
 struct dense_dual : dense_encoder {
     template <typename Iterator>
-    void encode(Iterator begin,                            //
-                const uint64_t num_partitions,             //
+    void encode(Iterator begin,                                                        //
+                const uint64_t num_partitions,                                         //
                 const uint64_t num_buckets_per_partition, const uint64_t num_threads)  //
     {
         m_front_size = num_buckets_per_partition * (static_cast<double>(numerator) / denominator);
-        if(num_threads == 1) {
-            if(m_front_size > 0) m_front.encode(begin, num_partitions, m_front_size, 1);
-            if(num_buckets_per_partition - m_front_size > 0) m_back.encode(begin + m_front_size * num_partitions, num_partitions,
-                          num_buckets_per_partition - m_front_size, 1);
+        if (num_threads == 1) {
+            if (m_front_size > 0) m_front.encode(begin, num_partitions, m_front_size, 1);
+            if (num_buckets_per_partition - m_front_size > 0)
+                m_back.encode(begin + m_front_size * num_partitions, num_partitions,
+                              num_buckets_per_partition - m_front_size, 1);
         } else {
             uint64_t m_front_threads =
                 (num_threads * m_front_size + num_buckets_per_partition - 1) /
                 num_buckets_per_partition;
             auto exe = [&]() {
-                if(m_front_size > 0) m_front.encode(begin, num_partitions, m_front_size, m_front_threads);
+                if (m_front_size > 0)
+                    m_front.encode(begin, num_partitions, m_front_size, m_front_threads);
             };
             std::thread frontThread = std::thread(exe);
-            if(num_buckets_per_partition - m_front_size > 0) m_back.encode(begin + m_front_size * num_partitions, num_partitions,
-                          num_buckets_per_partition - m_front_size, num_threads - m_front_threads);
+            if (num_buckets_per_partition - m_front_size > 0)
+                m_back.encode(begin + m_front_size * num_partitions, num_partitions,
+                              num_buckets_per_partition - m_front_size,
+                              num_threads - m_front_threads);
             if (frontThread.joinable()) frontThread.join();
         }
     }
 
     static std::string name() {
-        return Front::name() + "-" + Back::name() + "-" + std::to_string(static_cast<double>(numerator)/denominator);
+        return Front::name() + "-" + Back::name() + "-" +
+               std::to_string(static_cast<double>(numerator) / denominator);
     }
 
     size_t num_bits() const {

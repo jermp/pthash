@@ -27,7 +27,6 @@ struct internal_memory_builder_partitioned_phf {
         auto start = clock_type::now();
 
         build_timings timings;
-        if (config.verbose_output) std::cout << "num_partitions " << num_partitions << std::endl;
 
         m_seed = config.seed == constants::invalid_seed ? random_value() : config.seed;
         m_num_keys = num_keys;
@@ -104,6 +103,7 @@ struct internal_memory_builder_partitioned_phf {
 
         return timings;
     }
+
     template <typename KeyIterator>
     static void parallelHashAndPartition(
         KeyIterator keys, std::vector<std::vector<typename hasher_type::hash_type>>& partitions,

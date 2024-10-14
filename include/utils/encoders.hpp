@@ -491,7 +491,4 @@ typedef dual<compact, compact> compact_compact;
 typedef dual<dictionary, dictionary> dictionary_dictionary;
 typedef dual<dictionary, elias_fano> dictionary_elias_fano;
 
-
-
-
 }  // namespace pthash

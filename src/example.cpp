@@ -6,9 +6,9 @@
 int main() {
     using namespace pthash;
 
-    /* Generate 10M random 64-bit keys as input data. */
-    static const uint64_t num_keys = 70000;
-    static const uint64_t seed = 9;
+    /* Generate 1M random 64-bit keys as input data. */
+    static const uint64_t num_keys = 1000000;
+    static const uint64_t seed = 1234567890;
     std::cout << "generating input data..." << std::endl;
     std::vector<uint64_t> keys = distinct_keys<uint64_t>(num_keys, seed);
     assert(keys.size() == num_keys);
@@ -16,12 +16,12 @@ int main() {
     /* Set up a build configuration. */
     build_configuration config;
     config.seed = seed;
-    config.lambda = 4;
-    config.alpha = 1;
+    config.lambda = 5;
+    config.alpha = 1.0;
     config.search = pthash_search_type::add_displacement;
     config.minimal_output = true;  // mphf
     config.verbose_output = true;
-    config.secondary_sort = true;
+    config.secondary_sort = false;
     config.avg_partition_size = 2000;
 
     /* Declare the PTHash function. */
@@ -32,22 +32,23 @@ int main() {
         when using dense_partitioned_phf, config.dense_partitioning must be set to true.
     */
 
-    typedef single_phf<xxhash128,                            // base hasher
-                       skew_bucketer,                        // bucketer type
-                       dictionary_dictionary,                // encoder type
-                       true,                                 // minimal
-                       pthash_search_type::add_displacement  // additive displacement
-                       >
-        pthash_type;
-    config.dense_partitioning = false;
+    // typedef single_phf<xxhash128,                            // base hasher
+    //                    skew_bucketer,                        // bucketer type
+    //                    dictionary_dictionary,                // encoder type
+    //                    true,                                 // minimal
+    //                    pthash_search_type::add_displacement  // additive displacement
+    //                    >
+    //     pthash_type;
+    // config.dense_partitioning = false;
 
-    /*typedef dense_partitioned_phf<xxhash128,                       // base hasher
-                                   table_bucketer<opt_bucketer>,                         // bucketer
-       type inter_R ,                              // encoder type false, // minimal
-                                   pthash_search_type::add_displacement  // additive displacement
-                                   >
-         pthash_type;*/
-    // config.dense_partitioning = true;
+    typedef dense_partitioned_phf<xxhash128,                            // base hasher
+                                  opt_bucketer,                         // bucketer
+                                  inter_R,                              // encoder type
+                                  true,                                 // minimal
+                                  pthash_search_type::add_displacement  // additive displacement
+                                  >
+        pthash_type;
+    config.dense_partitioning = true;
 
     pthash_type f;
 

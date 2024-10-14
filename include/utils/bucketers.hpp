@@ -39,7 +39,6 @@ struct table_bucketer {
         return base.num_buckets() + fulcrums.size() * 64;
     }
 
-
     template <typename Visitor>
     void visit(Visitor& visitor) const {
         visit_impl(visitor, *this);
@@ -66,7 +65,9 @@ struct opt_bucketer {
     opt_bucketer() {}
 
     inline double baseFunc(const double normalized_hash) const {
-        return (normalized_hash + (1 - normalized_hash) * std::log(1 - normalized_hash))  * (1.0 - c) + c * normalized_hash;;
+        return (normalized_hash + (1 - normalized_hash) * std::log(1 - normalized_hash)) *
+                   (1.0 - c) +
+               c * normalized_hash;
     }
 
     void init(const uint64_t num_buckets, const double lambda, const uint64_t table_size,
