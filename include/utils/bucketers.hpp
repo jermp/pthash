@@ -139,8 +139,10 @@ struct skew_bucketer {
               const uint64_t /* table_size */, const double /* alpha */) {
         m_num_dense_buckets = constants::b * num_buckets;
         m_num_sparse_buckets = num_buckets - m_num_dense_buckets;
-        m_M_num_dense_buckets = fastmod::computeM_u64(m_num_dense_buckets);
-        m_M_num_sparse_buckets = fastmod::computeM_u64(m_num_sparse_buckets);
+        m_M_num_dense_buckets =
+            m_num_dense_buckets > 0 ? fastmod::computeM_u64(m_num_dense_buckets) : 0;
+        m_M_num_sparse_buckets =
+            m_num_sparse_buckets > 0 ? fastmod::computeM_u64(m_num_sparse_buckets) : 0;
     }
 
     inline uint64_t bucket(uint64_t hash) const {

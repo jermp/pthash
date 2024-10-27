@@ -42,16 +42,8 @@ private:
         }
     };
 
-public:
-    typedef Encoder encoder_type;
-    static constexpr bool minimal = Minimal;
-
-    template <typename Iterator>
-    build_timings build_in_internal_memory(Iterator keys, const uint64_t num_keys,
-                                           build_configuration const& config)  //
-    {
+    static build_configuration set_build_configuration(build_configuration const& config) {
         build_configuration build_config = config;
-
         if (config.minimal_output != Minimal) {
             if (config.verbose_output) {
                 std::cout << "setting config.verbose_output = " << (Minimal ? "true" : "false")
@@ -59,14 +51,29 @@ public:
             }
             build_config.minimal_output = Minimal;
         }
-
         if (config.search != Search) {
             if (config.verbose_output) {
                 std::cout << "setting config.search = " << Search << std::endl;
             }
             build_config.search = Search;
         }
+        if (config.dense_partitioning == true) {
+            if (config.verbose_output) {
+                std::cout << "setting config.dense_partitioning = false" << std::endl;
+            }
+            build_config.dense_partitioning = false;
+        }
+        return build_config;
+    }
 
+public:
+    typedef Encoder encoder_type;
+    static constexpr bool minimal = Minimal;
+
+    template <typename Iterator>
+    build_timings build_in_internal_memory(Iterator keys, const uint64_t num_keys,
+                                           build_configuration const& config) {
+        build_configuration build_config = set_build_configuration(config);
         internal_memory_builder_partitioned_phf<Hasher, Bucketer> builder;
         auto timings = builder.build_from_keys(keys, num_keys, build_config);
         timings.encoding_microseconds = build(builder, build_config);
@@ -75,25 +82,8 @@ public:
 
     template <typename Iterator>
     build_timings build_in_external_memory(Iterator keys, const uint64_t num_keys,
-                                           build_configuration const& config)  //
-    {
-        build_configuration build_config = config;
-
-        if (config.minimal_output != Minimal) {
-            if (config.verbose_output) {
-                std::cout << "setting config.verbose_output = " << (Minimal ? "true" : "false")
-                          << std::endl;
-            }
-            build_config.minimal_output = Minimal;
-        }
-
-        if (config.search != Search) {
-            if (config.verbose_output) {
-                std::cout << "setting config.search = " << Search << std::endl;
-            }
-            build_config.search = Search;
-        }
-
+                                           build_configuration const& config) {
+        build_configuration build_config = set_build_configuration(config);
         external_memory_builder_partitioned_phf<Hasher, Bucketer> builder;
         auto timings = builder.build_from_keys(keys, num_keys, build_config);
         timings.encoding_microseconds = build(builder, build_config);

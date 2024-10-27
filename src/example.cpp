@@ -21,6 +21,7 @@ int main() {
     config.verbose_output = true;
     config.secondary_sort = false;
     config.avg_partition_size = 2000;
+    config.dense_partitioning = true;
 
     /* Declare the PTHash function type. */
 
@@ -28,8 +29,16 @@ int main() {
     //                    skew_bucketer,                        // bucketer type
     //                    dictionary_dictionary,                // encoder type
     //                    true,                                 // minimal
-    //                    pthash_search_type::add_displacement  // additive displacement
+    //                    pthash_search_type::xor_displacement  // additive displacement
     //                    >
+    //     pthash_type;
+
+    // typedef partitioned_phf<xxhash128,                            // base hasher
+    //                         opt_bucketer,                         // bucketer
+    //                         dictionary_dictionary,                // encoder type
+    //                         true,                                 // minimal
+    //                         pthash_search_type::add_displacement  // additive displacement
+    //                         >
     //     pthash_type;
 
     typedef dense_partitioned_phf<xxhash128,                            // base hasher
@@ -61,7 +70,8 @@ int main() {
     if (check(keys.begin(), f)) std::cout << "EVERYTHING OK!" << std::endl;
 
     /* Now evaluate f on some keys. */
-    for (uint64_t i = 0; i != 10; ++i) {
+    const uint64_t n = std::min<uint64_t>(10, keys.size());
+    for (uint64_t i = 0; i != n; ++i) {
         std::cout << "f(" << keys[i] << ") = " << f(keys[i]) << '\n';
     }
 
@@ -74,7 +84,8 @@ int main() {
         /* Now reload from disk and query. */
         pthash_type other;
         essentials::load(other, output_filename.c_str());
-        for (uint64_t i = 0; i != 10; ++i) {
+        const uint64_t n = std::min<uint64_t>(10, keys.size());
+        for (uint64_t i = 0; i != n; ++i) {
             std::cout << "f(" << keys[i] << ") = " << other(keys[i]) << '\n';
             assert(f(keys[i]) == other(keys[i]));
         }

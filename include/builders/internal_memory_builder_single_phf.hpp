@@ -46,7 +46,7 @@ struct internal_memory_builder_single_phf {
     template <typename RandomAccessIterator>
     build_timings build_from_hashes(RandomAccessIterator hashes, const uint64_t num_keys,
                                     build_configuration const& config) {
-        assert(num_keys > 1);
+        assert(num_keys > 0);
         util::check_hash_collision_probability<Hasher>(num_keys);
 
         if (config.alpha == 0 or config.alpha > 1.0) {
@@ -60,9 +60,11 @@ struct internal_memory_builder_single_phf {
         build_timings time;
 
         uint64_t table_size = static_cast<double>(num_keys) / config.alpha;
-        if (config.search == pthash_search_type::xor_displacement &&
-            (table_size & (table_size - 1)) == 0)
+        if (config.search == pthash_search_type::xor_displacement and
+            (table_size & (table_size - 1)) == 0)  //
+        {
             table_size += 1;
+        }
         const uint64_t num_buckets = (config.num_buckets == constants::invalid_num_buckets)
                                          ? compute_num_buckets(num_keys, config.lambda)
                                          : config.num_buckets;

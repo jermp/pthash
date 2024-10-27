@@ -13,18 +13,20 @@ struct internal_memory_builder_partitioned_phf {
     template <typename Iterator>
     build_timings build_from_keys(Iterator keys, const uint64_t num_keys,
                                   build_configuration const& config) {
-        assert(num_keys > 1);
+        assert(num_keys > 0);
         util::check_hash_collision_probability<Hasher>(num_keys);
 
-        const uint64_t num_partitions = compute_num_partitions(num_keys, config.avg_partition_size);
-        if (config.verbose_output) std::cout << "num_partitions " << num_partitions << std::endl;
-        if (num_partitions == 0) throw std::invalid_argument("number of partitions must be > 0");
-
-        if (config.avg_partition_size < constants::min_partition_size and num_partitions > 1) {
-            throw std::runtime_error("average partition size is too small: use less partitions");
-        }
+        const uint64_t avg_partition_size = std::min<uint64_t>(
+            {num_keys, constants::min_partition_size, config.avg_partition_size}, std::less());
+        const uint64_t num_partitions = compute_num_partitions(num_keys, avg_partition_size);
+        assert(num_partitions > 0);
 
         auto start = clock_type::now();
+
+        if (config.verbose_output) {
+            std::cout << "num_partitions " << num_partitions << std::endl;
+            std::cout << "avg_partition_size " << avg_partition_size << std::endl;
+        }
 
         build_timings timings;
 
@@ -35,13 +37,13 @@ struct internal_memory_builder_partitioned_phf {
         m_bucketer.init(num_partitions);
         m_offsets.resize(num_partitions + 1);
         m_builders.resize(num_partitions);
-        m_num_buckets_per_partition = compute_num_buckets(config.avg_partition_size, config.lambda);
+        m_num_buckets_per_partition = compute_num_buckets(avg_partition_size, config.lambda);
 
         std::vector<std::vector<typename hasher_type::hash_type>> partitions(num_partitions);
-        for (auto& partition : partitions) partition.reserve(1.1 * config.avg_partition_size);
+        for (auto& partition : partitions) partition.reserve(1.1 * avg_partition_size);
         if (config.num_threads > 1) {
-            parallelHashAndPartition(keys, partitions, num_keys, config.num_threads, m_seed,
-                                     num_partitions, m_bucketer);
+            parallel_hash_and_partition(keys, partitions, num_keys, config.num_threads, m_seed,
+                                        num_partitions, m_bucketer);
         } else {
             for (uint64_t i = 0; i != num_keys; ++i, ++keys) {
                 auto const& key = *keys;
@@ -54,10 +56,6 @@ struct internal_memory_builder_partitioned_phf {
         uint64_t cumulative_size = 0;
         for (uint64_t i = 0; i != num_partitions; ++i) {
             auto const& partition = partitions[i];
-            if (partition.size() <= 1) {
-                throw std::runtime_error(
-                    "each partition must contain more than one key: use less partitions");
-            }
             uint64_t table_size = static_cast<double>(partition.size()) / config.alpha;
             if (config.search == pthash_search_type::xor_displacement &&
                 ((table_size & (table_size - 1)) == 0)) {
@@ -109,25 +107,26 @@ struct internal_memory_builder_partitioned_phf {
     }
 
     template <typename KeyIterator>
-    static void parallelHashAndPartition(
+    static void parallel_hash_and_partition(
         KeyIterator keys, std::vector<std::vector<typename hasher_type::hash_type>>& partitions,
         const uint64_t num_keys, const uint64_t num_threads, const uint64_t m_seed,
-        const uint64_t numPartitions, const range_bucketer partitioner) {
+        const uint64_t num_partitions, const range_bucketer partitioner)  //
+    {
         std::vector<std::vector<std::vector<typename hasher_type::hash_type>>> split;
         split.resize(num_threads);
-        uint64_t partitionsPerThread = (numPartitions + num_threads - 1) / num_threads;
-        uint64_t expectedCellSize = num_keys / (num_threads * num_threads);
-        uint64_t cellReserve = expectedCellSize + expectedCellSize / 20;
+        uint64_t partitions_per_thread = (num_partitions + num_threads - 1) / num_threads;
+        uint64_t expected_cell_size = num_keys / (num_threads * num_threads);
+        uint64_t cell_reserve = expected_cell_size + expected_cell_size / 20;
         for (auto& v : split) {
             v.resize(num_threads);
-            for (auto& c : v) { c.reserve(cellReserve); }
+            for (auto& c : v) c.reserve(cell_reserve);
         }
 
         auto hashAndSplit = [&](uint64_t id, uint64_t begin, uint64_t end) {
             for (; begin != end; ++begin) {
                 typename hasher_type::hash_type hash = hasher_type::hash(keys[begin], m_seed);
                 uint64_t partition = partitioner.bucket(hash.mix());
-                uint64_t coloumn = partition / partitionsPerThread;
+                uint64_t coloumn = partition / partitions_per_thread;
                 split[id][coloumn].push_back(hash);
             }
         };

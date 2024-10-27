@@ -1,5 +1,6 @@
 #pragma once
 
+#include "util.hpp"
 #include "external/bits/include/compact_vector.hpp"
 #include "external/bits/include/elias_fano.hpp"
 
@@ -11,7 +12,8 @@ namespace pthash {
 
 struct compact {
     template <typename Iterator>
-    void encode(Iterator begin, uint64_t n) {
+    void encode(Iterator begin, const uint64_t n) {
+        if (n == 0) return;
         m_values.build(begin, n);
     }
 
@@ -50,7 +52,8 @@ struct partitioned_compact {
     static_assert(partition_size > 0);
 
     template <typename Iterator>
-    void encode(Iterator begin, uint64_t n) {
+    void encode(Iterator begin, const uint64_t n) {
+        if (n == 0) return;
         uint64_t num_partitions = (n + partition_size - 1) / partition_size;
         bits::bit_vector::builder bvb;
         bvb.reserve(32 * n);
@@ -124,8 +127,9 @@ private:
 };
 
 template <typename Iterator>
-std::pair<std::vector<uint64_t>, std::vector<uint64_t>> compute_ranks_and_dictionary(Iterator begin,
-                                                                                     uint64_t n) {
+std::pair<std::vector<uint64_t>, std::vector<uint64_t>> compute_ranks_and_dictionary(
+    Iterator begin, const uint64_t n)  //
+{
     // accumulate frequencies
     std::unordered_map<uint64_t, uint64_t> distinct;
     for (auto it = begin, end = begin + n; it != end; ++it) {
@@ -159,7 +163,8 @@ std::pair<std::vector<uint64_t>, std::vector<uint64_t>> compute_ranks_and_dictio
 
 struct dictionary {
     template <typename Iterator>
-    void encode(Iterator begin, uint64_t n) {
+    void encode(Iterator begin, const uint64_t n) {
+        if (n == 0) return;
         auto [ranks, dict] = compute_ranks_and_dictionary(begin, n);
         m_ranks.build(ranks.begin(), ranks.size());
         m_dict.build(dict.begin(), dict.size());
@@ -204,7 +209,8 @@ private:
 
 struct elias_fano {
     template <typename Iterator>
-    void encode(Iterator begin, uint64_t n) {
+    void encode(Iterator begin, const uint64_t n) {
+        if (n == 0) return;
         m_values.encode(begin, n);
     }
 
@@ -243,7 +249,8 @@ struct sdc_sequence {
     sdc_sequence() : m_size(0) {}
 
     template <typename Iterator>
-    void build(Iterator begin, uint64_t n) {
+    void build(Iterator begin, const uint64_t n) {
+        if (n == 0) return;
         m_size = n;
         auto start = begin;
         uint64_t bits = 0;
@@ -300,7 +307,8 @@ private:
 
 struct sdc {
     template <typename Iterator>
-    void encode(Iterator begin, uint64_t n) {
+    void encode(Iterator begin, const uint64_t n) {
+        if (n == 0) return;
         auto [ranks, dict] = compute_ranks_and_dictionary(begin, n);
         m_ranks.build(ranks.begin(), ranks.size());
         m_dict.build(dict.begin(), dict.size());
@@ -337,8 +345,9 @@ private:
 template <typename Front, typename Back>
 struct dual {
     template <typename Iterator>
-    void encode(Iterator begin, uint64_t n) {
-        uint64_t front_size = n * 0.3;
+    void encode(Iterator begin, const uint64_t n) {
+        if (n == 0) return;
+        uint64_t front_size = n * constants::b;
         m_front.encode(begin, front_size);
         m_back.encode(begin + front_size, n - front_size);
     }
@@ -452,6 +461,7 @@ private:
 struct rice {
     template <typename Iterator>
     void encode(Iterator begin, const uint64_t n) {
+        if (n == 0) return;
         m_values.encode(begin, n);
     }
 
