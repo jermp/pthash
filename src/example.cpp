@@ -18,19 +18,11 @@ int main() {
     config.seed = seed;
     config.lambda = 5;
     config.alpha = 0.97;
-    config.search = pthash_search_type::add_displacement;
-    config.minimal_output = true;  // mphf
     config.verbose_output = true;
     config.secondary_sort = false;
     config.avg_partition_size = 2000;
 
-    /* Declare the PTHash function. */
-
-    /*
-        Caveat:
-        when using single_phf, config.dense_partitioning must be set to false;
-        when using dense_partitioned_phf, config.dense_partitioning must be set to true.
-    */
+    /* Declare the PTHash function type. */
 
     // typedef single_phf<xxhash128,                            // base hasher
     //                    skew_bucketer,                        // bucketer type
@@ -39,16 +31,14 @@ int main() {
     //                    pthash_search_type::add_displacement  // additive displacement
     //                    >
     //     pthash_type;
-    // config.dense_partitioning = false;
 
     typedef dense_partitioned_phf<xxhash128,                            // base hasher
                                   opt_bucketer,                         // bucketer
                                   inter_R,                              // encoder type
-                                  true,                                 // needsFreeArray
+                                  true,                                 // minimal
                                   pthash_search_type::add_displacement  // additive displacement
                                   >
         pthash_type;
-    config.dense_partitioning = true;
 
     pthash_type f;
 

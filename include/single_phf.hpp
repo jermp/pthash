@@ -24,11 +24,26 @@ struct single_phf  //
     build_timings build_in_internal_memory(Iterator keys, const uint64_t num_keys,
                                            build_configuration const& config)  //
     {
-        assert(Minimal == config.minimal_output);
-        assert(Search == config.search);
+        build_configuration build_config = config;
+
+        if (config.minimal_output != Minimal) {
+            if (config.verbose_output) {
+                std::cout << "setting config.verbose_output = " << (Minimal ? "true" : "false")
+                          << std::endl;
+            }
+            build_config.minimal_output = Minimal;
+        }
+
+        if (config.search != Search) {
+            if (config.verbose_output) {
+                std::cout << "setting config.search = " << Search << std::endl;
+            }
+            build_config.search = Search;
+        }
+
         internal_memory_builder_single_phf<Hasher, Bucketer> builder;
-        auto timings = builder.build_from_keys(keys, num_keys, config);
-        timings.encoding_microseconds = build(builder, config);
+        auto timings = builder.build_from_keys(keys, num_keys, build_config);
+        timings.encoding_microseconds = build(builder, build_config);
         return timings;
     }
 
@@ -36,11 +51,26 @@ struct single_phf  //
     build_timings build_in_external_memory(Iterator keys, const uint64_t num_keys,
                                            build_configuration const& config)  //
     {
-        assert(Minimal == config.minimal_output);
-        assert(Search == config.search);
+        build_configuration build_config = config;
+
+        if (config.minimal_output != Minimal) {
+            if (config.verbose_output) {
+                std::cout << "setting config.verbose_output = " << (Minimal ? "true" : "false")
+                          << std::endl;
+            }
+            build_config.minimal_output = Minimal;
+        }
+
+        if (config.search != Search) {
+            if (config.verbose_output) {
+                std::cout << "setting config.search = " << Search << std::endl;
+            }
+            build_config.search = Search;
+        }
+
         external_memory_builder_single_phf<Hasher, Bucketer> builder;
-        auto timings = builder.build_from_keys(keys, num_keys, config);
-        timings.encoding_microseconds = build(builder, config);
+        auto timings = builder.build_from_keys(keys, num_keys, build_config);
+        timings.encoding_microseconds = build(builder, build_config);
         return timings;
     }
 

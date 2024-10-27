@@ -181,7 +181,7 @@ public:
     }
 };
 
-std::vector<std::string> generateBenchmarkInput(size_t n) {
+std::vector<std::string> generate_benchmark_input(size_t n) {
     std::vector<std::string> inputData;
     inputData.reserve(n);
     auto time = std::chrono::system_clock::now();

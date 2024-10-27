@@ -552,7 +552,7 @@ int main(int argc, char** argv) {
         if (external_memory) {
             std::cout << "Warning: external memory construction with in-memory input" << std::endl;
         }
-        build(parser, generateBenchmarkInput(num_keys).begin(), num_keys);
+        build(parser, generate_benchmark_input(num_keys).begin(), num_keys);
     }
 
     return 0;
