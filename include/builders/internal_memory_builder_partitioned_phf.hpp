@@ -23,7 +23,7 @@ struct internal_memory_builder_partitioned_phf {
 
         auto start = clock_type::now();
 
-        if (config.verbose_output) {
+        if (config.verbose) {
             std::cout << "num_partitions " << num_partitions << std::endl;
             std::cout << "avg_partition_size " << avg_partition_size << std::endl;
         }
@@ -66,7 +66,7 @@ struct internal_memory_builder_partitioned_phf {
             if (config.dense_partitioning) {
                 cumulative_size += table_size;
             } else {
-                cumulative_size += config.minimal_output ? partition.size() : table_size;
+                cumulative_size += config.minimal ? partition.size() : table_size;
             }
         }
         m_offsets[num_partitions] = cumulative_size;
@@ -74,11 +74,11 @@ struct internal_memory_builder_partitioned_phf {
         auto partition_config = config;
         partition_config.seed = m_seed;
         partition_config.num_buckets = m_num_buckets_per_partition;
-        if (config.verbose_output) {
+        if (config.verbose) {
             std::cout << "num_buckets_per_partition = " << partition_config.num_buckets
                       << std::endl;
         }
-        partition_config.verbose_output = false;
+        partition_config.verbose = false;
         partition_config.num_threads = 1;
 
         timings.partitioning_microseconds = to_microseconds(clock_type::now() - start);
@@ -90,7 +90,7 @@ struct internal_memory_builder_partitioned_phf {
 
         /* fill free slots for dense partitioning */
         if (config.dense_partitioning &&
-            ((config.minimal_output && config.alpha < 0.99999) ||
+            ((config.minimal && config.alpha < 0.99999) ||
              config.search == pthash_search_type::xor_displacement))  //
         {
             auto start = clock_type::now();

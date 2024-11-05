@@ -27,10 +27,25 @@ struct dense_partitioned_phf  //
         return timings;
     }
 
+    // template <typename Iterator>
+    // build_timings build_in_external_memory(Iterator keys, const uint64_t num_keys,
+    //                                        build_configuration const& config) {
+    //     // TODO
+    // }
+
     template <typename Builder>
     double build(Builder& builder, build_configuration const& config)  //
     {
         auto start = clock_type::now();
+
+        if (Minimal != config.minimal) {
+            throw std::runtime_error(  //
+                "template parameter 'Minimal' must be equal to config.minimal");
+        }
+        if (Search != config.search) {
+            throw std::runtime_error(  //
+                "template parameter 'Search' must be equal to config.search");
+        }
 
         const uint64_t num_partitions = builder.num_partitions();
         const uint64_t num_buckets_per_partition = builder.num_buckets_per_partition();
@@ -55,6 +70,7 @@ struct dense_partitioned_phf  //
         }
 
         auto stop = clock_type::now();
+
         return to_microseconds(stop - start);
     }
 
@@ -143,21 +159,19 @@ private:
 
     static build_configuration set_build_configuration(build_configuration const& config) {
         build_configuration build_config = config;
-        if (config.minimal_output != Minimal) {
-            if (config.verbose_output) {
-                std::cout << "setting config.verbose_output = " << (Minimal ? "true" : "false")
+        if (config.minimal != Minimal) {
+            if (config.verbose) {
+                std::cout << "setting config.verbose = " << (Minimal ? "true" : "false")
                           << std::endl;
             }
-            build_config.minimal_output = Minimal;
+            build_config.minimal = Minimal;
         }
         if (config.search != Search) {
-            if (config.verbose_output) {
-                std::cout << "setting config.search = " << Search << std::endl;
-            }
+            if (config.verbose) { std::cout << "setting config.search = " << Search << std::endl; }
             build_config.search = Search;
         }
         if (config.dense_partitioning == false) {
-            if (config.verbose_output) {
+            if (config.verbose) {
                 std::cout << "setting config.dense_partitioning = true" << std::endl;
             }
             build_config.dense_partitioning = true;
@@ -166,7 +180,7 @@ private:
             Unlike pthash::partitioned_phf, pthash::dense_partitioned_phf must use small partitions.
         */
         if (config.avg_partition_size > constants::max_partition_size) {
-            if (config.verbose_output) {
+            if (config.verbose) {
                 std::cout << "setting config.avg_partition_size = " << constants::max_partition_size
                           << std::endl;
             }
@@ -184,11 +198,5 @@ private:
     diff<compact> m_offsets;
     bits::elias_fano<false, false> m_free_slots;
 };
-
-// template <typename Hasher, typename Encoder>
-// using phobic =
-//     dense_partitioned_phf<Hasher, table_bucketer<opt_bucketer>, dense_interleaved<Encoder>,
-//     false,
-//                           pthash_search_type::add_displacement>;
 
 }  // namespace pthash

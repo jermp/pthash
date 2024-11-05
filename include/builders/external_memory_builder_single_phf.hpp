@@ -70,7 +70,7 @@ struct external_memory_builder_single_phf {
             throw std::runtime_error(ss.str());
         }
 
-        if (config.verbose_output) {
+        if (config.verbose) {
             constexpr uint64_t GB = 1000000000;
             uint64_t peak = num_keys * (sizeof(bucket_payload_pair) + sizeof(uint64_t)) +
                             (num_keys + num_buckets) * sizeof(uint64_t);
@@ -98,20 +98,20 @@ struct external_memory_builder_single_phf {
                 std::vector<pairs_t> pairs_blocks;
                 map(keys, num_keys, pairs_blocks, tfm, config);
                 auto stop = clock_type::now();
-                if (config.verbose_output) {
+                if (config.verbose) {
                     std::cout << " == map+sort " << tfm.get_num_pairs_files()
                               << " files(s) took: " << to_microseconds(stop - start) / 1000000
                               << " seconds" << std::endl;
                 }
                 start = clock_type::now();
                 buckets_t buckets = tfm.buckets(config);
-                merge(pairs_blocks, buckets, config.verbose_output);
+                merge(pairs_blocks, buckets, config.verbose);
                 buckets.flush();
                 for (auto& pairs_block : pairs_blocks) pairs_block.close();
                 num_non_empty_buckets = buckets.num_buckets();
                 tfm.remove_all_pairs_files();
                 stop = clock_type::now();
-                if (config.verbose_output) {
+                if (config.verbose) {
                     std::cout << " == merge+check took: " << to_microseconds(stop - start) / 1000000
                               << " seconds" << std::endl;
                     std::cout << " == max bucket size = " << int(tfm.max_bucket_size())
@@ -120,7 +120,7 @@ struct external_memory_builder_single_phf {
             }
             auto stop = clock_type::now();
             time.mapping_ordering_microseconds = to_microseconds(stop - start);
-            if (config.verbose_output) {
+            if (config.verbose) {
                 std::cout << " == map+ordering took " << time.mapping_ordering_microseconds
                           << " seconds" << std::endl;
             }
@@ -160,7 +160,7 @@ struct external_memory_builder_single_phf {
                 tfm.remove_all_merge_files();
             }
 
-            if (config.minimal_output and num_keys < table_size) {  // fill free slots
+            if (config.minimal and num_keys < table_size) {  // fill free slots
                 // write all free slots to file
                 buffered_file_t<uint64_t> writer(tfm.get_free_slots_filename(),
                                                  ram - bitmap_taken_bytes);
@@ -172,7 +172,7 @@ struct external_memory_builder_single_phf {
 
             auto stop = clock_type::now();
             time.searching_microseconds = to_microseconds(stop - start);
-            if (config.verbose_output) {
+            if (config.verbose) {
                 std::cout << " == search took " << time.searching_microseconds << " seconds"
                           << std::endl;
             }
@@ -679,8 +679,7 @@ private:
     template <typename Iterator>
     void map(Iterator keys, uint64_t num_keys, std::vector<pairs_t>& pairs_blocks,
              temporary_files_manager& tfm, build_configuration const& config) {
-        progress_logger logger(num_keys, " == processed ", " keys from input",
-                               config.verbose_output);
+        progress_logger logger(num_keys, " == processed ", " keys from input", config.verbose);
 
         uint64_t ram = config.ram;
         uint64_t ram_parallel_merge = 0;

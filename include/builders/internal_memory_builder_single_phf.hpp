@@ -77,7 +77,7 @@ struct internal_memory_builder_single_phf {
                         static_cast<double>(m_num_buckets) * config.lambda / config.alpha,
                         config.alpha);
 
-        if (config.verbose_output) {
+        if (config.verbose) {
             std::cout << "lambda (avg. bucket size) = " << config.lambda << std::endl;
             std::cout << "alpha (load factor) = " << config.alpha << std::endl;
             std::cout << "num_keys = " << num_keys << std::endl;
@@ -91,14 +91,14 @@ struct internal_memory_builder_single_phf {
             std::vector<pairs_t> pairs_blocks;
             map(hashes, num_keys, pairs_blocks, config);
             auto elapsed = to_microseconds(clock_type::now() - start);
-            if (config.verbose_output) {
+            if (config.verbose) {
                 std::cout << " == map+sort took: " << elapsed / 1000000 << " seconds" << std::endl;
             }
 
             start = clock_type::now();
-            merge(pairs_blocks, buckets, config.verbose_output);
+            merge(pairs_blocks, buckets, config.verbose);
             elapsed = to_microseconds(clock_type::now() - start);
-            if (config.verbose_output) {
+            if (config.verbose) {
                 std::cout << " == merge+check took: " << elapsed / 1000000 << " seconds"
                           << std::endl;
             }
@@ -106,7 +106,7 @@ struct internal_memory_builder_single_phf {
 
         auto buckets_iterator = buckets.begin();
         time.mapping_ordering_microseconds = to_microseconds(clock_type::now() - start);
-        if (config.verbose_output) {
+        if (config.verbose) {
             std::cout << " == mapping+ordering took "
                       << time.mapping_ordering_microseconds / 1000000 << " seconds " << std::endl;
             buckets.print_bucket_size_distribution();
@@ -122,7 +122,7 @@ struct internal_memory_builder_single_phf {
             search(m_num_keys, m_num_buckets, num_non_empty_buckets, m_seed, config,
                    buckets_iterator, taken_bvb, pilots_wrapper);
             taken_bvb.build(m_taken);
-            if (config.minimal_output) {
+            if (config.minimal) {
                 m_free_slots.clear();
                 assert(m_taken.num_bits() >= num_keys);
                 m_free_slots.reserve(m_taken.num_bits() - num_keys);
@@ -130,7 +130,7 @@ struct internal_memory_builder_single_phf {
             }
         }
         time.searching_microseconds = to_microseconds(clock_type::now() - start);
-        if (config.verbose_output) {
+        if (config.verbose) {
             std::cout << " == search took " << time.searching_microseconds / 1000000 << " seconds"
                       << std::endl;
         }

@@ -59,8 +59,8 @@ struct build_configuration {
         , tmp_dir(constants::default_tmp_dirname)
         , secondary_sort(false)
         , dense_partitioning(false)
-        , minimal_output(true)
-        , verbose_output(true) {}
+        , minimal(true)
+        , verbose(true) {}
 
     double lambda;  // avg. bucket size
     double alpha;   // load factor
@@ -73,8 +73,8 @@ struct build_configuration {
     std::string tmp_dir;
     bool secondary_sort;
     bool dense_partitioning;
-    bool minimal_output;
-    bool verbose_output;
+    bool minimal;
+    bool verbose;
 };
 
 static uint64_t compute_num_buckets(const uint64_t num_keys, const uint64_t avg_bucket_size) {

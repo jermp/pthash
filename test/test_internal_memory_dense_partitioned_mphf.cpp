@@ -6,9 +6,9 @@ using bucketer_type = skew_bucketer;
 template <typename Encoder, typename Builder, typename Iterator>
 void test_encoder(Builder& builder, build_configuration const& config, Iterator keys,
                   uint64_t num_keys) {
-    partitioned_phf<typename Builder::hasher_type, bucketer_type, Encoder,
-                    true,  // minimal
-                    pthash_search_type::add_displacement>
+    dense_partitioned_phf<typename Builder::hasher_type, bucketer_type, Encoder,
+                          true,  // minimal
+                          pthash_search_type::add_displacement>
         f;
     f.build(builder, config);
     testing::require_equal(f.num_keys(), num_keys);
@@ -16,7 +16,7 @@ void test_encoder(Builder& builder, build_configuration const& config, Iterator 
 }
 
 template <typename Iterator>
-void test_internal_memory_partitioned_mphf(Iterator keys, uint64_t num_keys) {
+void test_internal_memory_dense_partitioned_mphf(Iterator keys, uint64_t num_keys) {
     std::cout << "testing on " << num_keys << " keys..." << std::endl;
 
     internal_memory_builder_partitioned_phf<murmurhash2_64, bucketer_type> builder_64;
@@ -26,6 +26,7 @@ void test_internal_memory_partitioned_mphf(Iterator keys, uint64_t num_keys) {
     config.search = pthash_search_type::add_displacement;
     config.minimal = true;
     config.verbose = false;
+    config.dense_partitioning = true;
     config.seed = random_value();
 
     std::vector<uint64_t> avg_partition_size{1000, 10000, 100000, 1000000};
@@ -75,7 +76,7 @@ int main() {
         if (num_keys == 0) num_keys = 1;
         std::vector<uint64_t> keys = distinct_keys<uint64_t>(num_keys, random_value());
         assert(keys.size() == num_keys);
-        test_internal_memory_partitioned_mphf(keys.begin(), keys.size());
+        test_internal_memory_dense_partitioned_mphf(keys.begin(), keys.size());
     }
     return 0;
 }

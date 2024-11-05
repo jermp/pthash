@@ -34,7 +34,7 @@ void build_benchmark(Builder& builder, build_timings const& timings,
     double total_seconds = timings.partitioning_microseconds +
                            timings.mapping_ordering_microseconds + timings.searching_microseconds +
                            encoding_microseconds;
-    if (config.verbose_output) {
+    if (config.verbose) {
         std::cout << "partitioning: " << timings.partitioning_microseconds << " [sec]" << std::endl;
         std::cout << "mapping+ordering: " << timings.mapping_ordering_microseconds << " [sec]"
                   << std::endl;
@@ -47,7 +47,7 @@ void build_benchmark(Builder& builder, build_timings const& timings,
     double pt_bits_per_key = static_cast<double>(f.num_bits_for_pilots()) / f.num_keys();
     double mapper_bits_per_key = static_cast<double>(f.num_bits_for_mapper()) / f.num_keys();
     double bits_per_key = static_cast<double>(f.num_bits()) / f.num_keys();
-    if (config.verbose_output) {
+    if (config.verbose) {
         std::cout << "pilots: " << pt_bits_per_key << " [bits/key]" << std::endl;
         std::cout << "mapper: " << mapper_bits_per_key << " [bits/key]" << std::endl;
         std::cout << "total: " << bits_per_key << " [bits/key]" << std::endl;
@@ -55,17 +55,15 @@ void build_benchmark(Builder& builder, build_timings const& timings,
 
     // correctness check
     if (params.check) {
-        if (config.verbose_output) {
-            essentials::logger("checking data structure for correctness...");
-        }
-        if (check(params.keys, f) and config.verbose_output) {
+        if (config.verbose) { essentials::logger("checking data structure for correctness..."); }
+        if (check(params.keys, f) and config.verbose) {
             std::cout << "EVERYTHING OK!" << std::endl;
         }
     }
 
     std::string benchResult = "---";
     if (params.queries > 0) {
-        if (config.verbose_output) essentials::logger("measuring lookup time...");
+        if (config.verbose) essentials::logger("measuring lookup time...");
         // bench
         std::random_device rd;
         std::mt19937_64 gen(rd());
@@ -85,7 +83,7 @@ void build_benchmark(Builder& builder, build_timings const& timings,
         t.stop();
         double lookup_time = t.elapsed() / static_cast<double>(params.queries);
         benchResult = std::to_string(lookup_time);
-        if (config.verbose_output) std::cout << lookup_time << " [nanosec/key]" << std::endl;
+        if (config.verbose) std::cout << lookup_time << " [nanosec/key]" << std::endl;
     }
 
     essentials::json_lines result;
@@ -93,7 +91,7 @@ void build_benchmark(Builder& builder, build_timings const& timings,
     result.add("n", params.num_keys);
     result.add("lambda", config.lambda);
     result.add("alpha", config.alpha);
-    result.add("minimal", config.minimal_output ? "true" : "false");
+    result.add("minimal", config.minimal ? "true" : "false");
     result.add("encoder_type", Function::encoder_type::name().c_str());
     result.add("dual_encoder_tradeoff", params.dual_encoder_tradeoff);
     result.add("bucketer_type", params.bucketer_type.c_str());
@@ -132,7 +130,7 @@ void choose_needs_free_array(Builder const& builder, build_timings const& timing
                              build_parameters<Iterator> const& params,
                              build_configuration const& config) {
     bool needsFree = config.search == pthash_search_type::xor_displacement ||
-                     (config.minimal_output && config.alpha < 0.999999);
+                     (config.minimal && config.alpha < 0.999999);
 
     if (needsFree) {
         build_benchmark<
@@ -164,7 +162,7 @@ void choose_dual_encoder_tradeoff(build_parameters<Iterator> const& params,
 
 template <phf_type t, typename Builder, pthash_search_type search_type, typename Iterator>
 void choose_encoder(build_parameters<Iterator> const& params, build_configuration const& config) {
-    if (config.verbose_output) essentials::logger("construction starts");
+    if (config.verbose) essentials::logger("construction starts");
 
     Builder builder;
     build_timings timings = builder.build_from_keys(params.keys, params.num_keys, config);
@@ -403,10 +401,10 @@ void build(cmd_line_parser::parser const& parser, Iterator keys, uint64_t num_ke
         return;
     }
 
-    config.minimal_output = true;
+    config.minimal = true;
     config.secondary_sort = parser.get<bool>("secondary_sort");
     config.dense_partitioning = parser.get<bool>("dense_partitioning");
-    config.verbose_output = parser.get<bool>("verbose_output");
+    config.verbose = parser.get<bool>("verbose");
 
     config.avg_partition_size = 0;
     if (parser.parsed("avg_partition_size")) {
@@ -502,10 +500,10 @@ int main(int argc, char** argv) {
                "-d", false);
     parser.add("ram", "Number of Giga bytes of RAM to use for construction in external memory.",
                "-m", false);
-    parser.add("minimal_output", "Build a minimal PHF.", "--minimal", false, true);
+    parser.add("minimal", "Build a minimal PHF.", "--minimal", false, true);
     parser.add("external_memory", "Build the function in external memory.", "--external", false,
                true);
-    parser.add("verbose_output", "Verbose output during construction.", "--verbose", false, true);
+    parser.add("verbose", "Verbose output during construction.", "--verbose", false, true);
     parser.add("check", "Check correctness after construction.", "--check", false, true);
 
     if (!parser.parse()) return 1;
@@ -538,12 +536,11 @@ int main(int argc, char** argv) {
         } else {
             std::vector<std::string> keys;
             if (input_filename == "-") {
-                keys =
-                    read_string_collection(num_keys, std::cin, parser.get<bool>("verbose_output"));
+                keys = read_string_collection(num_keys, std::cin, parser.get<bool>("verbose"));
             } else {
                 std::ifstream input(input_filename.c_str());
                 if (!input.good()) throw std::runtime_error("error in opening file.");
-                keys = read_string_collection(num_keys, input, parser.get<bool>("verbose_output"));
+                keys = read_string_collection(num_keys, input, parser.get<bool>("verbose"));
                 input.close();
             }
             build(parser, keys.begin(), keys.size());

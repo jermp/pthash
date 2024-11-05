@@ -25,7 +25,7 @@ struct external_memory_builder_partitioned_phf {
         auto start = clock_type::now();
 
         build_timings timings;
-        if (config.verbose_output) {
+        if (config.verbose) {
             std::cout << "num_partitions " << num_partitions << std::endl;
             std::cout << "using " << static_cast<double>(config.ram) / 1000000000 << " GB of RAM"
                       << std::endl;
@@ -52,7 +52,7 @@ struct external_memory_builder_partitioned_phf {
         size_t bytes = num_partitions * sizeof(meta_partition);
         if (bytes >= config.ram) throw std::runtime_error("not enough RAM available");
 
-        progress_logger logger(num_keys, " == partitioned ", " keys", config.verbose_output);
+        progress_logger logger(num_keys, " == partitioned ", " keys", config.verbose);
         for (uint64_t i = 0; i != num_keys; ++i, ++keys) {
             auto const& key = *keys;
             auto hash = hasher_type::hash(key, m_seed);
@@ -82,7 +82,7 @@ struct external_memory_builder_partitioned_phf {
                 break;
             }
             m_offsets[i] = cumulative_size;
-            cumulative_size += config.minimal_output ? partition.size() : table_size;
+            cumulative_size += config.minimal ? partition.size() : table_size;
         }
 
         if (failure) {
@@ -98,7 +98,7 @@ struct external_memory_builder_partitioned_phf {
         partition_config.num_buckets =
             compute_num_buckets(config.avg_partition_size, config.lambda);
         partition_config.num_threads = 1;
-        partition_config.verbose_output = false;
+        partition_config.verbose = false;
 
         timings.partitioning_microseconds += to_microseconds(clock_type::now() - start);
 
@@ -110,7 +110,7 @@ struct external_memory_builder_partitioned_phf {
             uint64_t i = 0;
 
             auto build_partitions = [&]() {
-                if (config.verbose_output) {
+                if (config.verbose) {
                     std::cout << "processing " << in_memory_partitions.size() << "/"
                               << num_partitions << " partitions..." << std::endl;
                 }
@@ -126,9 +126,7 @@ struct external_memory_builder_partitioned_phf {
                 in_memory_partitions.clear();
                 bytes = num_partitions * sizeof(meta_partition);
 
-                if (config.verbose_output) {
-                    std::cout << "writing builders to disk..." << std::endl;
-                }
+                if (config.verbose) { std::cout << "writing builders to disk..." << std::endl; }
                 start = clock_type::now();
                 uint64_t id = i - num_partitions;
                 for (auto& builder : in_memory_builders) {
@@ -167,7 +165,7 @@ struct external_memory_builder_partitioned_phf {
         } else {  // sequential
             internal_memory_builder_single_phf<hasher_type, Bucketer> b;
             for (uint64_t i = 0; i != num_partitions; ++i) {
-                if (config.verbose_output) {
+                if (config.verbose) {
                     std::cout << "processing partition " << i << "/" << num_partitions
                               << " partitions..." << std::endl;
                 }

@@ -44,21 +44,19 @@ private:
 
     static build_configuration set_build_configuration(build_configuration const& config) {
         build_configuration build_config = config;
-        if (config.minimal_output != Minimal) {
-            if (config.verbose_output) {
-                std::cout << "setting config.verbose_output = " << (Minimal ? "true" : "false")
+        if (config.minimal != Minimal) {
+            if (config.verbose) {
+                std::cout << "setting config.verbose = " << (Minimal ? "true" : "false")
                           << std::endl;
             }
-            build_config.minimal_output = Minimal;
+            build_config.minimal = Minimal;
         }
         if (config.search != Search) {
-            if (config.verbose_output) {
-                std::cout << "setting config.search = " << Search << std::endl;
-            }
+            if (config.verbose) { std::cout << "setting config.search = " << Search << std::endl; }
             build_config.search = Search;
         }
         if (config.dense_partitioning == true) {
-            if (config.verbose_output) {
+            if (config.verbose) {
                 std::cout << "setting config.dense_partitioning = false" << std::endl;
             }
             build_config.dense_partitioning = false;
@@ -93,15 +91,17 @@ public:
     template <typename Builder>
     double build(Builder& builder, build_configuration const& config) {
         auto start = clock_type::now();
-        if (Minimal && !config.minimal_output) {
-            throw std::runtime_error(
-                "Cannot build partitioned_phf<..., minimal=true, ...> with minimal_output=false");
-        } else if (!Minimal && config.minimal_output) {
-            throw std::runtime_error(
-                "Cannot build partitioned_phf<..., minimal=false, ...> with minimal_output=true");
-        }
-        uint64_t num_partitions = builder.num_partitions();
 
+        if (Minimal != config.minimal) {
+            throw std::runtime_error(  //
+                "template parameter 'Minimal' must be equal to config.minimal");
+        }
+        if (Search != config.search) {
+            throw std::runtime_error(  //
+                "template parameter 'Search' must be equal to config.search");
+        }
+
+        uint64_t num_partitions = builder.num_partitions();
         m_seed = builder.seed();
         m_num_keys = builder.num_keys();
         m_table_size = builder.table_size();
@@ -141,6 +141,7 @@ public:
         }
 
         auto stop = clock_type::now();
+
         return to_microseconds(stop - start);
     }
 

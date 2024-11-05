@@ -6,12 +6,13 @@ using bucketer_type = skew_bucketer;
 template <typename Encoder, typename Builder, typename Iterator>
 void test_encoder(Builder const& builder, build_configuration const& config, Iterator keys,
                   uint64_t num_keys) {
-    single_phf<typename Builder::hasher_type, bucketer_type, Encoder, true,
-               pthash_search_type::xor_displacement>
-        f_xor;
-    f_xor.build(builder, config);
-    testing::require_equal(f_xor.num_keys(), num_keys);
-    check(keys, f_xor);
+    single_phf<typename Builder::hasher_type, bucketer_type, Encoder,
+               true,  // minimal
+               pthash_search_type::add_displacement>
+        f;
+    f.build(builder, config);
+    testing::require_equal(f.num_keys(), num_keys);
+    check(keys, f);
 }
 
 template <typename Iterator>
@@ -22,9 +23,9 @@ void test_internal_memory_single_mphf(Iterator keys, uint64_t num_keys) {
     internal_memory_builder_single_phf<murmurhash2_128, bucketer_type> builder_128;
 
     build_configuration config;
-    config.search = pthash_search_type::xor_displacement;
-    config.minimal_output = true;  // mphf
-    config.verbose_output = false;
+    config.search = pthash_search_type::add_displacement;
+    config.minimal = true;
+    config.verbose = false;
     config.seed = random_value();
 
     std::vector<double> L{4.0, 4.5, 5.0, 5.5, 6.0};
@@ -61,7 +62,7 @@ int main() {
     static const uint64_t universe = 100000;
     for (int i = 0; i != 5; ++i) {
         uint64_t num_keys = random_value() % universe;
-        if (num_keys < 2) num_keys = 2;
+        if (num_keys == 0) num_keys = 1;
         std::vector<uint64_t> keys = distinct_keys<uint64_t>(num_keys, random_value());
         assert(keys.size() == num_keys);
         test_internal_memory_single_mphf(keys.begin(), keys.size());

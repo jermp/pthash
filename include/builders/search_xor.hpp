@@ -26,7 +26,7 @@ void search_sequential_xor(const uint64_t num_keys, const uint64_t num_buckets,
     }
 
     search_logger log(num_keys, num_buckets);
-    if (config.verbose_output) log.init();
+    if (config.verbose) log.init();
 
     uint64_t processed_buckets = 0;
     for (; processed_buckets < num_non_empty_buckets; ++processed_buckets, ++buckets) {
@@ -61,13 +61,13 @@ void search_sequential_xor(const uint64_t num_keys, const uint64_t num_buckets,
                     assert(taken.get(p) == false);
                     taken.set(p, true);
                 }
-                if (config.verbose_output) log.update(processed_buckets, bucket.size());
+                if (config.verbose) log.update(processed_buckets, bucket.size());
                 break;
             }
         }
     }
 
-    if (config.verbose_output) log.finalize(processed_buckets);
+    if (config.verbose) log.finalize(processed_buckets);
 }
 
 template <typename BucketsIterator, typename PilotsBuffer>
@@ -87,7 +87,7 @@ void search_parallel_xor(const uint64_t num_keys, const uint64_t num_buckets,
     }
 
     search_logger log(num_keys, num_buckets);
-    if (config.verbose_output) log.init();
+    if (config.verbose) log.init();
 
     std::atomic<uint64_t> next_bucket_idx = 0;
     static_assert(next_bucket_idx.is_always_lock_free);
@@ -158,7 +158,7 @@ void search_parallel_xor(const uint64_t num_keys, const uint64_t num_buckets,
                 assert(taken.get(p) == false);
                 taken.set(p, true);
             }
-            if (config.verbose_output) log.update(local_bucket_idx, bucket.size());
+            if (config.verbose) log.update(local_bucket_idx, bucket.size());
 
             // update (local) local_bucket_idx
             local_bucket_idx = next_bucket_idx + num_threads;
@@ -192,7 +192,7 @@ void search_parallel_xor(const uint64_t num_keys, const uint64_t num_buckets,
     }
     assert(next_bucket_idx == num_non_empty_buckets);
 
-    if (config.verbose_output) log.finalize(next_bucket_idx);
+    if (config.verbose) log.finalize(next_bucket_idx);
 }
 
 }  // namespace pthash
