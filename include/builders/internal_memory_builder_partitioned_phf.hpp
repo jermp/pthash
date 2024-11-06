@@ -88,11 +88,7 @@ struct internal_memory_builder_partitioned_phf {
         timings.mapping_ordering_microseconds = t.mapping_ordering_microseconds;
         timings.searching_microseconds = t.searching_microseconds;
 
-        /* fill free slots for dense partitioning */
-        if (config.dense_partitioning &&
-            ((config.minimal && config.alpha < 0.99999) ||
-             config.search == pthash_search_type::xor_displacement))  //
-        {
+        if (config.minimal) {
             auto start = clock_type::now();
             m_free_slots.clear();
             taken t(m_builders);
@@ -253,7 +249,15 @@ struct internal_memory_builder_partitioned_phf {
         return m_builders;
     }
 
-    struct interleaving_pilots_iterator {
+    struct interleaving_pilots_iterator  //
+    {
+        /* Must define all the five properties, otherwise compilation fails. */
+        using value_type = uint64_t;
+        using difference_type = uint64_t;
+        using pointer = uint64_t*;
+        using reference = uint64_t&;
+        using iterator_category = std::random_access_iterator_tag;
+
         interleaving_pilots_iterator(
             std::vector<internal_memory_builder_single_phf<hasher_type, bucketer_type>>* builders,
             uint64_t m_curr_partition = 0, uint64_t curr_bucket_in_partition = 0)
