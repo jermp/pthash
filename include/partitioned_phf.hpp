@@ -89,7 +89,7 @@ public:
     }
 
     template <typename Builder>
-    double build(Builder& builder, build_configuration const& config) {
+    uint64_t build(Builder& builder, build_configuration const& config) {
         auto start = clock_type::now();
 
         if (Minimal != config.minimal) {

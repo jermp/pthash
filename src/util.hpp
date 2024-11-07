@@ -250,13 +250,13 @@ bool check(Iterator keys, Function const& f) {
 }
 
 template <typename Function, typename Iterator>
-double perf(Iterator keys, uint64_t num_keys, Function const& f) {
+double perf(Iterator keys, const uint64_t num_queries, Function const& f) {
     static const uint64_t runs = 5;
     essentials::timer<std::chrono::high_resolution_clock, std::chrono::nanoseconds> t;
     t.start();
     for (uint64_t r = 0; r != runs; ++r) {
         Iterator begin = keys;
-        for (uint64_t i = 0; i != num_keys; ++i) {
+        for (uint64_t i = 0; i != num_queries; ++i) {
             auto const& key = *begin;
             uint64_t p = f(key);
             essentials::do_not_optimize_away(p);
@@ -264,7 +264,7 @@ double perf(Iterator keys, uint64_t num_keys, Function const& f) {
         }
     }
     t.stop();
-    double nanosec_per_key = t.elapsed() / static_cast<double>(runs * num_keys);
+    double nanosec_per_key = t.elapsed() / static_cast<double>(runs * num_queries);
     return nanosec_per_key;
 }
 

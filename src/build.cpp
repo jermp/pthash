@@ -29,19 +29,21 @@ template <typename Function, typename Builder, typename Iterator>
 void build_benchmark(Builder& builder, build_timings const& timings,
                      build_parameters<Iterator> const& params, build_configuration const& config) {
     Function f;
-    double encoding_microseconds = f.build(builder, config) / 1000000;
+    double encoding_microseconds = f.build(builder, config);
 
     // timings breakdown
-    double total_seconds = timings.partitioning_microseconds +
-                           timings.mapping_ordering_microseconds + timings.searching_microseconds +
-                           encoding_microseconds;
+    uint64_t total_microseconds = timings.partitioning_microseconds +
+                                  timings.mapping_ordering_microseconds +
+                                  timings.searching_microseconds + encoding_microseconds;
     if (config.verbose) {
-        std::cout << "partitioning: " << timings.partitioning_microseconds << " [sec]" << std::endl;
-        std::cout << "mapping+ordering: " << timings.mapping_ordering_microseconds << " [sec]"
+        std::cout << "partitioning: " << timings.partitioning_microseconds / 1000000.0 << " [sec]"
                   << std::endl;
-        std::cout << "searching: " << timings.searching_microseconds << " [sec]" << std::endl;
-        std::cout << "encoding: " << encoding_microseconds << " [sec]" << std::endl;
-        std::cout << "total: " << total_seconds << " [sec]" << std::endl;
+        std::cout << "mapping+ordering: " << timings.mapping_ordering_microseconds / 1000000.0
+                  << " [sec]" << std::endl;
+        std::cout << "searching: " << timings.searching_microseconds / 1000000.0 << " [sec]"
+                  << std::endl;
+        std::cout << "encoding: " << encoding_microseconds / 1000000.0 << " [sec]" << std::endl;
+        std::cout << "total: " << total_microseconds / 1000000.0 << " [sec]" << std::endl;
     }
 
     // space breakdown
@@ -62,31 +64,6 @@ void build_benchmark(Builder& builder, build_timings const& timings,
         }
     }
 
-    // std::string benchResult = "---";
-    // if (params.num_queries > 0) {
-    //     if (config.verbose) essentials::logger("measuring lookup time...");
-    //     // bench
-    //     std::random_device rd;
-    //     std::mt19937_64 gen(rd());
-    //     std::uniform_int_distribution<uint32_t> dis;
-    //     std::vector<std::string> queryInputs;
-    //     queryInputs.reserve(params.num_queries);
-    //     for (uint64_t i = 0; i < params.num_queries; ++i) {
-    //         uint64_t pos = dis(gen) % params.num_keys;
-    //         queryInputs.push_back(params.keys[pos]);
-    //     }
-
-    //     essentials::timer<std::chrono::high_resolution_clock, std::chrono::nanoseconds> t;
-    //     t.start();
-    //     for (uint64_t i = 0; i < params.num_queries; ++i) {
-    //         essentials::do_not_optimize_away(f(queryInputs[i]));
-    //     }
-    //     t.stop();
-    //     double lookup_time = t.elapsed() / static_cast<double>(params.num_queries);
-    //     benchResult = std::to_string(lookup_time);
-    //     if (config.verbose) std::cout << lookup_time << " [nanosec/key]" << std::endl;
-    // }
-
     double nanosec_per_key = 0;
     if (params.num_queries != 0) {
         if (config.verbose) essentials::logger("measuring lookup time...");
@@ -104,7 +81,8 @@ void build_benchmark(Builder& builder, build_timings const& timings,
             }
             nanosec_per_key /= params.num_keys;
         } else {
-            nanosec_per_key = perf(params.keys, params.num_keys, f);
+            nanosec_per_key =
+                perf(params.keys, std::min<uint64_t>(params.num_queries, f.num_keys()), f);
         }
         if (config.verbose) std::cout << nanosec_per_key << " [nanosec/key]" << std::endl;
     }
@@ -118,6 +96,7 @@ void build_benchmark(Builder& builder, build_timings const& timings,
     result.add("encoder_type", Function::encoder_type::name().c_str());
     result.add("dual_encoder_tradeoff", params.dual_encoder_tradeoff);
     result.add("bucketer_type", params.bucketer_type.c_str());
+    result.add("secondary_sort", config.secondary_sort);
     result.add("avg_partition_size", config.avg_partition_size);
     result.add("num_partitions",
                compute_num_partitions(params.num_keys, config.avg_partition_size));
@@ -131,14 +110,11 @@ void build_benchmark(Builder& builder, build_timings const& timings,
     result.add("mapping_ordering_microseconds", timings.mapping_ordering_microseconds);
     result.add("searching_microseconds", timings.searching_microseconds);
     result.add("encoding_microseconds", timings.encoding_microseconds);
-    result.add("total_seconds", timings.partitioning_microseconds +
-                                    timings.mapping_ordering_microseconds +
-                                    timings.searching_microseconds + timings.encoding_microseconds);
+    result.add("total_microseconds", total_microseconds);
     result.add("pt_bits_per_key", pt_bits_per_key);
     result.add("mapper_bits_per_key", mapper_bits_per_key);
     result.add("bits_per_key", bits_per_key);
-    result.add("secondary_sort", config.secondary_sort);
-    result.add("query_time", benchResult.c_str());
+    if (params.num_queries != 0) result.add("nanosec_per_key", nanosec_per_key);
     result.print_line();
 
     if (params.output_filename != "") {
@@ -451,10 +427,10 @@ void build(cmd_line_parser::parser const& parser, Iterator keys, uint64_t num_ke
     if (parser.parsed("tmp_dir")) config.tmp_dir = parser.get<std::string>("tmp_dir");
 
     if (parser.parsed("ram")) {
-        constexpr uint64_t GB = 1000000000;
-        uint64_t ram = parser.get<double>("ram") * GB;
+        uint64_t ram = parser.get<double>("ram") * essentials::GB;
         if (ram > constants::available_ram) {
-            double available_ram_in_GB = static_cast<double>(constants::available_ram) / GB;
+            double available_ram_in_GB =
+                static_cast<double>(constants::available_ram) / essentials::GB;
             std::cout << "Warning: too much RAM specified, this machine has " << available_ram_in_GB
                       << " GB of RAM; defaulting to " << available_ram_in_GB * 0.75 << " GB"
                       << std::endl;
@@ -540,7 +516,6 @@ int main(int argc, char** argv) {
     }
 
     auto num_keys = parser.get<uint64_t>("num_keys");
-    auto seed = (parser.parsed("seed")) ? parser.get<uint64_t>("seed") : constants::invalid_seed;
     bool external_memory = parser.get<bool>("external_memory");
 
     if (parser.parsed("input_filename")) {
@@ -571,7 +546,7 @@ int main(int argc, char** argv) {
         if (external_memory) {
             std::cout << "Warning: external memory construction with in-memory input" << std::endl;
         }
-        // build(parser, generate_benchmark_input(num_keys).begin(), num_keys);
+        build(parser, generate_benchmark_input(num_keys).begin(), num_keys);
         // std::vector<uint64_t> keys = distinct_keys<uint64_t>(num_keys, seed);
         // build(parser, keys.begin(), keys.size());
     }

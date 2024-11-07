@@ -35,15 +35,15 @@ static inline double poisson_pmf(double k, double lambda) {
 
 struct build_timings {
     build_timings()
-        : partitioning_microseconds(0.0)
-        , mapping_ordering_microseconds(0.0)
-        , searching_microseconds(0.0)
-        , encoding_microseconds(0.0) {}
+        : partitioning_microseconds(0)
+        , mapping_ordering_microseconds(0)
+        , searching_microseconds(0)
+        , encoding_microseconds(0) {}
 
-    double partitioning_microseconds;
-    double mapping_ordering_microseconds;
-    double searching_microseconds;
-    double encoding_microseconds;
+    uint64_t partitioning_microseconds;
+    uint64_t mapping_ordering_microseconds;
+    uint64_t searching_microseconds;
+    uint64_t encoding_microseconds;
 };
 
 struct build_configuration {

@@ -41,7 +41,7 @@ struct single_phf  //
     }
 
     template <typename Builder>
-    double build(Builder const& builder, build_configuration const& config) {
+    uint64_t build(Builder const& builder, build_configuration const& config) {
         auto start = clock_type::now();
 
         if (Minimal != config.minimal) {
