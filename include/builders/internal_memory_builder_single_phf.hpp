@@ -74,6 +74,7 @@ struct internal_memory_builder_single_phf {
         m_table_size = table_size;
         m_num_buckets = num_buckets;
         m_bucketer.init(m_num_buckets, config.lambda,
+                        // why not  table_size here??
                         static_cast<double>(m_num_buckets) * config.lambda / config.alpha,
                         config.alpha);
 
@@ -188,6 +189,31 @@ struct internal_memory_builder_single_phf {
     template <typename Visitor>
     void visit(Visitor& visitor) {
         visit_impl(visitor, *this);
+    }
+
+    static uint64_t estimate_num_bytes_for_construction(const uint64_t num_keys,
+                                                        build_configuration const& config) {
+        uint64_t table_size = static_cast<double>(num_keys) / config.alpha;
+        if (config.search == pthash_search_type::xor_displacement and
+            (table_size & (table_size - 1)) == 0)  //
+        {
+            table_size += 1;
+        }
+        const uint64_t num_buckets = (config.num_buckets == constants::invalid_num_buckets)
+                                         ? compute_num_buckets(num_keys, config.lambda)
+                                         : config.num_buckets;
+
+        uint64_t num_bytes_for_map = num_keys * sizeof(bucket_payload_pair)          // pairs
+                                     + (num_keys + num_buckets) * sizeof(uint64_t);  // buckets
+
+        uint64_t num_bytes_for_search =
+            num_buckets * sizeof(uint64_t)                                       // pilots
+            + num_buckets * sizeof(uint64_t)                                     // buckets
+            + (config.minimal ? (table_size - num_keys) * sizeof(uint64_t) : 0)  // free_slots
+            + num_keys * sizeof(uint64_t)                                        // hashes
+            + table_size / 8;                                                    // bitmap taken
+
+        return std::max<uint64_t>(num_bytes_for_map, num_bytes_for_search);
     }
 
 private:

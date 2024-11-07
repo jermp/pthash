@@ -44,12 +44,12 @@ struct external_memory_builder_partitioned_phf {
         std::vector<meta_partition> partitions;
         partitions.reserve(num_partitions);
 
-        for (uint64_t id = 0; id != num_partitions; ++id) {
-            partitions.emplace_back(config.tmp_dir, id);
+        for (uint64_t partition_id = 0; partition_id != num_partitions; ++partition_id) {
+            partitions.emplace_back(config.tmp_dir, partition_id);
             partitions.back().reserve(1.5 * config.avg_partition_size);
         }
 
-        size_t bytes = num_partitions * sizeof(meta_partition);
+        uint64_t bytes = num_partitions * sizeof(meta_partition);
         if (bytes >= config.ram) throw std::runtime_error("not enough RAM available");
 
         progress_logger logger(num_keys, " == partitioned ", " keys", config.verbose);
@@ -116,19 +116,20 @@ struct external_memory_builder_partitioned_phf {
                 }
                 std::vector<internal_memory_builder_single_phf<hasher_type, Bucketer>>
                     in_memory_builders(in_memory_partitions.size());
-                num_partitions = in_memory_partitions.size();
+                uint64_t id = i - in_memory_partitions.size();
                 auto t = internal_memory_builder_partitioned_phf<
                     hasher_type, Bucketer>::build_partitions(in_memory_partitions.begin(),
                                                              in_memory_builders.begin(),
-                                                             partition_config, config.num_threads);
+                                                             partition_config, config.num_threads,
+                                                             in_memory_partitions.size());
                 timings.mapping_ordering_microseconds += t.mapping_ordering_microseconds;
                 timings.searching_microseconds += t.searching_microseconds;
                 in_memory_partitions.clear();
                 bytes = num_partitions * sizeof(meta_partition);
 
-                if (config.verbose) { std::cout << "writing builders to disk..." << std::endl; }
+                if (config.verbose) std::cout << "writing builders to disk..." << std::endl;
+
                 start = clock_type::now();
-                uint64_t id = i - num_partitions;
                 for (auto& builder : in_memory_builders) {
                     m_builders.save(builder, id);
                     internal_memory_builder_single_phf<hasher_type, Bucketer>().swap(builder);

@@ -102,9 +102,9 @@ struct internal_memory_builder_partitioned_phf {
         return timings;
     }
 
-    template <typename KeyIterator>
+    template <typename Iterator>
     static void parallel_hash_and_partition(
-        KeyIterator keys, std::vector<std::vector<typename hasher_type::hash_type>>& partitions,
+        Iterator keys, std::vector<std::vector<typename hasher_type::hash_type>>& partitions,
         const uint64_t num_keys, const uint64_t num_threads, const uint64_t m_seed,
         const uint64_t num_partitions, const range_bucketer partitioner)  //
     {
@@ -118,7 +118,7 @@ struct internal_memory_builder_partitioned_phf {
             for (auto& c : v) c.reserve(cell_reserve);
         }
 
-        auto hashAndSplit = [&](uint64_t id, uint64_t begin, uint64_t end) {
+        auto hash_and_split = [&](uint64_t id, uint64_t begin, uint64_t end) {
             for (; begin != end; ++begin) {
                 typename hasher_type::hash_type hash = hasher_type::hash(keys[begin], m_seed);
                 uint64_t partition = partitioner.bucket(hash.mix());
@@ -127,7 +127,7 @@ struct internal_memory_builder_partitioned_phf {
             }
         };
 
-        auto mergeAndCollect = [&](uint64_t id) {
+        auto merge_and_collect = [&](uint64_t id) {
             for (uint64_t row = 0; row < num_threads; ++row) {
                 for (typename hasher_type::hash_type hash : split[row][id]) {
                     uint64_t partition = partitioner.bucket(hash.mix());
@@ -141,7 +141,7 @@ struct internal_memory_builder_partitioned_phf {
         for (uint64_t i = 0, begin = 0; i != num_threads; ++i) {
             uint64_t end = begin + num_keys_per_thread;
             if (end > num_keys) end = num_keys;
-            threads[i] = std::thread(hashAndSplit, i, begin, end);
+            threads[i] = std::thread(hash_and_split, i, begin, end);
             begin = end;
         }
         for (auto& t : threads) {
@@ -149,7 +149,7 @@ struct internal_memory_builder_partitioned_phf {
         }
 
         for (uint64_t i = 0; i != num_threads; ++i) {
-            threads[i] = std::thread(mergeAndCollect, i);
+            threads[i] = std::thread(merge_and_collect, i);
         }
         for (auto& t : threads) {
             if (t.joinable()) t.join();
@@ -259,7 +259,8 @@ struct internal_memory_builder_partitioned_phf {
         using iterator_category = std::random_access_iterator_tag;
 
         interleaving_pilots_iterator(
-            std::vector<internal_memory_builder_single_phf<hasher_type, bucketer_type>>* builders,
+            std::vector<internal_memory_builder_single_phf<hasher_type, bucketer_type>> const*
+                builders,
             uint64_t m_curr_partition = 0, uint64_t curr_bucket_in_partition = 0)
             : m_builders(builders)
             , m_curr_partition(m_curr_partition)
@@ -297,7 +298,8 @@ struct internal_memory_builder_partitioned_phf {
         }
 
     private:
-        std::vector<internal_memory_builder_single_phf<hasher_type, bucketer_type>>* m_builders;
+        std::vector<internal_memory_builder_single_phf<hasher_type, bucketer_type>> const*
+            m_builders;
         uint64_t m_curr_partition;
         uint64_t m_curr_bucket_in_partition;
         uint64_t m_num_partitions;
@@ -368,7 +370,7 @@ struct internal_memory_builder_partitioned_phf {
         uint64_t m_size;
     };
 
-    interleaving_pilots_iterator interleaving_pilots_iterator_begin() {
+    interleaving_pilots_iterator interleaving_pilots_iterator_begin() const {
         return interleaving_pilots_iterator(&m_builders);
     }
 

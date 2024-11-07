@@ -318,8 +318,7 @@ void choose_builder(build_parameters<Iterator> const& params, build_configuratio
     } else {
         if (params.external_memory) {
             choose_search<phf_type::single,  //
-                          external_memory_builder_partitioned_phf<Hasher, Bucketer>>(params,
-                                                                                     config);
+                          external_memory_builder_single_phf<Hasher, Bucketer>>(params, config);
         } else {
             choose_search<phf_type::single,  //
                           internal_memory_builder_single_phf<Hasher, Bucketer>>(params, config);
@@ -523,28 +522,28 @@ int main(int argc, char** argv) {
 
     if (parser.parsed("input_filename")) {
         auto input_filename = parser.get<std::string>("input_filename");
-        if (external_memory) {
-            if (input_filename == "-") {
-                sequential_lines_iterator keys(std::cin);
-                build(parser, keys, num_keys);
-            } else {
-                mm::file_source<uint8_t> input(input_filename, mm::advice::sequential);
-                lines_iterator keys(input.data(), input.data() + input.size());
-                build(parser, keys, num_keys);
-                input.close();
-            }
+        // if (external_memory) {
+        //     if (input_filename == "-") {
+        //         sequential_lines_iterator keys(std::cin);
+        //         build(parser, keys, num_keys);
+        //     } else {
+        //         mm::file_source<uint8_t> input(input_filename, mm::advice::sequential);
+        //         lines_iterator keys(input.data(), input.data() + input.size());
+        //         build(parser, keys, num_keys);
+        //         input.close();
+        //     }
+        // } else {
+        std::vector<std::string> keys;
+        if (input_filename == "-") {
+            keys = read_string_collection(num_keys, std::cin, parser.get<bool>("verbose"));
         } else {
-            std::vector<std::string> keys;
-            if (input_filename == "-") {
-                keys = read_string_collection(num_keys, std::cin, parser.get<bool>("verbose"));
-            } else {
-                std::ifstream input(input_filename.c_str());
-                if (!input.good()) throw std::runtime_error("error in opening file.");
-                keys = read_string_collection(num_keys, input, parser.get<bool>("verbose"));
-                input.close();
-            }
-            build(parser, keys.begin(), keys.size());
+            std::ifstream input(input_filename.c_str());
+            if (!input.good()) throw std::runtime_error("error in opening file.");
+            keys = read_string_collection(num_keys, input, parser.get<bool>("verbose"));
+            input.close();
         }
+        build(parser, keys.begin(), keys.size());
+        // }
     } else {  // use num_keys random strings
         if (external_memory) {
             std::cout << "Warning: external memory construction with in-memory input" << std::endl;
