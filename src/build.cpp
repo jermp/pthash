@@ -14,8 +14,9 @@ struct build_parameters {
 
     Iterator keys;
     uint64_t num_keys;
-    bool check, external_memory;
-    uint64_t queries;
+    uint64_t num_queries;
+    bool check;
+    bool external_memory;
     std::string bucketer_type;
     std::string encoder_type;
     double dual_encoder_tradeoff;
@@ -55,35 +56,57 @@ void build_benchmark(Builder& builder, build_timings const& timings,
 
     // correctness check
     if (params.check) {
-        if (config.verbose) { essentials::logger("checking data structure for correctness..."); }
+        if (config.verbose) essentials::logger("checking data structure for correctness...");
         if (check(params.keys, f) and config.verbose) {
             std::cout << "EVERYTHING OK!" << std::endl;
         }
     }
 
-    std::string benchResult = "---";
-    if (params.queries > 0) {
-        if (config.verbose) essentials::logger("measuring lookup time...");
-        // bench
-        std::random_device rd;
-        std::mt19937_64 gen(rd());
-        std::uniform_int_distribution<uint32_t> dis;
-        std::vector<std::string> queryInputs;
-        queryInputs.reserve(params.queries);
-        for (uint64_t i = 0; i < params.queries; ++i) {
-            uint64_t pos = dis(gen) % params.num_keys;
-            queryInputs.push_back(params.keys[pos]);
-        }
+    // std::string benchResult = "---";
+    // if (params.num_queries > 0) {
+    //     if (config.verbose) essentials::logger("measuring lookup time...");
+    //     // bench
+    //     std::random_device rd;
+    //     std::mt19937_64 gen(rd());
+    //     std::uniform_int_distribution<uint32_t> dis;
+    //     std::vector<std::string> queryInputs;
+    //     queryInputs.reserve(params.num_queries);
+    //     for (uint64_t i = 0; i < params.num_queries; ++i) {
+    //         uint64_t pos = dis(gen) % params.num_keys;
+    //         queryInputs.push_back(params.keys[pos]);
+    //     }
 
-        essentials::timer<std::chrono::high_resolution_clock, std::chrono::nanoseconds> t;
-        t.start();
-        for (uint64_t i = 0; i < params.queries; ++i) {
-            essentials::do_not_optimize_away(f(queryInputs[i]));
+    //     essentials::timer<std::chrono::high_resolution_clock, std::chrono::nanoseconds> t;
+    //     t.start();
+    //     for (uint64_t i = 0; i < params.num_queries; ++i) {
+    //         essentials::do_not_optimize_away(f(queryInputs[i]));
+    //     }
+    //     t.stop();
+    //     double lookup_time = t.elapsed() / static_cast<double>(params.num_queries);
+    //     benchResult = std::to_string(lookup_time);
+    //     if (config.verbose) std::cout << lookup_time << " [nanosec/key]" << std::endl;
+    // }
+
+    double nanosec_per_key = 0;
+    if (params.num_queries != 0) {
+        if (config.verbose) essentials::logger("measuring lookup time...");
+        if (params.external_memory) {
+            std::vector<typename Iterator::value_type> queries;
+            uint64_t remaining = params.num_queries, batch_size = 100 * 1000000;
+            Iterator query = params.keys;
+            while (remaining > 0) {
+                auto cur_batch_size = std::min(remaining, batch_size);
+                queries.reserve(cur_batch_size);
+                for (uint64_t i = 0; i != cur_batch_size; ++i, ++query) queries.push_back(*query);
+                nanosec_per_key += perf(queries.begin(), cur_batch_size, f) * cur_batch_size;
+                remaining -= cur_batch_size;
+                queries.clear();
+            }
+            nanosec_per_key /= params.num_keys;
+        } else {
+            nanosec_per_key = perf(params.keys, params.num_keys, f);
         }
-        t.stop();
-        double lookup_time = t.elapsed() / static_cast<double>(params.queries);
-        benchResult = std::to_string(lookup_time);
-        if (config.verbose) std::cout << lookup_time << " [nanosec/key]" << std::endl;
+        if (config.verbose) std::cout << nanosec_per_key << " [nanosec/key]" << std::endl;
     }
 
     essentials::json_lines result;
@@ -344,7 +367,7 @@ void build(cmd_line_parser::parser const& parser, Iterator keys, uint64_t num_ke
     build_parameters<Iterator> params(keys, num_keys);
     params.external_memory = parser.get<bool>("external_memory");
     params.check = parser.get<bool>("check");
-    params.queries = parser.get<uint64_t>("queries");
+    params.num_queries = parser.get<uint64_t>("num_queries");
     params.dual_encoder_tradeoff = parser.get<double>("dual_encoder_tradeoff");
 
     if (params.dual_encoder_tradeoff < 0.0 || params.dual_encoder_tradeoff > 1.0) {
@@ -475,8 +498,8 @@ int main(int argc, char** argv) {
 
     parser.add("bucketer_type", "The bucketer type. Possible values are: 'uniform', 'skew', 'opt'.",
                "-b", true);
-    parser.add("queries", "Number of queries for benchmarking or 0 for no benchmarking", "-q", true,
-               false);
+    parser.add("num_queries", "Number of queries for benchmarking or 0 for no benchmarking.", "-q",
+               true, false);
 
     /* Optional arguments. */
     parser.add("dual_encoder_tradeoff", "Encoder tradeoff when using dual encoding", "-d", false);
@@ -548,7 +571,9 @@ int main(int argc, char** argv) {
         if (external_memory) {
             std::cout << "Warning: external memory construction with in-memory input" << std::endl;
         }
-        build(parser, generate_benchmark_input(num_keys).begin(), num_keys);
+        // build(parser, generate_benchmark_input(num_keys).begin(), num_keys);
+        // std::vector<uint64_t> keys = distinct_keys<uint64_t>(num_keys, seed);
+        // build(parser, keys.begin(), keys.size());
     }
 
     return 0;

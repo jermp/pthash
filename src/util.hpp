@@ -181,7 +181,7 @@ public:
     }
 };
 
-std::vector<std::string> generate_benchmark_input(size_t n) {
+std::vector<std::string> generate_benchmark_input(const uint64_t n) {
     std::vector<std::string> inputData;
     inputData.reserve(n);
     auto time = std::chrono::system_clock::now();
@@ -190,16 +190,16 @@ std::vector<std::string> generate_benchmark_input(size_t n) {
     XorShift64 prng(constructionTime);
     std::cout << "Generating input" << std::flush;
     char string[200];
-    for (size_t i = 0; i < n; i++) {
+    for (uint64_t i = 0; i < n; i++) {
         if ((i % (n / 5)) == 0) {
             std::cout << "\rGenerating input: " << 100l * i / n << "%" << std::flush;
         }
-        size_t length = 10 + prng((30 - 10) * 2);
-        for (std::size_t k = 0; k < (length + sizeof(uint64_t)) / sizeof(uint64_t); ++k) {
+        uint64_t length = 10 + prng((30 - 10) * 2);
+        for (uint64_t k = 0; k < (length + sizeof(uint64_t)) / sizeof(uint64_t); ++k) {
             ((uint64_t*)string)[k] = prng();
         }
         // Repair null bytes
-        for (std::size_t k = 0; k < length; ++k) {
+        for (uint64_t k = 0; k < length; ++k) {
             if (string[k] == 0) { string[k] = 1 + prng(254); }
         }
         string[length] = 0;

@@ -136,7 +136,7 @@ struct external_memory_builder_single_phf {
 
         try {
             auto start = clock_type::now();
-            bits::bit_vector::builder taken(m_table_size);
+            bits::bit_vector::builder taken_bvb(m_table_size);
 
             {  // search
                 auto buckets_iterator = tfm.buckets_iterator();
@@ -147,7 +147,7 @@ struct external_memory_builder_single_phf {
                     tfm.get_multifile_pairs_writer(num_non_empty_buckets, ram_for_pilots, 1, 0);
 
                 search(m_num_keys, m_num_buckets, num_non_empty_buckets, m_seed, config,
-                       buckets_iterator, taken, pilots);
+                       buckets_iterator, taken_bvb, pilots);
 
                 pilots.flush();
                 buckets_iterator.close();
@@ -168,7 +168,9 @@ struct external_memory_builder_single_phf {
                 // write all free slots to file
                 buffered_file_t<uint64_t> writer(tfm.get_free_slots_filename(),
                                                  ram - bitmap_taken_bytes);
-                fill_free_slots(taken, num_keys, writer);
+                bits::bit_vector taken;
+                taken_bvb.build(taken);
+                fill_free_slots(taken, num_keys, writer, table_size);
                 writer.close();
                 if (m_free_slots_filename != "") std::remove(m_free_slots_filename.c_str());
                 m_free_slots_filename = tfm.get_free_slots_filename();
