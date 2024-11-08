@@ -19,7 +19,6 @@ struct build_parameters {
     bool external_memory;
     std::string bucketer_type;
     std::string encoder_type;
-    double dual_encoder_tradeoff;
     std::string output_filename;
 };
 
@@ -94,7 +93,6 @@ void build_benchmark(Builder& builder, build_timings const& timings,
     result.add("alpha", config.alpha);
     result.add("minimal", config.minimal ? "true" : "false");
     result.add("encoder_type", Function::encoder_type::name().c_str());
-    result.add("dual_encoder_tradeoff", params.dual_encoder_tradeoff);
     result.add("bucketer_type", params.bucketer_type.c_str());
     result.add("secondary_sort", config.secondary_sort);
     result.add("avg_partition_size", config.avg_partition_size);
@@ -109,7 +107,7 @@ void build_benchmark(Builder& builder, build_timings const& timings,
     result.add("partitioning_microseconds", timings.partitioning_microseconds);
     result.add("mapping_ordering_microseconds", timings.mapping_ordering_microseconds);
     result.add("searching_microseconds", timings.searching_microseconds);
-    result.add("encoding_microseconds", timings.encoding_microseconds);
+    result.add("encoding_microseconds", encoding_microseconds);
     result.add("total_microseconds", total_microseconds);
     result.add("pt_bits_per_key", pt_bits_per_key);
     result.add("mapper_bits_per_key", mapper_bits_per_key);
@@ -123,43 +121,6 @@ void build_benchmark(Builder& builder, build_timings const& timings,
         essentials::logger("DONE");
     }
 }
-
-// template <typename Builder, typename Iterator, pthash_search_type search_type, typename Encoder>
-// void choose_needs_free_array(Builder const& builder, build_timings const& timings,
-//                              build_parameters<Iterator> const& params,
-//                              build_configuration const& config) {
-//     bool needsFree = config.search == pthash_search_type::xor_displacement ||
-//                      (config.minimal && config.alpha < 0.999999);
-
-//     if (needsFree) {
-//         build_benchmark<
-//             dense_partitioned_phf<typename Builder::hasher_type, typename Builder::bucketer_type,
-//                                   Encoder, true, search_type>>(builder, timings, params, config);
-//     } else {
-//         build_benchmark<
-//             dense_partitioned_phf<typename Builder::hasher_type, typename Builder::bucketer_type,
-//                                   Encoder, false, search_type>>(builder, timings, params,
-//                                   config);
-//     }
-// }
-
-// constexpr uint64_t granularity = 15;
-// template <typename Builder, typename BaseEncoder1, typename BaseEncoder2,
-//           pthash_search_type search_type, uint64_t tradeoff = granularity, typename Iterator>
-// void choose_dual_encoder_tradeoff(build_parameters<Iterator> const& params,
-//                                   build_configuration const& config, Builder const& builder,
-//                                   build_timings const& timings) {
-//     if (tradeoff == uint64_t(std::round(params.dual_encoder_tradeoff * granularity))) {
-//         choose_needs_free_array<Builder, Iterator, search_type,
-//                                 dense_dual<BaseEncoder1, BaseEncoder2, tradeoff, granularity>>(
-//             builder, timings, params, config);
-//     }
-//     if constexpr (tradeoff > 0) {
-//         choose_dual_encoder_tradeoff<Builder, BaseEncoder1, BaseEncoder2, search_type, tradeoff -
-//         1,
-//                                      Iterator>(params, config, builder, timings);
-//     }
-// }
 
 template <phf_type t, typename Builder, pthash_search_type search_type, typename Iterator>
 void choose_encoder(build_parameters<Iterator> const& params, build_configuration const& config)  //
@@ -475,31 +436,40 @@ void build(cmd_line_parser::parser const& parser, Iterator keys, uint64_t num_ke
     params.external_memory = parser.get<bool>("external_memory");
     params.check = parser.get<bool>("check");
     params.num_queries = parser.get<uint64_t>("num_queries");
-    params.dual_encoder_tradeoff = parser.get<double>("dual_encoder_tradeoff");
-
-    if (params.dual_encoder_tradeoff < 0.0 || params.dual_encoder_tradeoff > 1.0) {
-        std::cerr << "invalid tradeoff" << std::endl;
-    }
 
     params.encoder_type = parser.get<std::string>("encoder_type");
     params.bucketer_type = parser.get<std::string>("bucketer_type");
     {
         std::unordered_set<std::string> encoders({
-            //
-            "R-R",  // dual Rice
-            "PC",   // partitioned compact
-#ifdef PTHASH_ENABLE_ALL_ENCODERS
-            "D-D",  // dual dictionary
-            "EF",   // Elias-Fano
-#endif
 
-            /* only for dense partitioning  */
-            "inter-R", "inter-C", "inter-D", "inter-EF", "inter-C-inter-R",
+            "D-D",  // for single and partitioned
+            "R-R",
+            "PC",
+
+            "inter-R",  // for dense partitioned
+            "inter-C",
+            "inter-C-inter-R",
+
 #ifdef PTHASH_ENABLE_ALL_ENCODERS
-            "mono-R", "mono-C", "mono-D", "mono-EF", "mono-C-mono-R", "mono-D-mono-R",
-            "inter-D-inter-R",  // dual
+
+            "D",  // for single and partitioned
+            "R",
+            "C",
+            "EF",
+            "C-C",
+            "D-EF",
+            "SDC",
+
+            "mono-R",  // for dense partitioned
+            "mono-C",
+            "mono-D",
+            "inter-D",
+            "mono-EF",
+            "inter-EF",
+            "mono-C-mono-R",
+            "mono-D-mono-R",
+            "inter-D-inter-R",
 #endif
-            /**/
             "all"  //
         });
         if (encoders.find(params.encoder_type) == encoders.end()) {
@@ -609,7 +579,6 @@ int main(int argc, char** argv) {
                true, false);
 
     /* Optional arguments. */
-    parser.add("dual_encoder_tradeoff", "Encoder tradeoff when using dual encoding", "-d", false);
     parser.add("avg_partition_size", "Average partition size.", "-p", false);
     parser.add("seed", "Seed to use for construction.", "-s", false);
     parser.add("num_threads", "Number of threads to use for construction.", "-t", false);
@@ -677,9 +646,8 @@ int main(int argc, char** argv) {
         if (external_memory) {
             std::cout << "Warning: external memory construction with in-memory input" << std::endl;
         }
-        build(parser, generate_benchmark_input(num_keys).begin(), num_keys);
-        // std::vector<uint64_t> keys = distinct_keys<uint64_t>(num_keys, seed);
-        // build(parser, keys.begin(), keys.size());
+        // build(parser, generate_benchmark_input(num_keys).begin(), num_keys);
+        build(parser, distinct_keys<uint64_t>(num_keys, random_value()).begin(), num_keys);
     }
 
     return 0;
