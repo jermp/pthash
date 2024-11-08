@@ -63,6 +63,7 @@ void build_benchmark(Builder& builder, build_timings const& timings,
         }
     }
 
+    // perf lookup queries
     double nanosec_per_key = 0;
     if (params.num_queries != 0) {
         if (config.verbose) essentials::logger("measuring lookup time...");
@@ -389,7 +390,10 @@ void choose_builder(build_parameters<Iterator> const& params, build_configuratio
     if (config.avg_partition_size != 0) {
         if (config.dense_partitioning) {
             if (params.external_memory) {
-                assert(false);  // not implemented
+                std::cerr << "External memory construction for dense_partitioned_phf has not been "
+                             "implemented yet."
+                          << std::endl;
+                return;
             } else {
                 choose_search<phf_type::dense_partitioned,  //
                               internal_memory_builder_partitioned_phf<Hasher, Bucketer>>(params,
@@ -500,8 +504,8 @@ void build(cmd_line_parser::parser const& parser, Iterator keys, uint64_t num_ke
         return;
     }
 
-    config.minimal = true;
-    config.secondary_sort = parser.get<bool>("secondary_sort");
+    config.minimal = true;          // parser.get<bool>("minimal");
+    config.secondary_sort = false;  // parser.get<bool>("secondary_sort");
     config.dense_partitioning = parser.get<bool>("dense_partitioning");
     config.verbose = parser.get<bool>("verbose");
 
@@ -556,22 +560,24 @@ int main(int argc, char** argv) {
     parser.add("search_type", "The pilot search type. Possibile values are: 'xor' and 'add'.", "-r",
                true);
 
-    parser.add("encoder_type",
-               "The encoder type. Possibile values are: "
-               "'R-R', 'PC', 'inter-R', 'inter-C', 'mono-C-mono-R', "
+    parser.add(
+        "encoder_type",
+        "The encoder type. Possibile values are: "
 #ifdef PTHASH_ENABLE_ALL_ENCODERS
-               "'D-D', 'EF', "
-               "'mono-R', 'mono-C', 'mono-D', 'mono-EF', "
-               "'inter-D', 'inter-EF', "
-               "'inter-C-inter-R', 'mono-D-mono-R', 'inter-D-inter-R', "
-               "'all'.\n\t"
+        "'D', 'D-D', 'R', 'R-R', 'C', 'C-C', 'EF', 'D-EF', 'SDC', and 'PC' for single and "
+        "partitioned PHFs; "
+        "'mono-R', 'inter-R', 'mono-C', 'inter-C', 'mono-D', 'inter-D', 'mono-EF', 'inter-EF', "
+        "'mono-C-mono-R', 'mono-D-mono-R', 'inter-D-inter-R', 'inter-C-inter-R' for dense "
+        "partitioned PHFs.\n\t"
 #else
-               "(For more encoders, compile again with 'cmake .. -D "
-               "PTHASH_ENABLE_ALL_ENCODERS=On').\n\t"
+        "'D-D', 'R-R', and 'PC' for single and partitioned PHFs; "
+        "'inter-R', 'inter-C', and 'inter-C-inter-R' for dense partitioned PHFs."
+        "(For more encoders, compile again with 'cmake .. -D "
+        "PTHASH_ENABLE_ALL_ENCODERS=On').\n\t"
 #endif
-               "The 'all' type will just benchmark all encoders. (Useful for benchmarking "
-               "purposes.)",
-               "-e", true);
+        "Specifying 'all' as type will just benchmark all such encoders. (Useful for benchmarking "
+        "purposes.)",
+        "-e", true);
 
     parser.add("bucketer_type", "The bucketer type. Possible values are: 'uniform', 'skew', 'opt'.",
                "-b", true);
@@ -589,16 +595,18 @@ int main(int argc, char** argv) {
                "-i", false);
     parser.add("output_filename", "Output file name where the function will be serialized.", "-o",
                false);
-    parser.add("secondary_sort", "Sort buckets secondarily by increasing expected size.", "--sort",
-               false, true);
-    parser.add("dense_partitioning", "Activate dense partitioning.", "--dense", false, true);
     parser.add("tmp_dir",
                "Temporary directory used for building in external memory. Default is directory '" +
                    constants::default_tmp_dirname + "'.",
                "-d", false);
     parser.add("ram", "Number of Giga bytes of RAM to use for construction in external memory.",
                "-m", false);
-    parser.add("minimal", "Build a minimal PHF.", "--minimal", false, true);
+
+    // parser.add("minimal", "Build a minimal PHF.", "--minimal", false, true);
+    // parser.add("secondary_sort", "Sort buckets secondarily by increasing expected size.",
+    // "--sort",
+    //            false, true);
+    parser.add("dense_partitioning", "Activate dense partitioning.", "--dense", false, true);
     parser.add("external_memory", "Build the function in external memory.", "--external", false,
                true);
     parser.add("verbose", "Verbose output during construction.", "--verbose", false, true);

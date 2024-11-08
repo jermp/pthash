@@ -19,7 +19,6 @@ int main() {
     config.lambda = 5;
     config.alpha = 0.97;
     config.verbose = true;
-    config.secondary_sort = false;
     config.avg_partition_size = 2000;
     config.dense_partitioning = true;
 
