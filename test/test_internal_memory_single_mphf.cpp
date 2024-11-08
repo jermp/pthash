@@ -67,7 +67,7 @@ int main() {
     for (int i = 0; i != 5; ++i) {
         uint64_t num_keys = random_value() % universe;
         if (num_keys == 0) num_keys = 1;
-        std::vector<uint64_t> keys = distinct_keys<uint64_t>(num_keys, random_value());
+        std::vector<uint64_t> keys = distinct_uints<uint64_t>(num_keys, random_value());
         assert(keys.size() == num_keys);
         test_internal_memory_single_mphf(keys.begin(), keys.size());
     }

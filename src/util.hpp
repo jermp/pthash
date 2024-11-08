@@ -124,7 +124,7 @@ std::vector<std::string> read_string_collection(uint64_t n, IStream& is, bool ve
 }
 
 template <typename Uint>
-std::vector<Uint> distinct_keys(uint64_t num_keys, uint64_t seed = constants::invalid_seed) {
+std::vector<Uint> distinct_uints(const uint64_t num_keys, const uint64_t seed) {
     assert(num_keys > 0);
     auto gen = std::mt19937_64((seed != constants::invalid_seed) ? seed : std::random_device()());
     std::vector<Uint> keys(num_keys * 1.05);       // allocate a vector slightly larger than needed
@@ -181,18 +181,15 @@ public:
     }
 };
 
-std::vector<std::string> generate_benchmark_input(const uint64_t n) {
+std::vector<std::string> distinct_strings(const uint64_t num_keys, const uint64_t seed) {
     std::vector<std::string> inputData;
-    inputData.reserve(n);
-    auto time = std::chrono::system_clock::now();
-    long constructionTime =
-        std::chrono::duration_cast<std::chrono::milliseconds>(time.time_since_epoch()).count();
-    XorShift64 prng(constructionTime);
+    inputData.reserve(num_keys);
+    XorShift64 prng(seed);
     std::cout << "Generating input" << std::flush;
     char string[200];
-    for (uint64_t i = 0; i < n; i++) {
-        if ((i % (n / 5)) == 0) {
-            std::cout << "\rGenerating input: " << 100l * i / n << "%" << std::flush;
+    for (uint64_t i = 0; i != num_keys; ++i) {
+        if ((i % (num_keys / 5)) == 0) {
+            std::cout << "\rGenerating input: " << 100l * i / num_keys << "%" << std::flush;
         }
         uint64_t length = 10 + prng((30 - 10) * 2);
         for (uint64_t k = 0; k < (length + sizeof(uint64_t)) / sizeof(uint64_t); ++k) {
