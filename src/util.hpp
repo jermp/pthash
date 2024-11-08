@@ -14,8 +14,12 @@
 
 namespace pthash {
 
-struct lines_iterator : std::forward_iterator_tag {
-    typedef std::string value_type;
+struct lines_iterator {
+    using value_type = std::string;
+    using difference_type = std::ptrdiff_t;
+    using pointer = value_type*;
+    using reference = value_type&;
+    using iterator_category = std::forward_iterator_tag;
 
     lines_iterator(uint8_t const* begin, uint8_t const* end)
         : m_begin(begin), m_end(end), m_num_lines(0), m_num_empty_lines(0) {}
@@ -55,8 +59,12 @@ private:
     uint64_t m_num_empty_lines;
 };
 
-struct sequential_lines_iterator : std::forward_iterator_tag {
-    typedef std::string value_type;
+struct sequential_lines_iterator {
+    using value_type = std::string;
+    using difference_type = std::ptrdiff_t;
+    using pointer = value_type*;
+    using reference = value_type&;
+    using iterator_category = std::forward_iterator_tag;
 
     sequential_lines_iterator(std::istream& is)
         : m_pis(&is), m_num_lines(0), m_num_empty_lines(0) {}

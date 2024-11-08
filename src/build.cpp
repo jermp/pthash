@@ -19,6 +19,7 @@ struct build_parameters {
     bool external_memory;
     std::string bucketer_type;
     std::string encoder_type;
+    std::string input_filename;
     std::string output_filename;
 };
 
@@ -65,7 +66,7 @@ void build_benchmark(Builder& builder, build_timings const& timings,
 
     // perf lookup queries
     double nanosec_per_key = 0;
-    if (params.num_queries != 0) {
+    if (params.num_queries != 0 && params.input_filename != "-") {
         if (config.verbose) essentials::logger("measuring lookup time...");
         if (params.external_memory) {
             std::vector<typename Iterator::value_type> queries;
@@ -130,7 +131,7 @@ void choose_encoder(build_parameters<Iterator> const& params, build_configuratio
     Builder builder;
     build_timings timings = builder.build_from_keys(params.keys, params.num_keys, config);
 
-    bool encode_all = (params.encoder_type == "all");
+    const bool encode_all = (params.encoder_type == "all");
 
     if constexpr (t == phf_type::single)  //
     {
@@ -448,49 +449,49 @@ void choose_bucketer(build_parameters<Iterator> const& params, build_configurati
 template <typename Iterator>
 void build(cmd_line_parser::parser const& parser, Iterator keys, uint64_t num_keys) {
     build_parameters<Iterator> params(keys, num_keys);
+    params.input_filename = parser.get<std::string>("input_filename");
+    params.output_filename =
+        (!parser.parsed("output_filename")) ? "" : parser.get<std::string>("output_filename");
     params.external_memory = parser.get<bool>("external_memory");
     params.check = parser.get<bool>("check");
     params.num_queries = parser.get<uint64_t>("num_queries");
-
     params.encoder_type = parser.get<std::string>("encoder_type");
     params.bucketer_type = parser.get<std::string>("bucketer_type");
+
+    build_configuration config;
+    config.dense_partitioning = parser.get<bool>("dense_partitioning");
+
     {
-        std::unordered_set<std::string> encoders({
-
-            "D-D",  // for single and partitioned
-            "R-R",
-            "PC",
-
-            "inter-R",  // for dense partitioned
-            "inter-C",
-            "inter-C-inter-R",
-
+        std::unordered_set<std::string> encoders_for_single_and_partitioned_phf(
+            {"D-D", "R-R", "PC",
 #ifdef PTHASH_ENABLE_ALL_ENCODERS
-
-            "D",  // for single and partitioned
-            "R",
-            "C",
-            "EF",
-            "C-C",
-            "D-EF",
-            "SDC",
-
-            "mono-R",  // for dense partitioned
-            "mono-C",
-            "mono-D",
-            "inter-D",
-            "mono-EF",
-            "inter-EF",
-            "mono-C-mono-R",
-            "mono-D-mono-R",
-            "inter-D-inter-R",
+             "D", "R", "C", "EF", "C-C", "D-EF", "SDC",
 #endif
-            "all"  //
-        });
-        if (encoders.find(params.encoder_type) == encoders.end()) {
-            std::cerr << "unknown encoder type" << std::endl;
-            return;
+             "all"}  //
+        );
+        std::unordered_set<std::string> encoders_for_dense_partitioned_phf(
+            {"inter-R", "inter-C", "inter-C-inter-R",
+#ifdef PTHASH_ENABLE_ALL_ENCODERS
+             "mono-D", "mono-R", "mono-C", "inter-D", "mono-EF", "inter-EF", "mono-C-mono-R",
+             "mono-D-mono-R", "inter-D-inter-R",
+#endif
+             "all"}  //
+        );
+
+        if (config.dense_partitioning) {
+            if (encoders_for_dense_partitioned_phf.find(params.encoder_type) ==
+                encoders_for_dense_partitioned_phf.end()) {
+                std::cerr << "unknown encoder type for dense_partitioned_phf" << std::endl;
+                return;
+            }
+        } else {
+            if (encoders_for_single_and_partitioned_phf.find(params.encoder_type) ==
+                encoders_for_single_and_partitioned_phf.end()) {
+                std::cerr << "unknown encoder type for single_ and partitioned_ phf" << std::endl;
+                return;
+            }
         }
+
         std::unordered_set<std::string> bucketers({"uniform", "skew", "opt"});
         if (bucketers.find(params.bucketer_type) == bucketers.end()) {
             std::cerr << "unknown bucketer type" << std::endl;
@@ -498,10 +499,6 @@ void build(cmd_line_parser::parser const& parser, Iterator keys, uint64_t num_ke
         }
     }
 
-    params.output_filename =
-        (!parser.parsed("output_filename")) ? "" : parser.get<std::string>("output_filename");
-
-    build_configuration config;
     config.lambda = parser.get<double>("lambda");
     config.alpha = parser.get<double>("alpha");
 
@@ -517,7 +514,6 @@ void build(cmd_line_parser::parser const& parser, Iterator keys, uint64_t num_ke
 
     config.secondary_sort = false;  // parser.get<bool>("secondary_sort");
     config.minimal = parser.get<bool>("minimal");
-    config.dense_partitioning = parser.get<bool>("dense_partitioning");
     config.verbose = parser.get<bool>("verbose");
 
     config.avg_partition_size = 0;
@@ -582,7 +578,7 @@ int main(int argc, char** argv) {
         "partitioned PHFs.\n\t"
 #else
         "'D-D', 'R-R', and 'PC' for single and partitioned PHFs; "
-        "'inter-R', 'inter-C', and 'inter-C-inter-R' for dense partitioned PHFs."
+        "'inter-R', 'inter-C', and 'inter-C-inter-R' for dense partitioned PHFs. "
         "(For more encoders, compile again with 'cmake .. -D "
         "PTHASH_ENABLE_ALL_ENCODERS=On').\n\t"
 #endif
@@ -600,8 +596,8 @@ int main(int argc, char** argv) {
     parser.add("seed", "Seed to use for construction.", "-s", false);
     parser.add("num_threads", "Number of threads to use for construction.", "-t", false);
     parser.add("input_filename",
-               "A string input file name. If this is not provided, then num_keys 64-bit random "
-               "keys will be used as input instead."
+               "A string input file name. If this is not provided, then [num_keys] 64-bit random "
+               "keys will be used as input. "
                "If, instead, the filename is '-', then input is read from standard input.",
                "-i", false);
     parser.add("output_filename", "Output file name where the function will be serialized.", "-o",
@@ -623,9 +619,10 @@ int main(int argc, char** argv) {
     if (!parser.parse()) return 1;
     if (parser.parsed("input_filename") && parser.get<std::string>("input_filename") == "-" &&
         parser.get<bool>("external_memory")) {
-        if (parser.get<bool>("check") || parser.get<bool>("lookup")) {
-            std::cerr << "--input_filename - (stdin input) in combination with --external can be "
-                         "used only without --check and --lookup"
+        if (parser.get<bool>("check")) {
+            std::cerr << "--input_filename '-' (stdin input) in combination with --external can be "
+                         "used only without --check (lookup time cannot be measured either since "
+                         "input is only read once)"
                       << std::endl;
             return 1;
         }
@@ -636,28 +633,28 @@ int main(int argc, char** argv) {
 
     if (parser.parsed("input_filename")) {
         auto input_filename = parser.get<std::string>("input_filename");
-        // if (external_memory) {
-        //     if (input_filename == "-") {
-        //         sequential_lines_iterator keys(std::cin);
-        //         build(parser, keys, num_keys);
-        //     } else {
-        //         mm::file_source<uint8_t> input(input_filename, mm::advice::sequential);
-        //         lines_iterator keys(input.data(), input.data() + input.size());
-        //         build(parser, keys, num_keys);
-        //         input.close();
-        //     }
-        // } else {
-        std::vector<std::string> keys;
-        if (input_filename == "-") {
-            keys = read_string_collection(num_keys, std::cin, parser.get<bool>("verbose"));
+        if (external_memory) {
+            if (input_filename == "-") {
+                sequential_lines_iterator keys(std::cin);
+                build(parser, keys, num_keys);
+            } else {
+                mm::file_source<uint8_t> input(input_filename, mm::advice::sequential);
+                lines_iterator keys(input.data(), input.data() + input.size());
+                build(parser, keys, num_keys);
+                input.close();
+            }
         } else {
-            std::ifstream input(input_filename.c_str());
-            if (!input.good()) throw std::runtime_error("error in opening file.");
-            keys = read_string_collection(num_keys, input, parser.get<bool>("verbose"));
-            input.close();
+            std::vector<std::string> keys;
+            if (input_filename == "-") {
+                keys = read_string_collection(num_keys, std::cin, parser.get<bool>("verbose"));
+            } else {
+                std::ifstream input(input_filename.c_str());
+                if (!input.good()) throw std::runtime_error("error in opening file.");
+                keys = read_string_collection(num_keys, input, parser.get<bool>("verbose"));
+                input.close();
+            }
+            build(parser, keys.begin(), keys.size());
         }
-        build(parser, keys.begin(), keys.size());
-        // }
     } else {
         if (external_memory) {
             std::cout << "Warning: external memory construction with in-memory input" << std::endl;

@@ -41,7 +41,10 @@ struct internal_memory_builder_partitioned_phf {
 
         std::vector<std::vector<typename hasher_type::hash_type>> partitions(num_partitions);
         for (auto& partition : partitions) partition.reserve(1.1 * avg_partition_size);
-        if (config.num_threads > 1) {
+
+        if constexpr (std::is_same_v<typename Iterator::iterator_category,
+                                     std::random_access_iterator_tag>)  //
+        {
             parallel_hash_and_partition(keys, partitions, num_keys, config.num_threads, m_seed,
                                         num_partitions, m_bucketer);
         } else {
@@ -102,9 +105,10 @@ struct internal_memory_builder_partitioned_phf {
         return timings;
     }
 
-    template <typename Iterator>
+    template <typename RandomAccessIterator>
     static void parallel_hash_and_partition(
-        Iterator keys, std::vector<std::vector<typename hasher_type::hash_type>>& partitions,
+        RandomAccessIterator keys,
+        std::vector<std::vector<typename hasher_type::hash_type>>& partitions,
         const uint64_t num_keys, const uint64_t num_threads, const uint64_t m_seed,
         const uint64_t num_partitions, const range_bucketer partitioner)  //
     {
@@ -253,9 +257,9 @@ struct internal_memory_builder_partitioned_phf {
     {
         /* Must define all the five properties, otherwise compilation fails. */
         using value_type = uint64_t;
-        using difference_type = uint64_t;
-        using pointer = uint64_t*;
-        using reference = uint64_t&;
+        using difference_type = std::ptrdiff_t;
+        using pointer = value_type*;
+        using reference = value_type&;
         using iterator_category = std::random_access_iterator_tag;
 
         interleaving_pilots_iterator(
