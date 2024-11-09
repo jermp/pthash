@@ -12,12 +12,12 @@ struct internal_memory_builder_partitioned_phf {
 
     template <typename Iterator>
     build_timings build_from_keys(Iterator keys, const uint64_t num_keys,
-                                  build_configuration const& config) {
+                                  build_configuration const& config)  //
+    {
         assert(num_keys > 0);
         util::check_hash_collision_probability<Hasher>(num_keys);
 
-        const uint64_t avg_partition_size = std::min<uint64_t>(
-            {num_keys, constants::min_partition_size, config.avg_partition_size}, std::less());
+        const uint64_t avg_partition_size = compute_avg_partition_size(num_keys, config);
         const uint64_t num_partitions = compute_num_partitions(num_keys, avg_partition_size);
         assert(num_partitions > 0);
 

@@ -24,7 +24,8 @@ struct internal_memory_builder_single_phf {
 
     template <typename RandomAccessIterator>
     build_timings build_from_keys(RandomAccessIterator keys, const uint64_t num_keys,
-                                  build_configuration const& config) {
+                                  build_configuration const& config)  //
+    {
         if (config.seed == constants::invalid_seed) {
             build_configuration actual_config = config;
             for (auto attempt = 0; attempt < 10; ++attempt) {
@@ -45,7 +46,8 @@ struct internal_memory_builder_single_phf {
 
     template <typename RandomAccessIterator>
     build_timings build_from_hashes(RandomAccessIterator hashes, const uint64_t num_keys,
-                                    build_configuration const& config) {
+                                    build_configuration const& config)  //
+    {
         assert(num_keys > 0);
         util::check_hash_collision_probability<Hasher>(num_keys);
 

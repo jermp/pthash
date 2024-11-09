@@ -29,21 +29,29 @@ template <typename Function, typename Builder, typename Iterator>
 void build_benchmark(Builder& builder, build_timings const& timings,
                      build_parameters<Iterator> const& params, build_configuration const& config) {
     Function f;
-    double encoding_microseconds = f.build(builder, config);
+    uint64_t encoding_microseconds = f.build(builder, config);
 
     // timings breakdown
     uint64_t total_microseconds = timings.partitioning_microseconds +
                                   timings.mapping_ordering_microseconds +
                                   timings.searching_microseconds + encoding_microseconds;
     if (config.verbose) {
-        std::cout << "partitioning: " << timings.partitioning_microseconds / 1000000.0 << " [sec]"
+        std::cout << "=== Construction time breakdown:\n";
+        std::cout << "    partitioning: " << timings.partitioning_microseconds / 1000000.0
+                  << " [sec]"
+                  << " (" << (timings.partitioning_microseconds * 100.0 / total_microseconds)
+                  << "%)" << std::endl;
+        std::cout << "    mapping+ordering: " << timings.mapping_ordering_microseconds / 1000000.0
+                  << " [sec]"
+                  << " (" << (timings.mapping_ordering_microseconds * 100.0 / total_microseconds)
+                  << "%)" << std::endl;
+        std::cout << "    searching: " << timings.searching_microseconds / 1000000.0 << " [sec]"
+                  << " (" << (timings.searching_microseconds * 100.0 / total_microseconds) << "%)"
                   << std::endl;
-        std::cout << "mapping+ordering: " << timings.mapping_ordering_microseconds / 1000000.0
-                  << " [sec]" << std::endl;
-        std::cout << "searching: " << timings.searching_microseconds / 1000000.0 << " [sec]"
+        std::cout << "    encoding: " << encoding_microseconds / 1000000.0 << " [sec]"
+                  << " (" << (encoding_microseconds * 100.0 / total_microseconds) << "%)"
                   << std::endl;
-        std::cout << "encoding: " << encoding_microseconds / 1000000.0 << " [sec]" << std::endl;
-        std::cout << "total: " << total_microseconds / 1000000.0 << " [sec]" << std::endl;
+        std::cout << "    total: " << total_microseconds / 1000000.0 << " [sec]" << std::endl;
     }
 
     // space breakdown
@@ -51,9 +59,12 @@ void build_benchmark(Builder& builder, build_timings const& timings,
     double mapper_bits_per_key = static_cast<double>(f.num_bits_for_mapper()) / f.num_keys();
     double bits_per_key = static_cast<double>(f.num_bits()) / f.num_keys();
     if (config.verbose) {
-        std::cout << "pilots: " << pt_bits_per_key << " [bits/key]" << std::endl;
-        std::cout << "mapper: " << mapper_bits_per_key << " [bits/key]" << std::endl;
-        std::cout << "total: " << bits_per_key << " [bits/key]" << std::endl;
+        std::cout << "=== Space breakdown:\n";
+        std::cout << "    pilots: " << pt_bits_per_key << " [bits/key]"
+                  << " (" << (pt_bits_per_key * 100.0) / bits_per_key << "%)" << std::endl;
+        std::cout << "    mapper: " << mapper_bits_per_key << " [bits/key]"
+                  << " (" << (mapper_bits_per_key * 100.0) / bits_per_key << "%)" << std::endl;
+        std::cout << "    total: " << bits_per_key << " [bits/key]" << std::endl;
     }
 
     // correctness check
@@ -66,7 +77,7 @@ void build_benchmark(Builder& builder, build_timings const& timings,
 
     // perf lookup queries
     double nanosec_per_key = 0;
-    if (params.num_queries != 0 && params.input_filename != "-") {
+    if (params.num_queries != 0 and params.input_filename != "-") {
         if (config.verbose) essentials::logger("measuring lookup time...");
         if (params.external_memory) {
             std::vector<typename Iterator::value_type> queries;
@@ -617,15 +628,22 @@ int main(int argc, char** argv) {
     parser.add("check", "Check correctness after construction.", "--check", false, true);
 
     if (!parser.parse()) return 1;
-    if (parser.parsed("input_filename") && parser.get<std::string>("input_filename") == "-" &&
-        parser.get<bool>("external_memory")) {
-        if (parser.get<bool>("check")) {
-            std::cerr << "--input_filename '-' (stdin input) in combination with --external can be "
-                         "used only without --check (lookup time cannot be measured either since "
-                         "input is only read once)"
-                      << std::endl;
-            return 1;
-        }
+
+    if (parser.parsed("input_filename") and                                 //
+        parser.get<std::string>("input_filename") == "-" and                //
+        parser.get<bool>("external_memory") and parser.get<bool>("check"))  //
+    {
+        std::cerr << "--input_filename '-' (stdin input) in combination with --external can be "
+                     "used only without --check (lookup time cannot be measured either since "
+                     "input is only read once)"
+                  << std::endl;
+        return 1;
+    }
+
+    if (!parser.parsed("avg_partition_size") and parser.parsed("dense_partitioning")) {
+        std::cerr << "Error: must specify an average partition size (e.g., -p 2500) with --dense"
+                  << std::endl;
+        return 1;
     }
 
     auto num_keys = parser.get<uint64_t>("num_keys");

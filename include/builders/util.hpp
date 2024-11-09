@@ -77,6 +77,28 @@ struct build_configuration {
     bool verbose;
 };
 
+static uint64_t compute_avg_partition_size(const uint64_t num_keys,
+                                           build_configuration const& config)  //
+{
+    uint64_t avg_partition_size = config.avg_partition_size;
+    if (avg_partition_size < constants::min_partition_size) {
+        std::cerr << "Warning: avg_partition_size too small; defaulting to "
+                  << constants::min_partition_size << std::endl;
+        avg_partition_size = constants::min_partition_size;
+    }
+    if (config.dense_partitioning and avg_partition_size > constants::max_partition_size) {
+        std::cerr << "Warning: avg_partition_size too large for dense_partitioning; defaulting to "
+                  << constants::max_partition_size << std::endl;
+        avg_partition_size = constants::max_partition_size;
+    }
+    if (num_keys < avg_partition_size) {
+        std::cerr << "Warning: avg_partition_size too large for " << num_keys
+                  << " keys; defaulting to " << num_keys << std::endl;
+        avg_partition_size = num_keys;
+    }
+    return avg_partition_size;
+}
+
 static uint64_t compute_num_buckets(const uint64_t num_keys, const uint64_t avg_bucket_size) {
     return std::ceil(static_cast<double>(num_keys) / avg_bucket_size);
 }

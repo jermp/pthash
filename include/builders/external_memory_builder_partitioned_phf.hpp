@@ -14,12 +14,14 @@ struct external_memory_builder_partitioned_phf {
     typedef typename hasher_type::hash_type hash_type;
 
     template <typename Iterator>
-    build_timings build_from_keys(Iterator keys, uint64_t num_keys,
-                                  build_configuration const& config) {
+    build_timings build_from_keys(Iterator keys, const uint64_t num_keys,
+                                  build_configuration const& config)  //
+    {
         assert(num_keys > 0);
         util::check_hash_collision_probability<Hasher>(num_keys);
 
-        const uint64_t num_partitions = compute_num_partitions(num_keys, config.avg_partition_size);
+        const uint64_t avg_partition_size = compute_avg_partition_size(num_keys, config);
+        const uint64_t num_partitions = compute_num_partitions(num_keys, avg_partition_size);
         if (num_partitions == 0) throw std::invalid_argument("number of partitions must be > 0");
 
         auto start = clock_type::now();
@@ -46,7 +48,7 @@ struct external_memory_builder_partitioned_phf {
 
         for (uint64_t partition_id = 0; partition_id != num_partitions; ++partition_id) {
             partitions.emplace_back(config.tmp_dir, partition_id);
-            partitions.back().reserve(1.5 * config.avg_partition_size);
+            partitions.back().reserve(1.5 * avg_partition_size);
         }
 
         uint64_t bytes = num_partitions * sizeof(meta_partition);
@@ -95,8 +97,7 @@ struct external_memory_builder_partitioned_phf {
 
         auto partition_config = config;
         partition_config.seed = m_seed;
-        partition_config.num_buckets =
-            compute_num_buckets(config.avg_partition_size, config.lambda);
+        partition_config.num_buckets = compute_num_buckets(avg_partition_size, config.lambda);
         partition_config.num_threads = 1;
         partition_config.verbose = false;
 

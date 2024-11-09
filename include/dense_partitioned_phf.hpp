@@ -176,16 +176,6 @@ private:
             }
             build_config.dense_partitioning = true;
         }
-        /*
-            Unlike pthash::partitioned_phf, pthash::dense_partitioned_phf must use small partitions.
-        */
-        if (config.avg_partition_size > constants::max_partition_size) {
-            if (config.verbose) {
-                std::cout << "setting config.avg_partition_size = " << constants::max_partition_size
-                          << std::endl;
-            }
-            build_config.avg_partition_size = constants::max_partition_size;
-        }
         return build_config;
     }
 

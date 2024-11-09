@@ -29,8 +29,9 @@ struct external_memory_builder_single_phf {
     }
 
     template <typename Iterator>
-    build_timings build_from_keys(Iterator keys, uint64_t num_keys,
-                                  build_configuration const& config) {
+    build_timings build_from_keys(Iterator keys, const uint64_t num_keys,
+                                  build_configuration const& config)  //
+    {
         assert(num_keys > 0);
         util::check_hash_collision_probability<Hasher>(num_keys);
 
