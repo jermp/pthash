@@ -523,7 +523,7 @@ void build(cmd_line_parser::parser const& parser, Iterator keys, uint64_t num_ke
         return;
     }
 
-    config.secondary_sort = false;  // parser.get<bool>("secondary_sort");
+    config.secondary_sort = true;  // parser.get<bool>("secondary_sort");
     config.minimal = parser.get<bool>("minimal");
     config.verbose = parser.get<bool>("verbose");
 
