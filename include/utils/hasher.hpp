@@ -4,6 +4,7 @@
 
 #include <xxhash.h>
 #include <xxh3.h>
+
 namespace pthash {
 
 namespace util {

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+
 #include "include/utils/util.hpp"
 
 namespace pthash {

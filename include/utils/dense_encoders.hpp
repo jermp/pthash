@@ -3,6 +3,7 @@
 #include <vector>
 #include <cassert>
 #include <thread>
+
 #include "encoders.hpp"
 
 namespace pthash {
