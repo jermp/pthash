@@ -84,17 +84,16 @@ void build_benchmark(Builder& builder, build_timings const& timings,
             uint64_t remaining = params.num_queries, batch_size = 100 * 1000000;
             Iterator query = params.keys;
             while (remaining > 0) {
-                auto cur_batch_size = std::min(remaining, batch_size);
+                auto cur_batch_size = std::min<uint64_t>(remaining, batch_size);
                 queries.reserve(cur_batch_size);
                 for (uint64_t i = 0; i != cur_batch_size; ++i, ++query) queries.push_back(*query);
                 nanosec_per_key += perf(queries.begin(), cur_batch_size, f) * cur_batch_size;
                 remaining -= cur_batch_size;
                 queries.clear();
             }
-            nanosec_per_key /= params.num_keys;
+            nanosec_per_key /= params.num_queries;
         } else {
-            nanosec_per_key =
-                perf(params.keys, std::min<uint64_t>(params.num_queries, f.num_keys()), f);
+            nanosec_per_key = perf(params.keys, params.num_queries, f);
         }
         if (config.verbose) std::cout << nanosec_per_key << " [nanosec/key]" << std::endl;
     }

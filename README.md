@@ -11,11 +11,13 @@ PTHash is a C++ library implementing fast and compact minimal perfect hash funct
 
 * [*PHOBIC: Perfect Hashing with Optimized Bucket Sizes and Interleaved Coding*](https://drops.dagstuhl.de/entities/document/10.4230/LIPIcs.ESA.2024.69).
 
-Please, cite these papers if you use PTHash.
+**Please, cite these papers if you use PTHash.**
 
-#### Features
+### Features
+
 - Minimal and Non-Minimal Perfect Hash Functions
 - Space/Time Efficiency: fast lookup within compressed space
+- External-Memory Scaling
 - Multi-Threaded Construction
 - Configurable: can offer different trade-offs (between construction time, lookup time, and space effectiveness)
 
@@ -27,16 +29,18 @@ Algorithms that find such functions when *n* is large and retain constant evalua
 For instance, search engines and databases typically use minimal perfect hash functions to quickly assign identifiers to static sets of variable-length keys such as strings.
 The challenge is to design an algorithm which is efficient in three different aspects: time to find *f* (construction time), time to evaluate *f* on a key of *S* (lookup time), and space of representation for *f*.
 
-PTHash is one such algorithm.
+**PTHash** is one such algorithm.
 
 The following guide is meant to provide a brief overview of the library
 by illustrating its functionalities through some examples.
 
-##### Table of contents
+### Table of contents
+
 * [Integration](#integration)
-* [Compiling the Code](#compiling-the-code)
-* [Quick Start](#quick-start)
-* [Build Examples](#build-examples)
+* [Compiling the code](#compiling-the-code)
+* [Quick start](#quick-start)
+* [Build examples](#build-examples)
+* [Reading keys from standard input ](#reading-keys-from-standard-input)
 
 Integration
 -----
@@ -119,31 +123,72 @@ Run
 
 	./build --help
 
-shows the usage of the driver program.
+shows the usage of the driver program. In the following, we illustrate some examples using this `./build` program.
 
-#### Example 1
+### Example 1
 
-	./build -n 100000 -l 4.3 -a 0.99 -r xor -e D-D -b skew -q 10000 -s 0 --verbose --check
+The command
 
-This example builds a MPHF over 1M random 64-bit integers, using `lambda = 4.3` (avg. bucket size), `alpha = 0.99` (load factor), seed 0 (`-s`), with xor-type search, compressing the MPHF data structure with the encoder `D-D`, and using the skew bucketer. Also, it will perform 10000 queries (`-q`) and check correctness of the built data structure.
+	./build -n 10000000 -l 4.3 -a 0.99 -r xor -e D-D -b skew -q 3000000 -s 0 -p 2000000 -t 8 --verbose --minimal --check
 
-#### Example 2
+builds a MPHF over 10M random 64-bit integers, using
 
-TODO
+- avg. bucket size of 4.3 (`-l = 4.3`);
+- load factor of 0.99 (`-a 0.99`);
+- xor-type search (`-r xor`);
+- the encoder `D-D` to compress the data structure;
+- the `skew` bucketer type (`-b skew`);
+- seed 0 (`-s 0`);
+- avg. partition size 2,000,000 (`-p 2000000`);
+- 8 parallel threads (`-t 8`).
 
-#### Example 3
+Also, it performs 3M queries (`-q 3000000`) to benchmark the speed of lookup queries and check the correctness of the function.
 
-TODO
+### Example 2
 
-#### Example 4
+For the following example,
+we are going to use the strings from the UK-2005 URLs collection,
+which can be downloaded by clicking
+[here](http://data.law.di.unimi.it/webdata/uk-2005/uk-2005.urls.gz).
+(This is also one of the datasets used in the paper.)
 
-TODO
+The file is ~300 MB compressed using gzip (2.86 GB uncompressed).
 
-#### Example 5
+After download, place the dataset in the `build` directory and run
 
-TODO
+	gunzip uk-2005.urls.gz
 
-### Reading Keys from Standard Input
+to uncompress it.
+The file contains one string per line, for a total of 39,459,925 strings.
+
+#### NOTE: Input files are read line by line (i.e., individual strings are assumed to be separated by the character `\n`). Be sure there are no blank lines.
+
+The command
+
+	./build -n 39459925 -i ~/Downloads/uk-2005.urls -l 3.5 -a 0.94 -e inter-R -r add -b skew -s 0 -q 3000000 -p 2500 -t 8 --dense --minimal --verbose --check
+
+builds a MPHF using the strings of the file as input keys, where
+
+- the function is of type *dense partitioned"* because option `--dense` is specified, with an avg. partition size of 2500 (`-p 2500`);
+- the avg. number of buckets is set to 3.5 (`-l 3.5`);
+- the load factor is set to 0.94 (`-a 0.94`);
+- the data structure is compressed using interleaved Rice codes (`-e inter-R`);
+- the search algorithm is additive displacement (`-r add`);
+- the type of bucketer used is `skew`;
+- the seed used for the construction is 0 (`-s 0`);
+- the number of threads used for the construction are 8 (`-t 8`);
+- 3M lookups are performed to benchmark query time (`-q 3000000`).
+
+### Example 3
+
+The command
+
+	./build -n 39459925 -i ~/Downloads/uk-2005.urls -l 3.5 -a 0.94 -e PC -r add -b skew -s 0 -q 3000000 -p 2500000 -t 8 -m 1 --minimal --verbose --check --external
+
+builds a MPHF using most of the parameters used in Example 2 but the function is built in external memory (option `--external`) using 1 GB of RAM (option `-m 1`), and with avg. partition size of 2.5M and compressing the data structure with a partitioned compact encoding (`-e PC`).
+
+Reading Keys from Standard Input
+-----
 
 You can make the `build` tool read the keys from stardard input using bash pipelining (`|`)
 in combination with option `-i -`. This is very useful when building keys from compressed files.
