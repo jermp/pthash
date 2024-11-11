@@ -29,7 +29,7 @@ struct diff {
     }
 
     size_t num_bits() const {
-        return sizeof(m_increment) + m_encoder.num_bits();
+        return 8 * sizeof(m_increment) + m_encoder.num_bits();
     }
 
     inline uint64_t access(uint64_t i) const {
