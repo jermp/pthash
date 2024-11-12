@@ -2,7 +2,6 @@
 
 // See also https://github.com/jermp/bench_hash_functions
 
-#include <xxhash.h>
 #include <xxh3.h>
 namespace pthash {
 
@@ -170,7 +169,7 @@ struct murmurhash2_64 {
     typedef hash64 hash_type;
 
     // generic range of bytes
-    static inline hash64 hash(byte_range range, uint64_t seed) {
+    static inline hash64 hash(byte_range const& range, uint64_t seed) {
         return MurmurHash2_64(range.begin, range.end - range.begin, seed);
     }
 
@@ -180,7 +179,7 @@ struct murmurhash2_64 {
     }
 
     // specialization for uint64_t
-    static inline hash64 hash(uint64_t val, uint64_t seed) {
+    static inline hash64 hash(uint64_t const& val, uint64_t seed) {
         return MurmurHash2_64(reinterpret_cast<char const*>(&val), sizeof(val), seed);
     }
 };
@@ -189,7 +188,7 @@ struct murmurhash2_128 {
     typedef hash128 hash_type;
 
     // generic range of bytes
-    static inline hash128 hash(byte_range range, uint64_t seed) {
+    static inline hash128 hash(byte_range const& range, uint64_t seed) {
         return {MurmurHash2_64(range.begin, range.end - range.begin, seed),
                 MurmurHash2_64(range.begin, range.end - range.begin, ~seed)};
     }
@@ -201,7 +200,7 @@ struct murmurhash2_128 {
     }
 
     // specialization for uint64_t
-    static inline hash128 hash(uint64_t val, uint64_t seed) {
+    static inline hash128 hash(uint64_t const& val, uint64_t seed) {
         return {MurmurHash2_64(reinterpret_cast<char const*>(&val), sizeof(val), seed),
                 MurmurHash2_64(reinterpret_cast<char const*>(&val), sizeof(val), ~seed)};
     }
@@ -216,12 +215,12 @@ struct xxhash128 {
     }
 
     // specialization for uint64_t
-    static inline hash_type hash(uint64_t val, uint64_t seed) {
+    static inline hash_type hash(uint64_t const& val, uint64_t seed) {
         return XXH128(&val, sizeof(val), seed);
     }
 
     // specialization for std::pair<uint64_t, uint64_t>
-    static inline hash_type hash(std::pair<uint64_t, uint64_t> val, uint64_t seed) {
+    static inline hash_type hash(std::pair<uint64_t, uint64_t> const& val, uint64_t seed) {
         return XXH128(&val, sizeof(val), seed);
     }
 };

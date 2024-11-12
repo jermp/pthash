@@ -41,7 +41,7 @@ int main() {
     //     pthash_type;
 
     typedef dense_partitioned_phf<xxhash128,                            // base hasher
-                                  opt_bucketer,                         // bucketer
+                                  table_bucketer<opt_bucketer>,         // bucketer
                                   inter_R,                              // encoder type
                                   true,                                 // minimal
                                   pthash_search_type::add_displacement  // additive displacement
