@@ -11,12 +11,8 @@ if(NOT TARGET PTHASH)
   target_include_directories(PTHASH INTERFACE .)
 
   target_compile_features(PTHASH INTERFACE cxx_std_17)
-  if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    target_compile_options(PTHASH INTERFACE -stdlib=libc++)
-  endif()
 
   MESSAGE(STATUS "Compiling for processor: " ${CMAKE_HOST_SYSTEM_PROCESSOR})
-
   if (UNIX AND (CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "x86_64"))
     MESSAGE(STATUS "Compiling with flags: -march=native -mbmi2 -msse4.2")
     target_compile_options(PTHASH INTERFACE -march=native)
@@ -57,6 +53,8 @@ endif()
 # Only add benchmarks and tests when compiling PTHash itself, not when added as a dependency
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+  target_compile_options(PTHASH INTERFACE -Werror)
+
   add_executable(build src/build.cpp)
   target_link_libraries(build PRIVATE PTHASH)
   add_executable(example src/example.cpp)

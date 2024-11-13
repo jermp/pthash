@@ -1,0 +1,45 @@
+name: Build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        compiler:
+          - { name: gcc, version: 11}
+          - { name: gcc, version: 12}
+          - { name: gcc, version: 13}
+          - { name: gcc, version: 14}
+          - { name: clang, version: 16}
+          - { name: clang, version: 17}
+          - { name: clang, version: 18}
+    name: Build (${{ matrix.compiler.name }} ${{ matrix.compiler.version }})
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Install dependencies
+        run: |
+          sudo add-apt-repository universe
+          sudo apt-get update
+          sudo apt-get install --assume-yes --no-install-recommends ca-certificates cmake git
+      - name: Install GCC
+        if: ${{ matrix.compiler.name == 'gcc' }}
+        run: |
+          sudo apt-get install --assume-yes --no-install-recommends gcc-${{ matrix.compiler.version }} g++-${{ matrix.compiler.version }}
+          echo "CC=/usr/bin/gcc-${{ matrix.compiler.version }}" >> $GITHUB_ENV
+          echo "CXX=/usr/bin/g++-${{ matrix.compiler.version }}" >> $GITHUB_ENV
+      - name: Install Clang
+        if: ${{ matrix.compiler.name == 'clang' }}
+        run: |
+          sudo apt-get install --assume-yes --no-install-recommends clang-${{ matrix.compiler.version }}
+          echo "CC=/usr/bin/clang-${{ matrix.compiler.version }}" >> $GITHUB_ENV
+          echo "CXX=/usr/bin/clang++-${{ matrix.compiler.version }}" >> $GITHUB_ENV
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Build
+        run: |
+          cmake -B ./build
+          cmake --build ./build --parallel
