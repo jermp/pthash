@@ -93,7 +93,8 @@ void build_benchmark(Builder& builder, build_timings const& timings,
             }
             nanosec_per_key /= params.num_queries;
         } else {
-            nanosec_per_key = perf(params.keys, params.num_queries, f);
+            nanosec_per_key =
+                perf(params.keys, std::min<uint64_t>(params.num_queries, f.num_keys()), f);
         }
         if (config.verbose) std::cout << nanosec_per_key << " [nanosec/key]" << std::endl;
     }
