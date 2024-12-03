@@ -148,7 +148,7 @@ struct skew_bucketer {
     }
 
     inline uint64_t bucket(uint64_t hash) const {
-        static const uint64_t T = constants::a * UINT64_MAX;
+        static const uint64_t T = constants::a * static_cast<double>(UINT64_MAX);
         return (hash < T) ? fastmod::fastmod_u64(hash, m_M_num_dense_buckets, m_num_dense_buckets)
                           : m_num_dense_buckets + fastmod::fastmod_u64(hash, m_M_num_sparse_buckets,
                                                                        m_num_sparse_buckets);
