@@ -41,6 +41,11 @@ struct table_bucketer {
         return base.num_buckets() + fulcrums.size() * 64;
     }
 
+    void swap(table_bucketer& other) {
+        base.swap(other.base);
+        std::swap(fulcrums, other.fulcrums);
+    }
+
     template <typename Visitor>
     void visit(Visitor& visitor) const {
         visit_impl(visitor, *this);
@@ -106,6 +111,13 @@ struct opt_bucketer {
                8 * sizeof(m_alpha_factor);
     }
 
+    void swap(opt_bucketer& other) {
+        std::swap(c, other.c);
+        std::swap(m_num_buckets, other.m_num_buckets);
+        std::swap(m_alpha, other.m_alpha);
+        std::swap(m_alpha_factor, other.m_alpha_factor);
+    }
+
     template <typename Visitor>
     void visit(Visitor& visitor) const {
         visit_impl(visitor, *this);
@@ -124,10 +136,10 @@ private:
         visitor.visit(t.m_alpha);
         visitor.visit(t.m_alpha_factor);
     }
-    double c;
-    uint64_t m_num_buckets;
-    double m_alpha;
-    double m_alpha_factor;
+    double c = 0;
+    uint64_t m_num_buckets = 0;
+    double m_alpha = 0;
+    double m_alpha_factor = 0;
 };
 
 struct skew_bucketer {
@@ -189,8 +201,10 @@ private:
         visitor.visit(t.m_M_num_sparse_buckets);
     }
 
-    uint64_t m_num_dense_buckets, m_num_sparse_buckets;
-    __uint128_t m_M_num_dense_buckets, m_M_num_sparse_buckets;
+    uint64_t m_num_dense_buckets = 0;
+    uint64_t m_num_sparse_buckets = 0;
+    __uint128_t m_M_num_dense_buckets = 0;
+    __uint128_t m_M_num_sparse_buckets = 0;
 };
 
 struct range_bucketer {
@@ -210,6 +224,11 @@ struct range_bucketer {
 
     size_t num_bits() const {
         return 8 * (sizeof(m_num_buckets) + sizeof(m_M_num_buckets));
+    }
+
+    void swap(range_bucketer& other) {
+        std::swap(m_num_buckets, other.m_num_buckets);
+        std::swap(m_M_num_buckets, other.m_M_num_buckets);
     }
 
     template <typename Visitor>
@@ -254,6 +273,11 @@ struct uniform_bucketer {
         return 8 * (sizeof(m_num_buckets) + sizeof(m_M_num_buckets));
     }
 
+    void swap(uniform_bucketer& other) {
+        std::swap(m_num_buckets, other.m_num_buckets);
+        std::swap(m_M_num_buckets, other.m_M_num_buckets);
+    }
+
     template <typename Visitor>
     void visit(Visitor& visitor) const {
         visit_impl(visitor, *this);
@@ -270,8 +294,8 @@ private:
         visitor.visit(t.m_num_buckets);
         visitor.visit(t.m_M_num_buckets);
     }
-    uint64_t m_num_buckets;
-    __uint128_t m_M_num_buckets;
+    uint64_t m_num_buckets = 0;
+    __uint128_t m_M_num_buckets = 0;
 };
 
 }  // namespace pthash
