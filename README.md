@@ -1,7 +1,7 @@
 [![Build](https://github.com/jermp/pthash/actions/workflows/build.yml/badge.svg)](https://github.com/jermp/pthash/actions/workflows/build.yml)
 [![CodeQL](https://github.com/jermp/pthash/actions/workflows/codeql.yml/badge.svg)](https://github.com/jermp/pthash/actions/workflows/codeql.yml)
 
-PTHash
+PTHash / PHOBIC
 ------
 
 PTHash is a C++ library implementing fast and compact minimal perfect hash functions as described in the following research papers:
@@ -10,7 +10,7 @@ PTHash is a C++ library implementing fast and compact minimal perfect hash funct
 - [*Parallel and External-Memory Construction of Minimal Perfect Hash Functions with PTHash*](https://ieeexplore.ieee.org/document/10210677) (TKDE 2023),
 - [*PHOBIC: Perfect Hashing with Optimized Bucket Sizes and Interleaved Coding*](https://drops.dagstuhl.de/entities/document/10.4230/LIPIcs.ESA.2024.69) (ESA 2024).
 
-**Please, cite these papers if you use PTHash.**
+**Please, cite these papers if you use PTHash or PHOBIC.**
 
 ### Features
 
@@ -36,22 +36,31 @@ by illustrating its functionalities through some examples.
 ### Table of contents
 
 * [Integration](#integration)
-* [Compiling the code](#compiling-the-code)
+* [Compiling the benchmark and example code](#compiling-the-code)
 * [Quick start](#quick-start)
 * [Build examples](#build-examples)
 * [Reading keys from standard input ](#reading-keys-from-standard-input)
 
 Integration
 -----
-Integrating PTHash in your own project is very simple: just get the source code
-and include the header `include/pthash.hpp` in your code.
-No other configurations are needed.
-
+Integrating PTHash in your own project is very simple.
 If you use `git`, the easiest way to add PTHash is via `git add submodule` as follows.
 
 	git submodule add https://github.com/jermp/pthash.git
-	
-Compiling the Code
+    git submodule update --recursive --init
+
+Then include the following in your `CMakeLists.txt`, which takes care of
+setting up the include paths and compiler flags of PTHash and its dependencies:
+
+    add_subdirectory(pthash)
+    target_link_libraries(MyTarget INTERFACE PTHASH)
+
+To construct a perfect hash function, include `pthash.hpp` and create an instance of `pthash::single_phf<...>` (PTHash),
+`pthash::partitioned_phf<...>` (PTHash-HEM), or `pthash::dense_partitioned_phf<...>` (PHOBIC).
+For convenience, we also give `pthash::phobic<...>` which includes the configuration options for
+optimized bucket assignment function (OB) and interleaved coding (IC). Refer to `src/example.cpp` for an example.
+
+Compiling the Benchmark and Example Code
 -----
 
 The code is tested on Linux with `gcc` and on Mac OS with `clang` (both Intel and ARM processors, like Apple M1).

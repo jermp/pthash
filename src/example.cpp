@@ -40,13 +40,7 @@ int main() {
     //                         >
     //     pthash_type;
 
-    typedef dense_partitioned_phf<xxhash128,                            // base hasher
-                                  table_bucketer<opt_bucketer>,         // bucketer
-                                  inter_R,                              // encoder type
-                                  true,                                 // minimal
-                                  pthash_search_type::add_displacement  // additive displacement
-                                  >
-        pthash_type;
+    typedef phobic<xxhash128> pthash_type;
 
     pthash_type f;
 
