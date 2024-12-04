@@ -178,7 +178,7 @@ struct internal_memory_builder_single_phf {
         std::swap(m_num_keys, other.m_num_keys);
         std::swap(m_num_buckets, other.m_num_buckets);
         std::swap(m_table_size, other.m_table_size);
-        std::swap(m_bucketer, other.m_bucketer);
+        m_bucketer.swap(other.m_bucketer);
         m_pilots.swap(other.m_pilots);
         m_free_slots.swap(other.m_free_slots);
     }
