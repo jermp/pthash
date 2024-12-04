@@ -8,7 +8,7 @@ namespace pthash {
 
 template <typename Bucketer>
 struct table_bucketer {
-    table_bucketer() : base(Bucketer()) {}
+    table_bucketer() : base(Bucketer()), fulcrums() {}
 
     void init(const uint64_t num_buckets, const double lambda, const uint64_t table_size,
               const double alpha) {
@@ -69,7 +69,7 @@ private:
 };
 
 struct opt_bucketer {
-    opt_bucketer() {}
+    opt_bucketer() : c(0), m_num_buckets(0), m_alpha(0), m_alpha_factor(0) {}
 
     inline double baseFunc(const double normalized_hash) const {
         return (normalized_hash + (1 - normalized_hash) * std::log(1 - normalized_hash)) *
@@ -136,10 +136,10 @@ private:
         visitor.visit(t.m_alpha);
         visitor.visit(t.m_alpha_factor);
     }
-    double c = 0;
-    uint64_t m_num_buckets = 0;
-    double m_alpha = 0;
-    double m_alpha_factor = 0;
+    double c;
+    uint64_t m_num_buckets;
+    double m_alpha;
+    double m_alpha_factor;
 };
 
 struct skew_bucketer {
@@ -201,14 +201,12 @@ private:
         visitor.visit(t.m_M_num_sparse_buckets);
     }
 
-    uint64_t m_num_dense_buckets = 0;
-    uint64_t m_num_sparse_buckets = 0;
-    __uint128_t m_M_num_dense_buckets = 0;
-    __uint128_t m_M_num_sparse_buckets = 0;
+    uint64_t m_num_dense_buckets, m_num_sparse_buckets;
+    __uint128_t m_M_num_dense_buckets, m_M_num_sparse_buckets;
 };
 
 struct range_bucketer {
-    range_bucketer() {}
+    range_bucketer() : m_num_buckets(0), m_M_num_buckets(0) {}
 
     void init(const uint64_t num_buckets) {
         m_num_buckets = num_buckets;
@@ -248,8 +246,8 @@ private:
         visitor.visit(t.m_M_num_buckets);
     }
 
-    uint64_t m_num_buckets{};
-    __uint128_t m_M_num_buckets{};
+    uint64_t m_num_buckets;
+    __uint128_t m_M_num_buckets;
 };
 
 struct uniform_bucketer {
@@ -294,8 +292,8 @@ private:
         visitor.visit(t.m_num_buckets);
         visitor.visit(t.m_M_num_buckets);
     }
-    uint64_t m_num_buckets = 0;
-    __uint128_t m_M_num_buckets = 0;
+    uint64_t m_num_buckets;
+    __uint128_t m_M_num_buckets;
 };
 
 }  // namespace pthash
