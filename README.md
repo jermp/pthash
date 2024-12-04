@@ -2,7 +2,7 @@
 [![CodeQL](https://github.com/jermp/pthash/actions/workflows/codeql.yml/badge.svg)](https://github.com/jermp/pthash/actions/workflows/codeql.yml)
 
 PTHash / PHOBIC
-------
+---------------
 
 PTHash is a C++ library implementing fast and compact minimal perfect hash functions as described in the following research papers:
 
@@ -11,6 +11,14 @@ PTHash is a C++ library implementing fast and compact minimal perfect hash funct
 - [*PHOBIC: Perfect Hashing with Optimized Bucket Sizes and Interleaved Coding*](https://drops.dagstuhl.de/entities/document/10.4230/LIPIcs.ESA.2024.69) (ESA 2024).
 
 **Please, cite these papers if you use PTHash or PHOBIC.**
+
+### Development note
+
+The description of PTHash in the SIGIR and TKDE papers uses the `c` parameter
+to control the number of buckets used during the search.
+You can get a version of the library using the `c` parameter [here](https://github.com/jermp/pthash/releases/tag/v2.0.0) (Release v2).
+The current library
+uses instead a parameter called "lambda", as described in the ESA paper.
 
 ### Features
 
