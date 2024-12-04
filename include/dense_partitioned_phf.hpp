@@ -4,6 +4,12 @@
 
 namespace pthash {
 
+/**
+ * PTHash with dense partitioning. To configure PHOBIC, use:
+ *   Bucketer = table_bucketer<opt_bucketer>
+ *   Encoder = inter_C_inter_R
+ *   Search = pthash_search_type::add_displacement
+ */
 template <typename Hasher,    //
           typename Bucketer,  //
           typename Encoder,   //
@@ -188,5 +194,9 @@ private:
     diff<compact> m_offsets;
     bits::elias_fano<false, false> m_free_slots;
 };
+
+template <typename Hasher>
+using phobic = dense_partitioned_phf<xxhash128, table_bucketer<opt_bucketer>,
+    inter_C_inter_R, true, pthash_search_type::add_displacement>;
 
 }  // namespace pthash
