@@ -2,7 +2,7 @@
 
 #include <array>
 
-#include "include/utils/util.hpp"
+#include "utils/util.hpp"
 
 namespace pthash {
 

@@ -4,7 +4,7 @@
 #include <thread>
 #include <cmath>  // for exp, log, lgamma
 
-#include "include/utils/logger.hpp"
+#include "utils/logger.hpp"
 
 namespace pthash {
 
