@@ -1,7 +1,7 @@
 #pragma once
 
-#include "include/builders/util.hpp"
-#include "include/builders/internal_memory_builder_single_phf.hpp"
+#include "builders/util.hpp"
+#include "builders/internal_memory_builder_single_phf.hpp"
 
 namespace pthash {
 

@@ -1,8 +1,8 @@
 #pragma once
 
 #include "util.hpp"
-#include "external/bits/include/compact_vector.hpp"
-#include "external/bits/include/elias_fano.hpp"
+#include "compact_vector.hpp"
+#include "elias_fano.hpp"
 
 #include <vector>
 #include <unordered_map>

@@ -1,7 +1,7 @@
 #include <iostream>
 
-#include "include/pthash.hpp"
-#include "src/util.hpp"
+#include "pthash.hpp"
+#include "util.hpp"
 
 int main() {
     using namespace pthash;

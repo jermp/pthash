@@ -4,7 +4,7 @@
 #include <string>
 
 #include "essentials.hpp"
-#include "external/fastmod/fastmod.h"
+#include "fastmod.h"
 
 #define PTHASH_LIKELY(expr) __builtin_expect((bool)(expr), true)
 
