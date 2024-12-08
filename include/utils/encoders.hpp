@@ -18,7 +18,7 @@ struct compact {
     }
 
     static std::string name() {
-        return "compact";
+        return "C";
     }
 
     uint64_t size() const {
@@ -83,7 +83,7 @@ struct partitioned_compact {
     }
 
     static std::string name() {
-        return "partitioned_compact";
+        return "PC";
     }
 
     uint64_t size() const {
@@ -171,7 +171,7 @@ struct dictionary {
     }
 
     static std::string name() {
-        return "dictionary";
+        return "D";
     }
 
     uint64_t size() const {
@@ -216,7 +216,7 @@ struct elias_fano {
     }
 
     static std::string name() {
-        return "elias_fano";
+        return "EF";
     }
 
     uint64_t size() const {
@@ -326,7 +326,7 @@ struct sdc {
     }
 
     static std::string name() {
-        return "sdc";
+        return "SDC";
     }
 
     uint64_t size() const {

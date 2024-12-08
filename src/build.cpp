@@ -106,11 +106,14 @@ void build_benchmark(Builder& builder, build_timings const& timings,
     result.add("alpha", config.alpha);
     result.add("minimal", config.minimal ? "true" : "false");
     result.add("encoder_type", Function::encoder_type::name().c_str());
+    result.add("search_type",
+               Function::search == pthash_search_type::xor_displacement ? "XOR" : "ADD");
     result.add("bucketer_type", params.bucketer_type.c_str());
     result.add("secondary_sort", config.secondary_sort);
     result.add("avg_partition_size", config.avg_partition_size);
     result.add("num_partitions",
                compute_num_partitions(params.num_keys, config.avg_partition_size));
+    result.add("dense_partitioning", config.dense_partitioning ? "true" : "false");
 
     if (config.seed != constants::invalid_seed) result.add("seed", config.seed);
 
@@ -126,6 +129,7 @@ void build_benchmark(Builder& builder, build_timings const& timings,
     result.add("mapper_bits_per_key", mapper_bits_per_key);
     result.add("bits_per_key", bits_per_key);
     if (params.num_queries != 0) result.add("nanosec_per_key", nanosec_per_key);
+
     result.print_line();
 
     if (params.output_filename != "") {

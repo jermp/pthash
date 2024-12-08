@@ -66,6 +66,7 @@ private:
 
 public:
     typedef Encoder encoder_type;
+    static constexpr pthash_search_type search = Search;
     static constexpr bool minimal = Minimal;
 
     template <typename Iterator>

@@ -21,6 +21,7 @@ struct dense_partitioned_phf  //
         std::is_base_of<dense_encoder, Encoder>::value,
         "A dense encoder must be specified for dense_partitioned_phf. Select another encoder.");
     typedef Encoder encoder_type;
+    static constexpr pthash_search_type search = Search;
     static constexpr bool minimal = Minimal;
 
     template <typename Iterator>
@@ -196,7 +197,7 @@ private:
 };
 
 template <typename Hasher>
-using phobic = dense_partitioned_phf<xxhash128, table_bucketer<opt_bucketer>,
-    inter_C_inter_R, true, pthash_search_type::add_displacement>;
+using phobic = dense_partitioned_phf<xxhash128, table_bucketer<opt_bucketer>, inter_C_inter_R, true,
+                                     pthash_search_type::add_displacement>;
 
 }  // namespace pthash

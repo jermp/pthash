@@ -18,6 +18,7 @@ struct single_phf  //
         !std::is_base_of<dense_encoder, Encoder>::value,
         "Dense encoders are only valid for dense_partitioned_phf. Select another encoder.");
     typedef Encoder encoder_type;
+    static constexpr pthash_search_type search = Search;
     static constexpr bool minimal = Minimal;
 
     template <typename Iterator>
