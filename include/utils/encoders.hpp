@@ -292,6 +292,13 @@ struct sdc_sequence {
         visitor.visit(m_index);
     }
 
+    template <typename Visitor>
+    void visit(Visitor& visitor) const {
+        visitor.visit(m_size);
+        visitor.visit(m_codewords);
+        visitor.visit(m_index);
+    }
+
 private:
     uint64_t m_size;
     bits::bit_vector m_codewords;
@@ -325,6 +332,12 @@ struct sdc {
 
     template <typename Visitor>
     void visit(Visitor& visitor) {
+        visitor.visit(m_ranks);
+        visitor.visit(m_dict);
+    }
+
+    template <typename Visitor>
+    void visit(Visitor& visitor) const {
         visitor.visit(m_ranks);
         visitor.visit(m_dict);
     }
