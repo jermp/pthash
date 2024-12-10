@@ -112,14 +112,13 @@ void build_benchmark(Builder& builder, build_timings const& timings,
     result.add("secondary_sort", config.secondary_sort);
     result.add("avg_partition_size", config.avg_partition_size);
     result.add("num_partitions",
-               compute_num_partitions(params.num_keys, config.avg_partition_size));
+               config.avg_partition_size > 0
+                   ? compute_num_partitions(params.num_keys, config.avg_partition_size)
+                   : 0);
     result.add("dense_partitioning", config.dense_partitioning ? "true" : "false");
-
-    if (config.seed != constants::invalid_seed) result.add("seed", config.seed);
-
+    result.add("seed", f.seed());
     result.add("num_threads", config.num_threads);
     result.add("external_memory", params.external_memory ? "true" : "false");
-
     result.add("partitioning_microseconds", timings.partitioning_microseconds);
     result.add("mapping_ordering_microseconds", timings.mapping_ordering_microseconds);
     result.add("searching_microseconds", timings.searching_microseconds);
@@ -681,8 +680,13 @@ int main(int argc, char** argv) {
         if (external_memory) {
             std::cout << "Warning: external memory construction with in-memory input" << std::endl;
         }
-        // build(parser, distinct_strings(num_keys, random_value()).begin(), num_keys);
-        build(parser, distinct_uints<uint64_t>(num_keys, random_value()).begin(), num_keys);
+
+        /* ensure that if we specify the seed for the construction, we work on the same input */
+        const uint64_t random_input_seed =
+            default_hash64(0, parser.parsed("seed") ? parser.get<uint64_t>("seed") : 0);
+
+        // build(parser, distinct_strings(num_keys, random_input_seed).begin(), num_keys);
+        build(parser, distinct_uints<uint64_t>(num_keys, random_input_seed).begin(), num_keys);
     }
 
     return 0;

@@ -100,10 +100,12 @@ static uint64_t compute_avg_partition_size(const uint64_t num_keys,
 }
 
 static uint64_t compute_num_buckets(const uint64_t num_keys, const double avg_bucket_size) {
+    assert(avg_bucket_size != 0.0);
     return std::ceil(static_cast<double>(num_keys) / avg_bucket_size);
 }
 
 static uint64_t compute_num_partitions(const uint64_t num_keys, const double avg_partition_size) {
+    assert(avg_partition_size != 0.0);
     return std::ceil(static_cast<double>(num_keys) / avg_partition_size);
 }
 
