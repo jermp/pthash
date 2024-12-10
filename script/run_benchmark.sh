@@ -41,6 +41,6 @@ for config in "${configs[@]}"; do
   IFS=' ' read -r l a e <<< "$config"
   # run the command 3 times for each configuration
   for i in {1..3}; do
-    ./build -n "$1" -l "$l" -a "$a" -e "$e" -r xor -b skew -s 1234567890 -q 10000000 -p 3000 -t 8 --dense --minimal
+    ./build -n "$1" -l "$l" -a "$a" -e "$e" -r add -b opt -s 1234567890 -q 10000000 -p 3000 -t 8 --dense --minimal
   done
 done
