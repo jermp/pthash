@@ -538,14 +538,18 @@ void build(cmd_line_parser::parser const& parser, Iterator keys, uint64_t num_ke
     if (parser.parsed("num_threads")) {
         config.num_threads = parser.get<uint64_t>("num_threads");
         if (config.num_threads == 0) {
-            std::cout << "Warning: specified 0 threads, defaulting to 1" << std::endl;
+            if (config.verbose) {
+                std::cout << "Warning: specified 0 threads, defaulting to 1" << std::endl;
+            }
             config.num_threads = 1;
         }
         uint64_t num_threads = std::thread::hardware_concurrency();
         if (config.num_threads > num_threads) {
             config.num_threads = num_threads;
-            std::cout << "Warning: too many threads specified, defaulting to " << config.num_threads
-                      << std::endl;
+            if (config.verbose) {
+                std::cout << "Warning: too many threads specified, defaulting to "
+                          << config.num_threads << std::endl;
+            }
         }
     }
 
@@ -557,9 +561,11 @@ void build(cmd_line_parser::parser const& parser, Iterator keys, uint64_t num_ke
         if (ram > constants::available_ram) {
             double available_ram_in_GB =
                 static_cast<double>(constants::available_ram) / essentials::GB;
-            std::cout << "Warning: too much RAM specified, this machine has " << available_ram_in_GB
-                      << " GB of RAM; defaulting to " << available_ram_in_GB * 0.75 << " GB"
-                      << std::endl;
+            if (config.verbose) {
+                std::cout << "Warning: too much RAM specified, this machine has "
+                          << available_ram_in_GB << " GB of RAM; defaulting to "
+                          << available_ram_in_GB * 0.75 << " GB" << std::endl;
+            }
             ram = static_cast<double>(constants::available_ram) * 0.75;
         }
         config.ram = ram;

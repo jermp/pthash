@@ -28,6 +28,14 @@ for config in "${configs[@]}"; do
   done
 done
 
+configs=(
+  "3.79649 0.97 inter-R"
+  "3.79649 0.99 inter-C"
+  "2.41595 0.88 inter-D"
+  "4.42924 0.99 inter-EF"
+  "3.79649 0.94 inter-D"
+)
+
 # ADD-type search, mutiple thread, dense partitioned function (PHOBIC)
 for config in "${configs[@]}"; do
   IFS=' ' read -r l a e <<< "$config"
