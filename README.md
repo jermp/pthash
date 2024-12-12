@@ -242,11 +242,11 @@ From within the directory where the code has been compiled, just run
 
 to collect the results on an input of 100M keys. (All constructions run in internal memory).
 
-Below, the result of the benchmark (see also the file `script/results.100M.json`) on a machine equipped with
+Below, the result of the benchmark (see also the files `script/results.100M.json` and `script/results.1000M.json`) on a machine equipped with
 an Intel Xeon W-2245 CPU @ 3.90GHz and running Ubuntu 18.04.6 LTS (GNU/Linux 5.4.0-150-generic x86_64).
 The code has been compiled with gcc 9.4.0, with flags `-O3` and `-march=native` in all cases.
 
-### `pthash::single_phf` with 1 thread
+### `pthash::single_phf` with 1 thread, 100M keys
 
 | Encoder | $\alpha$ | $\lambda$ | Mapping (sec) | Mapping (%) | Searching (sec) | Searching (%) | Encoding (sec) | Encoding (%) | Total (sec) | Space (bits/key) | Lookup (ns/key) |
 |:---------:|:-------:|:--------:|:-------------:|:-------------:|:--------------:|:----------------:|:--------------:|:--------------:|:-----------:|:----------:|:--------------:|
@@ -256,7 +256,17 @@ The code has been compiled with gcc 9.4.0, with flags `-O3` and `-march=native` 
 | EF | 0.99 | 4.429 | 11.55 | 19.63 | 47.17 | 80.16 | 0.13 | 0.21 | 58.84 | 2.26 | 69 |
 | D-D | 0.94 | 3.796 | 11.58 | 36.30 | 19.70 | 61.75 | 0.62 | 1.96 | 31.90 | 3.13 | 47 |
 
-### `pthash::partitioned_phf` with 8 thread
+### `pthash::single_phf` with 1 thread, 1000M keys
+
+| Encoder | $\alpha$ | $\lambda$ | Mapping (sec) | Mapping (%) | Searching (sec) | Searching (%) | Encoding (sec) | Encoding (%) | Total (sec) | Space (bits/key) | Lookup (ns/key) |
+|:---------:|:-------:|:--------:|:-------------:|:-------------:|:--------------:|:----------------:|:--------------:|:--------------:|:-----------:|:----------:|:--------------:|
+| R-R | 0.97 | 3.796 | 127.39 | 17.33 | 604.22 | 82.22 | 3.30 | 0.45 | 734.91 | 2.29 | 126 |
+| C-C | 0.99 | 3.796 | 127.38 | 14.56 | 746.65 | 85.36 | 0.70 | 0.08 | 874.72 | 3.25 | 57 |
+| D-D | 0.88 | 2.416 | 126.88 | 39.55 | 185.17 | 57.71 | 8.79 | 2.74 | 320.84 | 4.17 | 80 |
+| EF | 0.99 | 4.429 | 128.03 | 9.57 | 1208.24 | 90.33 | 1.29 | 0.10 | 1337.56 | 2.26 | 153 |
+| D-D | 0.94 | 3.796 | 128.71 | 20.65 | 489.23 | 78.48 | 5.41 | 0.87 | 623.35 | 3.31 | 70 |
+
+### `pthash::partitioned_phf` with 8 thread, 100M keys
 
 | Encoder | $\alpha$ | $\lambda$ | Mapping (sec) | Mapping (%) | Searching (sec) | Searching (%) | Encoding (sec) | Encoding (%) | Total (sec) | Space (bits/key) | Lookup (ns/key) |
 |:---------:|:-------:|:--------:|:-------------:|:-------------:|:--------------:|:----------------:|:--------------:|:--------------:|:-----------:|:----------:|:--------------:|
@@ -266,7 +276,17 @@ The code has been compiled with gcc 9.4.0, with flags `-O3` and `-march=native` 
 | EF | 0.99 | 4.429 | 1.58 | 24.49 | 3.93 | 60.83 | 0.04 | 0.60 | 6.46 | 2.26 | 75 |
 | D-D | 0.94 | 3.796 | 1.58 | 35.27 | 1.93 | 43.01 | 0.10 | 2.18 | 4.48 | 3.05 | 49 |
 
-### `pthash::dense_partitioned_phf` with 8 thread
+### `pthash::partitioned_phf` with 8 thread, 1000M keys
+
+| Encoder | $\alpha$ | $\lambda$ | Mapping (sec) | Mapping (%) | Searching (sec) | Searching (%) | Encoding (sec) | Encoding (%) | Total (sec) | Space (bits/key) | Lookup (ns/key) |
+|:---------:|:-------:|:--------:|:-------------:|:-------------:|:--------------:|:----------------:|:--------------:|:--------------:|:-----------:|:----------:|:--------------:|
+| R-R | 0.97 | 3.796 | 13.13 | 34.70 | 19.02 | 50.29 | 0.48 | 1.28 | 37.83 | 2.29 | 158 |
+| C-C | 0.99 | 3.796 | 13.01 | 32.61 | 21.59 | 54.12 | 0.12 | 0.31 | 39.90 | 3.25 | 63 |
+| D-D | 0.88 | 2.416 | 12.95 | 45.76 | 9.19 | 32.49 | 0.95 | 3.36 | 28.30 | 4.05 | 91 |
+| EF | 0.99 | 4.429 | 13.12 | 25.06 | 33.90 | 64.73 | 0.21 | 0.39 | 52.37 | 2.26 | 180 |
+| D-D | 0.94 | 3.796 | 13.01 | 36.72 | 16.66 | 47.00 | 0.62 | 1.75 | 35.44 | 3.05 | 78 |
+
+### `pthash::dense_partitioned_phf` with 8 thread, 100M keys
 
 | Encoder | $\alpha$ | $\lambda$ | Mapping (sec) | Mapping (%) | Searching (sec) | Searching (%) | Encoding (sec) | Encoding (%) | Total (sec) | Space (bits/key) | Lookup (ns/key) |
 |:---------:|:-------:|:--------:|:-------------:|:-------------:|:--------------:|:----------------:|:--------------:|:--------------:|:-----------:|:----------:|:--------------:|
@@ -276,3 +296,12 @@ The code has been compiled with gcc 9.4.0, with flags `-O3` and `-march=native` 
 | inter-EF | 0.99 | 4.429 | 0.93 | 22.43 | 2.23 | 54.09 | 0.31 | 7.41 | 4.13 | 2.31 | 88 |
 | inter-D | 0.94 | 3.796 | 0.93 | 27.19 | 1.19 | 34.74 | 0.64 | 18.80 | 3.43 | 2.99 | 66 |
 
+### `pthash::dense_partitioned_phf` with 8 thread, 1000M keys
+
+| Encoder | $\alpha$ | $\lambda$ | Mapping (sec) | Mapping (%) | Searching (sec) | Searching (%) | Encoding (sec) | Encoding (%) | Total (sec) | Space (bits/key) | Lookup (ns/key) |
+|:---------:|:-------:|:--------:|:-------------:|:-------------:|:--------------:|:----------------:|:--------------:|:--------------:|:-----------:|:----------:|:--------------:|
+| inter-R | 0.97 | 3.796 | 9.32 | 23.90 | 13.73 | 35.21 | 4.65 | 11.93 | 39.01 | 2.42 | 191 |
+| inter-C | 0.99 | 3.796 | 9.17 | 23.06 | 16.17 | 40.65 | 3.24 | 8.15 | 39.78 | 3.45 | 94 |
+| inter-D | 0.88 | 2.416 | 9.22 | 19.85 | 8.08 | 17.38 | 17.93 | 38.60 | 46.46 | 4.53 | 125 |
+| inter-EF | 0.99 | 4.429 | 9.18 | 18.76 | 22.10 | 45.16 | 6.52 | 13.33 | 48.95 | 2.30 | 186 |
+| inter-D | 0.94 | 3.796 | 9.22 | 21.41 | 11.73 | 27.24 | 10.98 | 25.51 | 43.06 | 3.17 | 113 |
