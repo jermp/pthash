@@ -20,7 +20,6 @@ if(NOT TARGET PTHASH)
   if (UNIX AND (CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "x86_64"))
     MESSAGE(STATUS "Compiling with flags: -march=native -mbmi2 -msse4.2")
     target_compile_options(PTHASH INTERFACE -march=native)
-    # Flags for PTHASH:
     target_compile_options(PTHASH INTERFACE -mbmi2 -msse4.2) # for hardware popcount and pdep
   endif()
 
@@ -34,17 +33,12 @@ if(NOT TARGET PTHASH)
     target_compile_options(PTHASH INTERFACE -DPTHASH_ENABLE_LARGE_BUCKET_ID_TYPE)
   endif()
 
-  if (UNIX)
-    MESSAGE(STATUS "Compiling with flags: -std=c++17 -ggdb -pthread -Wall -Wextra -Wno-missing-braces -Wno-unknown-attributes -Wno-unused-function")
+  find_package(Threads REQUIRED)
+  target_link_libraries(PTHASH INTERFACE Threads::Threads)
 
-    target_compile_options(PTHASH INTERFACE -pthread)
-    target_compile_options(PTHASH INTERFACE -ggdb)
-    target_compile_options(PTHASH INTERFACE -Wall -Wextra -Wno-missing-braces -Wno-unknown-attributes -Wno-unused-function)
-
-    if (PTHASH_USE_SANITIZERS)
-      MESSAGE(STATUS "Using sanitizers. Compiling with flags: -fsanitize=address -fno-omit-frame-pointer")
-      target_compile_options(PTHASH INTERFACE -fsanitize=address -fno-omit-frame-pointer)
-    endif()
+  if (PTHASH_USE_SANITIZERS)
+    MESSAGE(STATUS "Using sanitizers. Compiling with flags: -fsanitize=address -fno-omit-frame-pointer")
+    target_compile_options(PTHASH INTERFACE -fsanitize=address -fno-omit-frame-pointer)
   endif()
 
   add_subdirectory(external/bits)
