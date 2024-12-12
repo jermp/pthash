@@ -48,6 +48,7 @@ by illustrating its functionalities through some examples.
 * [Quick start](#quick-start)
 * [Build examples](#build-examples)
 * [Reading keys from standard input ](#reading-keys-from-standard-input)
+* [An example benchmark](#an-example-benchmark)
 
 Integration
 -----
@@ -224,3 +225,54 @@ Some examples below.
 **Note**: you may need to write `zcat < foo.txt.gz | (...)` on Mac OSX.
 
 One caveat of this approach is that it is **not** possible to use `--check` nor benchmark query time because these two options need to re-iterate over the keys from the stream.
+
+An example benchmark
+-----
+
+The script `script/run_benchmark.sh` runs some trade-off configurations (encoder, $\alpha$, $\lambda$) that have been tested in the papers, on 100M and 1000M keys.
+
+Be sure you run the benchmark after compiling with
+
+	cmake .. -D PTHASH_ENABLE_ALL_ENCODERS=On
+
+From within the directory where the code has been compiled, just run
+
+	bash ../script/run_benchmark.sh 100000000 2> results.json
+	python3 ../script/make_markdown_table.py results.json results.md
+
+to collect the results on an input of 100M keys. (All constructions run in internal memory).
+
+Below, the result of the benchmark (see also the file `script/results.100M.json`) on a machine equipped with
+an Intel Xeon W-2245 CPU @ 3.90GHz and running Ubuntu 18.04.6 LTS (GNU/Linux 5.4.0-150-generic x86_64).
+The code has been compiled with gcc 9.4.0, with flags `-O3` and `-march=native` in all cases.
+
+### `pthash::single_phf` with 1 thread
+
+| Encoder | $\alpha$ | $\lambda$ | Mapping (sec) | Mapping (%) | Searching (sec) | Searching (%) | Encoding (sec) | Encoding (%) | Total (sec) | Space (bits/key) | Lookup (ns/key) |
+|---------|-------|--------|-------------|-------------|--------------|----------------|--------------|--------------|-----------|----------|--------------|
+| R-R | 0.97 | 3.796 | 11.55 | 32.67 | 23.48 | 66.41 | 0.33 | 0.93 | 35.35 | 2.29 | 64 |
+| C-C | 0.99 | 3.796 | 11.58 | 29.26 | 27.93 | 70.57 | 0.07 | 0.17 | 39.58 | 3.25 | 39 |
+| D-D | 0.88 | 2.416 | 11.59 | 55.76 | 8.24 | 39.66 | 0.95 | 4.58 | 20.78 | 4.05 | 56 |
+| EF | 0.99 | 4.429 | 11.55 | 19.63 | 47.17 | 80.16 | 0.13 | 0.21 | 58.84 | 2.26 | 69 |
+| D-D | 0.94 | 3.796 | 11.58 | 36.30 | 19.70 | 61.75 | 0.62 | 1.96 | 31.90 | 3.13 | 47 |
+
+### `pthash::partitioned_phf` with 8 thread
+
+| Encoder | $\alpha$ | $\lambda$ | Mapping (sec) | Mapping (%) | Searching (sec) | Searching (%) | Encoding (sec) | Encoding (%) | Total (sec) | Space (bits/key) | Lookup (ns/key) |
+|---------|-------|--------|-------------|-------------|--------------|----------------|--------------|--------------|-----------|----------|--------------|
+| R-R | 0.97 | 3.796 | 1.58 | 33.34 | 2.21 | 46.67 | 0.07 | 1.53 | 4.74 | 2.29 | 70 |
+| C-C | 0.99 | 3.796 | 1.58 | 31.54 | 2.54 | 50.63 | 0.02 | 0.50 | 5.01 | 3.26 | 43 |
+| D-D | 0.88 | 2.416 | 1.58 | 43.74 | 1.03 | 28.47 | 0.14 | 3.80 | 3.62 | 4.05 | 60 |
+| EF | 0.99 | 4.429 | 1.58 | 24.49 | 3.93 | 60.83 | 0.04 | 0.60 | 6.46 | 2.26 | 75 |
+| D-D | 0.94 | 3.796 | 1.58 | 35.27 | 1.93 | 43.01 | 0.10 | 2.18 | 4.48 | 3.05 | 49 |
+
+### `pthash::dense_partitioned_phf` with 8 thread
+
+| Encoder | $\alpha$ | $\lambda$ | Mapping (sec) | Mapping (%) | Searching (sec) | Searching (%) | Encoding (sec) | Encoding (%) | Total (sec) | Space (bits/key) | Lookup (ns/key) |
+|---------|-------|--------|-------------|-------------|--------------|----------------|--------------|--------------|-----------|----------|--------------|
+| inter-R | 0.97 | 3.796 | 0.93 | 29.00 | 1.37 | 42.65 | 0.25 | 7.73 | 3.21 | 2.43 | 85 |
+| inter-C | 0.99 | 3.796 | 0.93 | 27.27 | 1.63 | 48.00 | 0.17 | 5.02 | 3.39 | 3.35 | 56 |
+| inter-D | 0.88 | 2.416 | 0.95 | 27.81 | 0.83 | 24.49 | 0.94 | 27.75 | 3.40 | 4.19 | 82 |
+| inter-EF | 0.99 | 4.429 | 0.93 | 22.43 | 2.23 | 54.09 | 0.31 | 7.41 | 4.13 | 2.31 | 88 |
+| inter-D | 0.94 | 3.796 | 0.93 | 27.19 | 1.19 | 34.74 | 0.64 | 18.80 | 3.43 | 2.99 | 66 |
+
