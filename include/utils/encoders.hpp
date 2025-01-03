@@ -10,6 +10,13 @@
 
 namespace pthash {
 
+/*
+    Increase block (4096) and subblock (64) length compared to the default
+    used in the BITS library (1024 and 32, respectively).
+*/
+typedef bits::darray<bits::util::identity_getter, 4096, 64> darray1;  // take positions of 1s
+typedef bits::darray<bits::util::negating_getter, 4096, 64> darray0;  // take positions of 0s
+
 struct compact {
     template <typename Iterator>
     void encode(Iterator begin, const uint64_t n) {
@@ -243,7 +250,7 @@ struct elias_fano {
     }
 
 private:
-    bits::elias_fano<false, true> m_values;
+    bits::elias_fano<false, true, darray1, darray0> m_values;
 };
 
 struct sdc_sequence {
@@ -313,7 +320,7 @@ private:
 
     uint64_t m_size;
     bits::bit_vector m_codewords;
-    bits::elias_fano<false, false> m_index;
+    bits::elias_fano<false, false, darray1, darray0> m_index;
 };
 
 struct sdc {
@@ -460,7 +467,7 @@ private:
         visitor.visit(t.m_low_bits);
     }
     bits::bit_vector m_high_bits;
-    bits::darray1 m_high_bits_d1;
+    darray1 m_high_bits_d1;
     bits::compact_vector m_low_bits;
 
     template <typename Iterator>
