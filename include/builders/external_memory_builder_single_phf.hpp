@@ -50,7 +50,7 @@ struct external_memory_builder_single_phf {
                                          ? compute_num_buckets(num_keys, config.lambda)
                                          : config.num_buckets;
 
-#ifndef DPTHASH_ENABLE_LARGE_BUCKET_ID_TYPE
+#ifndef PTHASH_ENABLE_LARGE_BUCKET_ID_TYPE
         if (num_buckets >= (1ULL << (sizeof(bucket_id_type) * 8))) {
             throw std::runtime_error(
                 "using too many buckets: recompile the library with 'cmake .. "

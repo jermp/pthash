@@ -8,7 +8,7 @@
 
 namespace pthash {
 
-#ifdef DPTHASH_ENABLE_LARGE_BUCKET_ID_TYPE
+#ifdef PTHASH_ENABLE_LARGE_BUCKET_ID_TYPE
 typedef uint64_t bucket_id_type;
 #else
 typedef uint32_t bucket_id_type;
