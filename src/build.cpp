@@ -578,14 +578,17 @@ int main(int argc, char** argv) {
     cmd_line_parser::parser parser(argc, argv);
 
     /* Required arguments. */
-    parser.add("num_keys", "The size of the input.", "-n", true);
+    const bool REQUIRED = true;
+    const bool OPTIONAL = false;
+    const bool BOOLEAN = true;
+    parser.add("num_keys", "The size of the input.", "-n", REQUIRED);
     parser.add("lambda",
                "A constant that trades construction speed for space effectiveness. "
                "A reasonable value lies between 3.0 and 10.0.",
-               "-l", true);
-    parser.add("alpha", "The table load factor. It must be a quantity > 0 and <= 1.", "-a", true);
+               "-l", REQUIRED);
+    parser.add("alpha", "The table load factor. It must be a quantity > 0 and <= 1.", "-a", REQUIRED);
     parser.add("search_type", "The pilot search type. Possibile values are: 'xor' and 'add'.", "-r",
-               true);
+               REQUIRED);
 
     parser.add(
         "encoder_type",
@@ -604,37 +607,37 @@ int main(int argc, char** argv) {
 #endif
         "Specifying 'all' as type will just benchmark all such encoders. (Useful for benchmarking "
         "purposes.)",
-        "-e", true);
+        "-e", REQUIRED);
 
     parser.add("bucketer_type", "The bucketer type. Possible values are: 'uniform', 'skew', 'opt'.",
-               "-b", true);
+               "-b", REQUIRED);
     parser.add("num_queries", "Number of queries for benchmarking or 0 for no benchmarking.", "-q",
-               true, false);
+               REQUIRED, false);
 
     /* Optional arguments. */
-    parser.add("avg_partition_size", "Average partition size.", "-p", false);
-    parser.add("seed", "Seed to use for construction.", "-s", false);
-    parser.add("num_threads", "Number of threads to use for construction.", "-t", false);
+    parser.add("avg_partition_size", "Average partition size.", "-p", OPTIONAL);
+    parser.add("seed", "Seed to use for construction.", "-s", OPTIONAL);
+    parser.add("num_threads", "Number of threads to use for construction.", "-t", OPTIONAL);
     parser.add("input_filename",
                "A string input file name. If this is not provided, then [num_keys] 64-bit random "
                "keys will be used as input. "
                "If, instead, the filename is '-', then input is read from standard input.",
-               "-i", false);
+               "-i", OPTIONAL);
     parser.add("output_filename", "Output file name where the function will be serialized.", "-o",
                false);
     parser.add("tmp_dir",
                "Temporary directory used for building in external memory. Default is directory '" +
                    constants::default_tmp_dirname + "'.",
-               "-d", false);
+               "-d", OPTIONAL);
     parser.add("ram", "Number of Giga bytes of RAM to use for construction in external memory.",
-               "-m", false);
+               "-m", OPTIONAL);
 
-    parser.add("minimal", "Build a minimal PHF.", "--minimal", false, true);
-    parser.add("dense_partitioning", "Activate dense partitioning.", "--dense", false, true);
+    parser.add("minimal", "Build a minimal PHF.", "--minimal", OPTIONAL, BOOLEAN);
+    parser.add("dense_partitioning", "Activate dense partitioning.", "--dense", OPTIONAL, BOOLEAN);
     parser.add("external_memory", "Build the function in external memory.", "--external", false,
                true);
-    parser.add("verbose", "Verbose output during construction.", "--verbose", false, true);
-    parser.add("check", "Check correctness after construction.", "--check", false, true);
+    parser.add("verbose", "Verbose output during construction.", "--verbose", OPTIONAL, BOOLEAN);
+    parser.add("check", "Check correctness after construction.", "--check", OPTIONAL, BOOLEAN);
 
     if (!parser.parse()) return 1;
 
