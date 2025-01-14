@@ -179,6 +179,7 @@ private:
     static void visit_impl(Visitor& visitor, T&& t) {
         visitor.visit(t.m_encoders);
     }
+
     std::vector<Encoder> m_encoders;
 };
 
@@ -191,8 +192,8 @@ struct dense_dual : dense_encoder {
     {
         m_front_size = num_buckets_per_partition * (static_cast<double>(numerator) / denominator);
         if (num_threads == 1) {
-            if (m_front_size > 0) m_front.encode(begin, num_partitions, m_front_size, 1);
-            if (num_buckets_per_partition - m_front_size > 0)
+            if (m_front_size != 0) m_front.encode(begin, num_partitions, m_front_size, 1);
+            if (num_buckets_per_partition - m_front_size != 0)
                 m_back.encode(begin + m_front_size * num_partitions, num_partitions,
                               num_buckets_per_partition - m_front_size, 1);
         } else {
@@ -200,11 +201,11 @@ struct dense_dual : dense_encoder {
                 (num_threads * m_front_size + num_buckets_per_partition - 1) /
                 num_buckets_per_partition;
             auto exe = [&]() {
-                if (m_front_size > 0)
+                if (m_front_size != 0)
                     m_front.encode(begin, num_partitions, m_front_size, m_front_threads);
             };
             std::thread frontThread = std::thread(exe);
-            if (num_buckets_per_partition - m_front_size > 0)
+            if (num_buckets_per_partition - m_front_size != 0)
                 m_back.encode(begin + m_front_size * num_partitions, num_partitions,
                               num_buckets_per_partition - m_front_size,
                               num_threads - m_front_threads);
@@ -248,6 +249,7 @@ private:
         visitor.visit(t.m_front);
         visitor.visit(t.m_back);
     }
+
     uint64_t m_front_size;
     Front m_front;
     Back m_back;
