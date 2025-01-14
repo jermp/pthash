@@ -301,12 +301,12 @@ struct sdc_sequence {
     }
 
     template <typename Visitor>
-    void visit(Visitor& visitor) {
+    void visit(Visitor& visitor) const {
         visit_impl(visitor, *this);
     }
 
     template <typename Visitor>
-    void visit(Visitor& visitor) const {
+    void visit(Visitor& visitor) {
         visit_impl(visitor, *this);
     }
 
@@ -350,13 +350,13 @@ struct sdc {
     }
 
     template <typename Visitor>
-    void visit(Visitor& visitor) {
+    void visit(Visitor& visitor) const {
         visitor.visit(m_ranks);
         visitor.visit(m_dict);
     }
 
     template <typename Visitor>
-    void visit(Visitor& visitor) const {
+    void visit(Visitor& visitor) {
         visitor.visit(m_ranks);
         visitor.visit(m_dict);
     }
