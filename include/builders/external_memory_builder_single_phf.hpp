@@ -1,17 +1,18 @@
 #pragma once
 
-#include "include/builders/util.hpp"
-#include "include/builders/search.hpp"
-#include "external/mm_file/include/mm_file/mm_file.hpp"
-#include "include/utils/bucketers.hpp"
-#include "include/utils/logger.hpp"
-#include "include/utils/hasher.hpp"
+#include "builders/util.hpp"
+#include "builders/search.hpp"
+#include "mm_file/mm_file.hpp"
+#include "utils/bucketers.hpp"
+#include "utils/logger.hpp"
+#include "utils/hasher.hpp"
 
 namespace pthash {
 
-template <typename Hasher>
+template <typename Hasher, typename Bucketer>
 struct external_memory_builder_single_phf {
     typedef Hasher hasher_type;
+    typedef Bucketer bucketer_type;
 
     external_memory_builder_single_phf() : m_pilots_filename(""), m_free_slots_filename("") {}
     // non construction-copyable
@@ -28,8 +29,9 @@ struct external_memory_builder_single_phf {
     }
 
     template <typename Iterator>
-    build_timings build_from_keys(Iterator keys, uint64_t num_keys,
-                                  build_configuration const& config) {
+    build_timings build_from_keys(Iterator keys, const uint64_t num_keys,
+                                  build_configuration const& config)  //
+    {
         assert(num_keys > 0);
         util::check_hash_collision_probability<Hasher>(num_keys);
 
@@ -39,11 +41,16 @@ struct external_memory_builder_single_phf {
 
         build_timings time;
         uint64_t table_size = static_cast<double>(num_keys) / config.alpha;
-        if ((table_size & (table_size - 1)) == 0) table_size += 1;
-        const uint64_t num_buckets =
-            std::ceil((config.c * num_keys) / (num_keys > 1 ? std::log2(num_keys) : 1));
+        if (config.search == pthash_search_type::xor_displacement and
+            (table_size & (table_size - 1)) == 0)  //
+        {
+            table_size += 1;
+        }
+        const uint64_t num_buckets = (config.num_buckets == constants::invalid_num_buckets)
+                                         ? compute_num_buckets(num_keys, config.lambda)
+                                         : config.num_buckets;
 
-#ifndef DPTHASH_ENABLE_LARGE_BUCKET_ID_TYPE
+#ifndef PTHASH_ENABLE_LARGE_BUCKET_ID_TYPE
         if (num_buckets >= (1ULL << (sizeof(bucket_id_type) * 8))) {
             throw std::runtime_error(
                 "using too many buckets: recompile the library with 'cmake .. "
@@ -56,7 +63,7 @@ struct external_memory_builder_single_phf {
         m_table_size = table_size;
         m_num_buckets = num_buckets;
         m_seed = config.seed == constants::invalid_seed ? random_value() : config.seed;
-        m_bucketer.init(num_buckets);
+        m_bucketer.init(num_buckets, config.lambda, table_size, config.alpha);
 
         uint64_t ram = config.ram;
         uint64_t bitmap_taken_bytes = 8 * ((table_size + 63) / 64);
@@ -68,11 +75,11 @@ struct external_memory_builder_single_phf {
             throw std::runtime_error(ss.str());
         }
 
-        if (config.verbose_output) {
+        if (config.verbose) {
             constexpr uint64_t GB = 1000000000;
             uint64_t peak = num_keys * (sizeof(bucket_payload_pair) + sizeof(uint64_t)) +
                             (num_keys + num_buckets) * sizeof(uint64_t);
-            std::cout << "c = " << config.c << std::endl;
+            std::cout << "lambda (avg. bucket size) = " << config.lambda << std::endl;
             std::cout << "alpha = " << config.alpha << std::endl;
             std::cout << "num_keys = " << num_keys << std::endl;
             std::cout << "table_size = " << table_size << std::endl;
@@ -96,31 +103,31 @@ struct external_memory_builder_single_phf {
                 std::vector<pairs_t> pairs_blocks;
                 map(keys, num_keys, pairs_blocks, tfm, config);
                 auto stop = clock_type::now();
-                if (config.verbose_output) {
+                if (config.verbose) {
                     std::cout << " == map+sort " << tfm.get_num_pairs_files()
-                              << " files(s) took: " << seconds(stop - start) << " seconds"
-                              << std::endl;
+                              << " files(s) took: " << to_microseconds(stop - start) / 1000000
+                              << " seconds" << std::endl;
                 }
                 start = clock_type::now();
                 buckets_t buckets = tfm.buckets(config);
-                merge(pairs_blocks, buckets, config.verbose_output);
+                merge(pairs_blocks, buckets, config.verbose);
                 buckets.flush();
                 for (auto& pairs_block : pairs_blocks) pairs_block.close();
                 num_non_empty_buckets = buckets.num_buckets();
                 tfm.remove_all_pairs_files();
                 stop = clock_type::now();
-                if (config.verbose_output) {
-                    std::cout << " == merge+check took: " << seconds(stop - start) << " seconds"
-                              << std::endl;
+                if (config.verbose) {
+                    std::cout << " == merge+check took: " << to_microseconds(stop - start) / 1000000
+                              << " seconds" << std::endl;
                     std::cout << " == max bucket size = " << int(tfm.max_bucket_size())
                               << std::endl;
                 }
             }
             auto stop = clock_type::now();
-            time.mapping_ordering_seconds = seconds(stop - start);
-            if (config.verbose_output) {
-                std::cout << " == map+ordering took " << time.mapping_ordering_seconds << " seconds"
-                          << std::endl;
+            time.mapping_ordering_microseconds = to_microseconds(stop - start);
+            if (config.verbose) {
+                std::cout << " == map+ordering took " << time.mapping_ordering_microseconds
+                          << " seconds" << std::endl;
             }
         } catch (...) {
             tfm.remove_all_pairs_files();
@@ -130,7 +137,7 @@ struct external_memory_builder_single_phf {
 
         try {
             auto start = clock_type::now();
-            bits::bit_vector::builder taken(m_table_size);
+            bits::bit_vector::builder taken_bvb(m_table_size);
 
             {  // search
                 auto buckets_iterator = tfm.buckets_iterator();
@@ -141,7 +148,7 @@ struct external_memory_builder_single_phf {
                     tfm.get_multifile_pairs_writer(num_non_empty_buckets, ram_for_pilots, 1, 0);
 
                 search(m_num_keys, m_num_buckets, num_non_empty_buckets, m_seed, config,
-                       buckets_iterator, taken, pilots);
+                       buckets_iterator, taken_bvb, pilots);
 
                 pilots.flush();
                 buckets_iterator.close();
@@ -158,20 +165,22 @@ struct external_memory_builder_single_phf {
                 tfm.remove_all_merge_files();
             }
 
-            if (config.minimal_output and num_keys < table_size) {  // fill free slots
+            if (config.minimal and num_keys < table_size) {  // fill free slots
                 // write all free slots to file
                 buffered_file_t<uint64_t> writer(tfm.get_free_slots_filename(),
                                                  ram - bitmap_taken_bytes);
-                fill_free_slots(taken, num_keys, writer);
+                bits::bit_vector taken;
+                taken_bvb.build(taken);
+                fill_free_slots(taken, num_keys, writer, table_size);
                 writer.close();
                 if (m_free_slots_filename != "") std::remove(m_free_slots_filename.c_str());
                 m_free_slots_filename = tfm.get_free_slots_filename();
             }
 
             auto stop = clock_type::now();
-            time.searching_seconds = seconds(stop - start);
-            if (config.verbose_output) {
-                std::cout << " == search took " << time.searching_seconds << " seconds"
+            time.searching_microseconds = to_microseconds(stop - start);
+            if (config.verbose) {
+                std::cout << " == search took " << time.searching_microseconds << " seconds"
                           << std::endl;
             }
         } catch (...) {
@@ -195,7 +204,7 @@ struct external_memory_builder_single_phf {
         return m_table_size;
     }
 
-    skew_bucketer bucketer() const {
+    Bucketer bucketer() const {
         return m_bucketer;
     }
 
@@ -212,7 +221,7 @@ private:
     uint64_t m_num_keys;
     uint64_t m_table_size;
     uint64_t m_num_buckets;
-    skew_bucketer m_bucketer;
+    Bucketer m_bucketer;
     std::string m_pilots_filename;
     std::string m_free_slots_filename;
 
@@ -677,8 +686,7 @@ private:
     template <typename Iterator>
     void map(Iterator keys, uint64_t num_keys, std::vector<pairs_t>& pairs_blocks,
              temporary_files_manager& tfm, build_configuration const& config) {
-        progress_logger logger(num_keys, " == processed ", " keys from input",
-                               config.verbose_output);
+        progress_logger logger(num_keys, " == processed ", " keys from input", config.verbose);
 
         uint64_t ram = config.ram;
         uint64_t ram_parallel_merge = 0;

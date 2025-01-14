@@ -1,39 +1,46 @@
 #include <iostream>
 
-#include "include/pthash.hpp"
-#include "src/util.hpp"  // for functions distinct_keys and check
+#include "pthash.hpp"
+#include "util.hpp"
 
 int main() {
     using namespace pthash;
 
-    /* Generate 10M random 64-bit keys as input data. */
-    static const uint64_t num_keys = 10000000;
+    /* Generate 1M random 64-bit keys as input data. */
+    static const uint64_t num_keys = 1000000;
     static const uint64_t seed = 1234567890;
     std::cout << "generating input data..." << std::endl;
-    std::vector<uint64_t> keys = distinct_keys<uint64_t>(num_keys, seed);
+    auto keys = distinct_uints<uint64_t>(num_keys, seed);  // distinct_strings(num_keys, seed);
     assert(keys.size() == num_keys);
 
     /* Set up a build configuration. */
     build_configuration config;
-    config.c = 6.0;
-    config.alpha = 0.94;
-    config.minimal_output = true;  // mphf
-    config.verbose_output = true;
+    config.seed = seed;
+    config.lambda = 5;
+    config.alpha = 0.97;
+    config.verbose = true;
+    config.avg_partition_size = 2000;
+    config.dense_partitioning = true;
 
-    /* Declare the PTHash function. */
-    typedef single_phf<murmurhash2_64,         // base hasher
-                       dictionary_dictionary,  // encoder type
-                       true                    // minimal
-                       >
-        pthash_type;
+    /* Declare the PTHash function type. */
 
-    // config.num_partitions = 50;
-    // config.num_threads = 4;
-    // typedef partitioned_phf<murmurhash2_64,        // base hasher
-    //                         dictionary_dictionary, // encoder type
-    //                         true
+    // typedef single_phf<xxhash128,                            // base hasher
+    //                    skew_bucketer,                        // bucketer type
+    //                    dictionary_dictionary,                // encoder type
+    //                    true,                                 // minimal
+    //                    pthash_search_type::xor_displacement  // additive displacement
+    //                    >
+    //     pthash_type;
+
+    // typedef partitioned_phf<xxhash128,                            // base hasher
+    //                         opt_bucketer,                         // bucketer
+    //                         dictionary_dictionary,                // encoder type
+    //                         true,                                 // minimal
+    //                         pthash_search_type::add_displacement  // additive displacement
     //                         >
     //     pthash_type;
+
+    typedef phobic<xxhash128> pthash_type;
 
     pthash_type f;
 
@@ -41,12 +48,13 @@ int main() {
     std::cout << "building the function..." << std::endl;
     auto start = clock_type::now();
     auto timings = f.build_in_internal_memory(keys.begin(), keys.size(), config);
-    // auto timings = f.build_in_external_memory(keys.begin(), keys.size(), config);
-    double total_seconds = timings.partitioning_seconds + timings.mapping_ordering_seconds +
-                           timings.searching_seconds + timings.encoding_seconds;
-    std::cout << "function built in " << seconds(clock_type::now() - start) << " seconds"
-              << std::endl;
-    std::cout << "computed: " << total_seconds << " seconds" << std::endl;
+    double total_microseconds = timings.partitioning_microseconds +
+                                timings.mapping_ordering_microseconds +
+                                timings.searching_microseconds + timings.encoding_microseconds;
+    std::cout << "function built in " << to_microseconds(clock_type::now() - start) / 1000000
+              << " seconds" << std::endl;
+    std::cout << "computed: " << total_microseconds / 1000000 << " seconds" << std::endl;
+
     /* Compute and print the number of bits spent per key. */
     double bits_per_key = static_cast<double>(f.num_bits()) / f.num_keys();
     std::cout << "function uses " << bits_per_key << " [bits/key]" << std::endl;
@@ -55,7 +63,8 @@ int main() {
     if (check(keys.begin(), f)) std::cout << "EVERYTHING OK!" << std::endl;
 
     /* Now evaluate f on some keys. */
-    for (uint64_t i = 0; i != 10; ++i) {
+    const uint64_t n = std::min<uint64_t>(10, keys.size());
+    for (uint64_t i = 0; i != n; ++i) {
         std::cout << "f(" << keys[i] << ") = " << f(keys[i]) << '\n';
     }
 
@@ -68,7 +77,8 @@ int main() {
         /* Now reload from disk and query. */
         pthash_type other;
         essentials::load(other, output_filename.c_str());
-        for (uint64_t i = 0; i != 10; ++i) {
+        const uint64_t n = std::min<uint64_t>(10, keys.size());
+        for (uint64_t i = 0; i != n; ++i) {
             std::cout << "f(" << keys[i] << ") = " << other(keys[i]) << '\n';
             assert(f(keys[i]) == other(keys[i]));
         }

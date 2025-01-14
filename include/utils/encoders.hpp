@@ -1,7 +1,8 @@
 #pragma once
 
-#include "external/bits/include/compact_vector.hpp"
-#include "external/bits/include/elias_fano.hpp"
+#include "util.hpp"
+#include "compact_vector.hpp"
+#include "elias_fano.hpp"
 
 #include <vector>
 #include <unordered_map>
@@ -9,14 +10,22 @@
 
 namespace pthash {
 
+/*
+    Increase block (4096) and subblock (64) length compared to the default
+    used in the BITS library (1024 and 32, respectively).
+*/
+typedef bits::darray<bits::util::identity_getter, 4096, 64> darray1;  // take positions of 1s
+typedef bits::darray<bits::util::negating_getter, 4096, 64> darray0;  // take positions of 0s
+
 struct compact {
     template <typename Iterator>
-    void encode(Iterator begin, uint64_t n) {
+    void encode(Iterator begin, const uint64_t n) {
+        if (n == 0) return;
         m_values.build(begin, n);
     }
 
     static std::string name() {
-        return "compact";
+        return "C";
     }
 
     uint64_t size() const {
@@ -50,7 +59,8 @@ struct partitioned_compact {
     static_assert(partition_size > 0);
 
     template <typename Iterator>
-    void encode(Iterator begin, uint64_t n) {
+    void encode(Iterator begin, const uint64_t n) {
+        if (n == 0) return;
         uint64_t num_partitions = (n + partition_size - 1) / partition_size;
         bits::bit_vector::builder bvb;
         bvb.reserve(32 * n);
@@ -80,7 +90,7 @@ struct partitioned_compact {
     }
 
     static std::string name() {
-        return "partitioned_compact";
+        return "PC";
     }
 
     uint64_t size() const {
@@ -124,8 +134,9 @@ private:
 };
 
 template <typename Iterator>
-std::pair<std::vector<uint64_t>, std::vector<uint64_t>> compute_ranks_and_dictionary(Iterator begin,
-                                                                                     uint64_t n) {
+std::pair<std::vector<uint64_t>, std::vector<uint64_t>> compute_ranks_and_dictionary(
+    Iterator begin, const uint64_t n)  //
+{
     // accumulate frequencies
     std::unordered_map<uint64_t, uint64_t> distinct;
     for (auto it = begin, end = begin + n; it != end; ++it) {
@@ -159,14 +170,15 @@ std::pair<std::vector<uint64_t>, std::vector<uint64_t>> compute_ranks_and_dictio
 
 struct dictionary {
     template <typename Iterator>
-    void encode(Iterator begin, uint64_t n) {
+    void encode(Iterator begin, const uint64_t n) {
+        if (n == 0) return;
         auto [ranks, dict] = compute_ranks_and_dictionary(begin, n);
         m_ranks.build(ranks.begin(), ranks.size());
         m_dict.build(dict.begin(), dict.size());
     }
 
     static std::string name() {
-        return "dictionary";
+        return "D";
     }
 
     uint64_t size() const {
@@ -198,18 +210,20 @@ private:
         visitor.visit(t.m_ranks);
         visitor.visit(t.m_dict);
     }
+
     bits::compact_vector m_ranks;
     bits::compact_vector m_dict;
 };
 
 struct elias_fano {
     template <typename Iterator>
-    void encode(Iterator begin, uint64_t n) {
+    void encode(Iterator begin, const uint64_t n) {
+        if (n == 0) return;
         m_values.encode(begin, n);
     }
 
     static std::string name() {
-        return "elias_fano";
+        return "EF";
     }
 
     uint64_t size() const {
@@ -236,14 +250,15 @@ struct elias_fano {
     }
 
 private:
-    bits::elias_fano<false, true> m_values;
+    bits::elias_fano<false, true, darray1, darray0> m_values;
 };
 
 struct sdc_sequence {
     sdc_sequence() : m_size(0) {}
 
     template <typename Iterator>
-    void build(Iterator begin, uint64_t n) {
+    void build(Iterator begin, const uint64_t n) {
+        if (n == 0) return;
         m_size = n;
         auto start = begin;
         uint64_t bits = 0;
@@ -286,10 +301,13 @@ struct sdc_sequence {
     }
 
     template <typename Visitor>
+    void visit(Visitor& visitor) const {
+        visit_impl(visitor, *this);
+    }
+
+    template <typename Visitor>
     void visit(Visitor& visitor) {
-        visitor.visit(m_size);
-        visitor.visit(m_codewords);
-        visitor.visit(m_index);
+        visit_impl(visitor, *this);
     }
 
     template <typename Visitor>
@@ -300,21 +318,29 @@ struct sdc_sequence {
     }
 
 private:
+    template <typename Visitor, typename T>
+    static void visit_impl(Visitor& visitor, T&& t) {
+        visitor.visit(t.m_size);
+        visitor.visit(t.m_codewords);
+        visitor.visit(t.m_index);
+    }
+
     uint64_t m_size;
     bits::bit_vector m_codewords;
-    bits::elias_fano<false, false> m_index;
+    bits::elias_fano<false, false, darray1, darray0> m_index;
 };
 
 struct sdc {
     template <typename Iterator>
-    void encode(Iterator begin, uint64_t n) {
+    void encode(Iterator begin, const uint64_t n) {
+        if (n == 0) return;
         auto [ranks, dict] = compute_ranks_and_dictionary(begin, n);
         m_ranks.build(ranks.begin(), ranks.size());
         m_dict.build(dict.begin(), dict.size());
     }
 
     static std::string name() {
-        return "sdc";
+        return "SDC";
     }
 
     uint64_t size() const {
@@ -328,6 +354,12 @@ struct sdc {
     uint64_t access(uint64_t i) const {
         uint64_t rank = m_ranks.access(i);
         return m_dict.access(rank);
+    }
+
+    template <typename Visitor>
+    void visit(Visitor& visitor) const {
+        visitor.visit(m_ranks);
+        visitor.visit(m_dict);
     }
 
     template <typename Visitor>
@@ -350,8 +382,9 @@ private:
 template <typename Front, typename Back>
 struct dual {
     template <typename Iterator>
-    void encode(Iterator begin, uint64_t n) {
-        uint64_t front_size = n * 0.3;
+    void encode(Iterator begin, const uint64_t n) {
+        if (n == 0) return;
+        uint64_t front_size = n * constants::b;
         m_front.encode(begin, front_size);
         m_back.encode(begin + front_size, n - front_size);
     }
@@ -390,7 +423,117 @@ private:
     Back m_back;
 };
 
+struct rice_sequence {
+    template <typename Iterator>
+    void encode(Iterator begin, const uint64_t n) {
+        if (n == 0) return;
+
+        uint64_t l = optimal_parameter_kiely(begin, n);
+        bits::bit_vector::builder bvb_high_bits;
+        bits::compact_vector::builder cv_builder_low_bits(n, l);
+
+        const uint64_t low_mask = (uint64_t(1) << l) - 1;
+        for (size_t i = 0; i < n; ++i, ++begin) {
+            auto v = *begin;
+            if (l > 0) cv_builder_low_bits.set(i, v & low_mask);
+            auto unary = v >> l;
+            for (size_t j = 0; j < unary; ++j) { bvb_high_bits.push_back(0); }
+            bvb_high_bits.push_back(1);
+        }
+        bvb_high_bits.build(m_high_bits);
+        cv_builder_low_bits.build(m_low_bits);
+        m_high_bits_d1.build(m_high_bits);
+    }
+
+    inline uint64_t access(uint64_t i) const {
+        assert(i < size());
+        int64_t start = -1;
+        if (i) start = m_high_bits_d1.select(m_high_bits, i - 1);
+        int64_t end = m_high_bits_d1.select(m_high_bits, i);
+        int64_t high = end - start - 1;
+        return (high << m_low_bits.width()) | m_low_bits.access(i);
+    }
+
+    inline uint64_t size() const {
+        return m_low_bits.size();
+    }
+
+    uint64_t num_bits() const {
+        return m_high_bits.num_bits() + 8 * (m_high_bits_d1.num_bytes() + m_low_bits.num_bytes());
+    }
+
+    template <typename Visitor>
+    void visit(Visitor& visitor) const {
+        visit_impl(visitor, *this);
+    }
+
+    template <typename Visitor>
+    void visit(Visitor& visitor) {
+        visit_impl(visitor, *this);
+    }
+
+private:
+    template <typename Visitor, typename T>
+    static void visit_impl(Visitor& visitor, T&& t) {
+        visitor.visit(t.m_high_bits);
+        visitor.visit(t.m_high_bits_d1);
+        visitor.visit(t.m_low_bits);
+    }
+    bits::bit_vector m_high_bits;
+    darray1 m_high_bits_d1;
+    bits::compact_vector m_low_bits;
+
+    template <typename Iterator>
+    uint64_t optimal_parameter_kiely(Iterator begin, const uint64_t n) {
+        /* estimate parameter p from mean of sample */
+        uint64_t sum = std::accumulate(begin, begin + n, uint64_t(0));
+        double p = n / (static_cast<double>(sum) + n);
+        const double gold = (sqrt(5.0) + 1.0) / 2.0;
+        // return uint64_t(ceil(log2(-log2(gold) / log2(1 - p))));
+        // Eq. (8) from Kiely, "Selecting the Golomb Parameter in Rice Coding", 2004.
+        return std::max<int64_t>(0, 1 + floor(log2(log(gold - 1) / log(1 - p))));
+    }
+};
+
+struct rice {
+    template <typename Iterator>
+    void encode(Iterator begin, const uint64_t n) {
+        if (n == 0) return;
+        m_values.encode(begin, n);
+    }
+
+    static std::string name() {
+        return "R";
+    }
+
+    size_t size() const {
+        return m_values.size();
+    }
+
+    size_t num_bits() const {
+        return m_values.num_bits();
+    }
+
+    uint64_t access(uint64_t i) const {
+        return m_values.access(i);
+    }
+
+    template <typename Visitor>
+    void visit(Visitor& visitor) const {
+        visitor.visit(m_values);
+    }
+
+    template <typename Visitor>
+    void visit(Visitor& visitor) {
+        visitor.visit(m_values);
+    }
+
+private:
+    rice_sequence m_values;
+};
+
 /* dual encoders */
+typedef dual<rice, rice> rice_rice;
 typedef dual<compact, compact> compact_compact;
 typedef dual<dictionary, dictionary> dictionary_dictionary;
 typedef dual<dictionary, elias_fano> dictionary_elias_fano;

@@ -9,13 +9,17 @@
 #include <string>
 #include <vector>
 
-#include "include/utils/util.hpp"
+#include "utils/util.hpp"
 #include "essentials.hpp"
 
 namespace pthash {
 
-struct lines_iterator : std::forward_iterator_tag {
-    typedef std::string value_type;
+struct lines_iterator {
+    using value_type = std::string;
+    using difference_type = std::ptrdiff_t;
+    using pointer = value_type*;
+    using reference = value_type&;
+    using iterator_category = std::forward_iterator_tag;
 
     lines_iterator(uint8_t const* begin, uint8_t const* end)
         : m_begin(begin), m_end(end), m_num_lines(0), m_num_empty_lines(0) {}
@@ -55,8 +59,12 @@ private:
     uint64_t m_num_empty_lines;
 };
 
-struct sequential_lines_iterator : std::forward_iterator_tag {
-    typedef std::string value_type;
+struct sequential_lines_iterator {
+    using value_type = std::string;
+    using difference_type = std::ptrdiff_t;
+    using pointer = value_type*;
+    using reference = value_type&;
+    using iterator_category = std::forward_iterator_tag;
 
     sequential_lines_iterator(std::istream& is)
         : m_pis(&is), m_num_lines(0), m_num_empty_lines(0) {}
@@ -124,7 +132,7 @@ std::vector<std::string> read_string_collection(uint64_t n, IStream& is, bool ve
 }
 
 template <typename Uint>
-std::vector<Uint> distinct_keys(uint64_t num_keys, uint64_t seed = constants::invalid_seed) {
+std::vector<Uint> distinct_uints(const uint64_t num_keys, const uint64_t seed) {
     assert(num_keys > 0);
     auto gen = std::mt19937_64((seed != constants::invalid_seed) ? seed : std::random_device()());
     std::vector<Uint> keys(num_keys * 1.05);       // allocate a vector slightly larger than needed
@@ -149,6 +157,61 @@ std::vector<Uint> distinct_keys(uint64_t num_keys, uint64_t seed = constants::in
     keys.resize(num_keys);
     std::shuffle(keys.begin(), keys.end(), gen);
     return keys;
+}
+
+class XorShift64 {
+private:
+    uint64_t x64;
+
+public:
+    explicit XorShift64(uint64_t seed = 88172645463325252ull) : x64(seed) {}
+
+    inline uint64_t operator()() {
+        x64 ^= x64 << 13;
+        x64 ^= x64 >> 7;
+        x64 ^= x64 << 17;
+        return x64;
+    }
+
+    inline uint64_t operator()(uint64_t range) {
+#ifdef __SIZEOF_INT128__  // then we know we have a 128-bit int
+        return (uint64_t)(((__uint128_t) operator()() * (__uint128_t)range) >> 64);
+#elif defined(_MSC_VER) && defined(_WIN64)
+        // supported in Visual Studio 2005 and better
+        uint64_t highProduct;
+        _umul128(operator()(), range, &highProduct);  // ignore output
+        return highProduct;
+        unsigned __int64 _umul128(unsigned __int64 Multiplier, unsigned __int64 Multiplicand,
+                                  unsigned __int64* HighProduct);
+#else
+        return word / (UINT64_MAX / p);  // fallback
+#endif  // __SIZEOF_INT128__
+    }
+};
+
+std::vector<std::string> distinct_strings(const uint64_t num_keys, const uint64_t seed) {
+    std::vector<std::string> inputData;
+    inputData.reserve(num_keys);
+    XorShift64 prng(seed);
+    std::cout << "Generating input" << std::flush;
+    char string[200];
+    for (uint64_t i = 0; i != num_keys; ++i) {
+        if ((i % (num_keys / 5)) == 0) {
+            std::cout << "\rGenerating input: " << 100l * i / num_keys << "%" << std::flush;
+        }
+        uint64_t length = 10 + prng((30 - 10) * 2);
+        for (uint64_t k = 0; k < (length + sizeof(uint64_t)) / sizeof(uint64_t); ++k) {
+            ((uint64_t*)string)[k] = prng();
+        }
+        // Repair null bytes
+        for (uint64_t k = 0; k < length; ++k) {
+            if (string[k] == 0) { string[k] = 1 + prng(254); }
+        }
+        string[length] = 0;
+        inputData.emplace_back(string, length);
+    }
+    std::cout << "\rInput generation complete." << std::endl;
+    return inputData;
 }
 
 template <typename Function, typename Iterator>
@@ -192,13 +255,13 @@ bool check(Iterator keys, Function const& f) {
 }
 
 template <typename Function, typename Iterator>
-double perf(Iterator keys, uint64_t num_keys, Function const& f) {
+double perf(Iterator keys, const uint64_t num_queries, Function const& f) {
     static const uint64_t runs = 5;
     essentials::timer<std::chrono::high_resolution_clock, std::chrono::nanoseconds> t;
     t.start();
     for (uint64_t r = 0; r != runs; ++r) {
         Iterator begin = keys;
-        for (uint64_t i = 0; i != num_keys; ++i) {
+        for (uint64_t i = 0; i != num_queries; ++i) {
             auto const& key = *begin;
             uint64_t p = f(key);
             essentials::do_not_optimize_away(p);
@@ -206,7 +269,7 @@ double perf(Iterator keys, uint64_t num_keys, Function const& f) {
         }
     }
     t.stop();
-    double nanosec_per_key = t.elapsed() / static_cast<double>(runs * num_keys);
+    double nanosec_per_key = t.elapsed() / static_cast<double>(runs * num_queries);
     return nanosec_per_key;
 }
 

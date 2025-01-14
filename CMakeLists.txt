@@ -8,15 +8,14 @@ MESSAGE(STATUS "CMAKE_BUILD_TYPE: " ${CMAKE_BUILD_TYPE})
 
 if(NOT TARGET PTHASH)
   add_library(PTHASH INTERFACE)
-  target_include_directories(PTHASH INTERFACE .)
+  target_include_directories(PTHASH INTERFACE include)
+  target_include_directories(PTHASH SYSTEM INTERFACE external/fastmod)
+  target_include_directories(PTHASH SYSTEM INTERFACE external/mm_file/include)
+  target_include_directories(PTHASH SYSTEM INTERFACE external/xxHash)
 
   target_compile_features(PTHASH INTERFACE cxx_std_17)
-  if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    target_compile_options(PTHASH INTERFACE -stdlib=libc++)
-  endif()
 
   MESSAGE(STATUS "Compiling for processor: " ${CMAKE_HOST_SYSTEM_PROCESSOR})
-
   if (UNIX AND (CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "x86_64"))
     MESSAGE(STATUS "Compiling with flags: -march=native -mbmi2 -msse4.2")
     target_compile_options(PTHASH INTERFACE -march=native)
@@ -48,10 +47,13 @@ endif()
 # Only add benchmarks and tests when compiling PTHash itself, not when added as a dependency
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+  target_compile_options(PTHASH INTERFACE -Werror -Wall -Wextra -Wno-missing-braces -Wno-unknown-attributes -Wno-unused-function -ggdb)
+  add_subdirectory(external/cmd_line_parser)
+
   add_executable(build src/build.cpp)
-  target_link_libraries(build PRIVATE PTHASH)
+  target_link_libraries(build PRIVATE PTHASH CMD_LINE_PARSER)
   add_executable(example src/example.cpp)
-  target_link_libraries(example PRIVATE PTHASH)
+  target_link_libraries(example PRIVATE PTHASH CMD_LINE_PARSER)
 
   file(GLOB TEST_SOURCES test/test_*.cpp)
   foreach(TEST_SRC ${TEST_SOURCES})

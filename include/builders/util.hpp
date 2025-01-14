@@ -4,17 +4,20 @@
 #include <thread>
 #include <cmath>  // for exp, log, lgamma
 
-#include "include/utils/logger.hpp"
+#include "utils/logger.hpp"
 
 namespace pthash {
 
-#ifdef DPTHASH_ENABLE_LARGE_BUCKET_ID_TYPE
+#ifdef PTHASH_ENABLE_LARGE_BUCKET_ID_TYPE
 typedef uint64_t bucket_id_type;
 #else
 typedef uint32_t bucket_id_type;
 #endif
 typedef uint8_t bucket_size_type;
-constexpr bucket_size_type MAX_BUCKET_SIZE = 100;
+
+constexpr bucket_size_type MAX_BUCKET_SIZE = 255;
+
+enum pthash_search_type { xor_displacement, add_displacement };
 
 static inline std::string get_tmp_builder_filename(std::string const& dir_name, uint64_t id) {
     return dir_name + "/pthash.temp." + std::to_string(id) + ".builder";
@@ -32,41 +35,86 @@ static inline double poisson_pmf(double k, double lambda) {
 
 struct build_timings {
     build_timings()
-        : partitioning_seconds(0.0)
-        , mapping_ordering_seconds(0.0)
-        , searching_seconds(0.0)
-        , encoding_seconds(0.0) {}
+        : partitioning_microseconds(0)
+        , mapping_ordering_microseconds(0)
+        , searching_microseconds(0)
+        , encoding_microseconds(0) {}
 
-    double partitioning_seconds;
-    double mapping_ordering_seconds;
-    double searching_seconds;
-    double encoding_seconds;
+    uint64_t partitioning_microseconds;
+    uint64_t mapping_ordering_microseconds;
+    uint64_t searching_microseconds;
+    uint64_t encoding_microseconds;
 };
 
 struct build_configuration {
     build_configuration()
-        : c(4.5)
+        : lambda(4.5)
         , alpha(0.98)
-        , num_partitions(1)
+        , search(pthash_search_type::xor_displacement)
+        , avg_partition_size(0)  // not partitioned
         , num_buckets(constants::invalid_num_buckets)
         , num_threads(1)
         , seed(constants::invalid_seed)
         , ram(static_cast<double>(constants::available_ram) * 0.75)
         , tmp_dir(constants::default_tmp_dirname)
-        , minimal_output(false)
-        , verbose_output(true) {}
+        , secondary_sort(false)
+        , dense_partitioning(false)
+        , minimal(true)
+        , verbose(true) {}
 
-    double c;
-    double alpha;
-    uint64_t num_partitions;
+    double lambda;  // avg. bucket size
+    double alpha;   // load factor
+    pthash_search_type search;
+    uint64_t avg_partition_size;
     uint64_t num_buckets;
     uint64_t num_threads;
     uint64_t seed;
     uint64_t ram;
     std::string tmp_dir;
-    bool minimal_output;
-    bool verbose_output;
+    bool secondary_sort;
+    bool dense_partitioning;
+    bool minimal;
+    bool verbose;
 };
+
+static uint64_t compute_avg_partition_size(const uint64_t num_keys,
+                                           build_configuration const& config)  //
+{
+    uint64_t avg_partition_size = config.avg_partition_size;
+    if (avg_partition_size < constants::min_partition_size) {
+        if (config.verbose) {
+            std::cout << "Warning: avg_partition_size too small; defaulting to "
+                      << constants::min_partition_size << std::endl;
+        }
+        avg_partition_size = constants::min_partition_size;
+    }
+    if (config.dense_partitioning and avg_partition_size > constants::max_partition_size) {
+        if (config.verbose) {
+            std::cout
+                << "Warning: avg_partition_size too large for dense_partitioning; defaulting to "
+                << constants::max_partition_size << std::endl;
+        }
+        avg_partition_size = constants::max_partition_size;
+    }
+    if (num_keys < avg_partition_size) {
+        if (config.verbose) {
+            std::cout << "Warning: avg_partition_size too large for " << num_keys
+                      << " keys; defaulting to " << num_keys << std::endl;
+        }
+        avg_partition_size = num_keys;
+    }
+    return avg_partition_size;
+}
+
+static uint64_t compute_num_buckets(const uint64_t num_keys, const double avg_bucket_size) {
+    assert(avg_bucket_size != 0.0);
+    return std::ceil(static_cast<double>(num_keys) / avg_bucket_size);
+}
+
+static uint64_t compute_num_partitions(const uint64_t num_keys, const double avg_partition_size) {
+    assert(avg_partition_size != 0.0);
+    return std::ceil(static_cast<double>(num_keys) / avg_partition_size);
+}
 
 struct seed_runtime_error : public std::runtime_error {
     seed_runtime_error() : std::runtime_error("seed did not work") {}
@@ -251,27 +299,33 @@ void merge(std::vector<Pairs> const& pairs_blocks, Merger& merger, bool verbose)
     }
 }
 
-template <typename FreeSlots>
-void fill_free_slots(bits::bit_vector::builder const& taken,    //
-                     uint64_t num_keys, FreeSlots& free_slots)  //
-{
-    const uint64_t table_size = taken.num_bits();
+template <typename Taken, typename FreeSlots>
+void fill_free_slots(Taken const& taken, const uint64_t num_keys, FreeSlots& free_slots,
+                     const uint64_t table_size) {
     if (table_size <= num_keys) return;
 
     uint64_t next_used_slot = num_keys;
     uint64_t last_free_slot = 0, last_valid_free_slot = 0;
 
+    auto last_free_slot_iter = taken.get_iterator_at(last_free_slot);
+    auto next_used_slot_iter = taken.get_iterator_at(next_used_slot);
+
     while (true) {
         // find the next free slot (on the left)
-        while (last_free_slot < num_keys && taken.get(last_free_slot)) ++last_free_slot;
-        // exit condition
+        while (last_free_slot < num_keys && *last_free_slot_iter) {
+            ++last_free_slot;
+            ++last_free_slot_iter;
+        }
+
         if (last_free_slot == num_keys) break;
+
         // fill with the last free slot (on the left) until I find a new used slot (on the right)
         // note: since I found a free slot on the left, there must be an used slot on the right
         assert(next_used_slot < table_size);
-        while (!taken.get(next_used_slot)) {
+        while (!*next_used_slot_iter) {
             free_slots.emplace_back(last_free_slot);
             ++next_used_slot;
+            ++next_used_slot_iter;
         }
         assert(next_used_slot < table_size);
         // fill the used slot (on the right) with the last free slot and advance all cursors
@@ -279,6 +333,8 @@ void fill_free_slots(bits::bit_vector::builder const& taken,    //
         last_valid_free_slot = last_free_slot;
         ++next_used_slot;
         ++last_free_slot;
+        ++last_free_slot_iter;
+        ++next_used_slot_iter;
     }
     // fill the tail with the last valid slot that I found
     while (next_used_slot != table_size) {

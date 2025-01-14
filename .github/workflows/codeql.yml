@@ -2,12 +2,7 @@ name: "CodeQL"
 
 on:
   push:
-    branches: [ "master" ]
   pull_request:
-    # The branches below must be a subset of the branches above
-    branches: [ "master" ]
-  # schedule:
-  #   - cron: '28 20 * * 4'
 
 jobs:
   analyze:
@@ -18,26 +13,16 @@ jobs:
       contents: read
       security-events: write
 
-    strategy:
-      fail-fast: false
-      matrix:
-        language: [ 'cpp' ]
-        # CodeQL supports [ 'cpp', 'csharp', 'go', 'java', 'javascript', 'python', 'ruby' ]
-        # Learn more about CodeQL language support at https://aka.ms/codeql-docs/language-support
-
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
 
-    # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v2
       with:
-        languages: ${{ matrix.language }}
-
-    # Compile
-    - name: Checkout submodules
-      run: git submodule update --init --recursive
+        languages: 'cpp'
 
     - name: Creating build directory
       run: cmake -E make_directory ./build
@@ -54,4 +39,4 @@ jobs:
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v2
       with:
-        category: "/language:${{matrix.language}}"
+        category: "/language:cpp"
