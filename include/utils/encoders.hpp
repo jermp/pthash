@@ -310,13 +310,6 @@ struct sdc_sequence {
         visit_impl(visitor, *this);
     }
 
-    template <typename Visitor>
-    void visit(Visitor& visitor) const {
-        visitor.visit(m_size);
-        visitor.visit(m_codewords);
-        visitor.visit(m_index);
-    }
-
 private:
     template <typename Visitor, typename T>
     static void visit_impl(Visitor& visitor, T&& t) {
@@ -358,23 +351,21 @@ struct sdc {
 
     template <typename Visitor>
     void visit(Visitor& visitor) const {
-        visitor.visit(m_ranks);
-        visitor.visit(m_dict);
+        visit_impl(visitor, *this);
     }
 
     template <typename Visitor>
     void visit(Visitor& visitor) {
-        visitor.visit(m_ranks);
-        visitor.visit(m_dict);
-    }
-
-    template <typename Visitor>
-    void visit(Visitor& visitor) const {
-        visitor.visit(m_ranks);
-        visitor.visit(m_dict);
+        visit_impl(visitor, *this);
     }
 
 private:
+    template <typename Visitor, typename T>
+    static void visit_impl(Visitor& visitor, T&& t) {
+        visitor.visit(t.m_ranks);
+        visitor.visit(t.m_dict);
+    }
+
     sdc_sequence m_ranks;
     bits::compact_vector m_dict;
 };
