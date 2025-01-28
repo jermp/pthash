@@ -20,6 +20,7 @@ int main() {
     config.alpha = 0.97;
     config.verbose = true;
     config.avg_partition_size = 2000;
+    config.num_threads = 4;
     config.dense_partitioning = true;
 
     /* Declare the PTHash function type. */
@@ -28,7 +29,7 @@ int main() {
     //                    skew_bucketer,                        // bucketer type
     //                    dictionary_dictionary,                // encoder type
     //                    true,                                 // minimal
-    //                    pthash_search_type::xor_displacement  // additive displacement
+    //                    pthash_search_type::xor_displacement  // xor displacement
     //                    >
     //     pthash_type;
 

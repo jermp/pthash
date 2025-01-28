@@ -197,7 +197,7 @@ private:
 };
 
 template <typename Hasher>
-using phobic = dense_partitioned_phf<xxhash128, table_bucketer<opt_bucketer>, inter_C_inter_R, true,
+using phobic = dense_partitioned_phf<Hasher, table_bucketer<opt_bucketer>, inter_C_inter_R, true,
                                      pthash_search_type::add_displacement>;
 
 }  // namespace pthash
