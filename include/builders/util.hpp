@@ -53,8 +53,9 @@ struct build_configuration {
         , search(pthash_search_type::xor_displacement)
         , avg_partition_size(0)  // not partitioned
         , num_buckets(constants::invalid_num_buckets)
-        , num_threads(1)
+        , table_size(constants::invalid_table_size)
         , seed(constants::invalid_seed)
+        , num_threads(1)
         , ram(static_cast<double>(constants::available_ram) * 0.75)
         , tmp_dir(constants::default_tmp_dirname)
         , secondary_sort(false)
@@ -67,8 +68,9 @@ struct build_configuration {
     pthash_search_type search;
     uint64_t avg_partition_size;
     uint64_t num_buckets;
-    uint64_t num_threads;
+    uint64_t table_size;
     uint64_t seed;
+    uint64_t num_threads;
     uint64_t ram;
     std::string tmp_dir;
     bool secondary_sort;

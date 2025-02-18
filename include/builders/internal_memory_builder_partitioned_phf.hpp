@@ -42,42 +42,72 @@ struct internal_memory_builder_partitioned_phf {
         std::vector<std::vector<typename hasher_type::hash_type>> partitions(num_partitions);
         for (auto& partition : partitions) partition.reserve(1.1 * avg_partition_size);
 
-        if constexpr (std::is_same_v<typename Iterator::iterator_category,
-                                     std::random_access_iterator_tag>)  //
-        {
-            parallel_hash_and_partition(keys, partitions, num_keys, config.num_threads, m_seed,
-                                        num_partitions, m_bucketer);
-        } else {
-            for (uint64_t i = 0; i != num_keys; ++i, ++keys) {
-                auto const& key = *keys;
-                auto hash = hasher_type::hash(key, m_seed);
-                auto b = m_bucketer.bucket(hash.mix());
-                partitions[b].push_back(hash);
+        uint64_t largest_partition_size = 0;
+        // if constexpr (std::is_same_v<typename Iterator::iterator_category,
+        //                              std::random_access_iterator_tag>)  //
+        // {
+        // // is there a bug? largest_partition_size is not correct...
+        //     parallel_hash_and_partition(keys, partitions, num_keys, config.num_threads, m_seed,
+        //                                 num_partitions, m_bucketer);
+        //     for (auto const& partition : partitions) {
+        //         if (partitions.size() > largest_partition_size) {
+        //             largest_partition_size = partition.size();
+        //         }
+        //     }
+        // } else {
+        for (uint64_t i = 0; i != num_keys; ++i, ++keys) {
+            auto const& key = *keys;
+            auto hash = hasher_type::hash(key, m_seed);
+            auto b = m_bucketer.bucket(hash.mix());
+            partitions[b].push_back(hash);
+            if (partitions[b].size() > largest_partition_size) {
+                largest_partition_size = partitions[b].size();
             }
+        }
+        // }
+
+        // uint64_t cumulative_size = 0;
+        // for (uint64_t i = 0; i != num_partitions; ++i) {
+        //     auto const& partition = partitions[i];
+        //     uint64_t table_size = static_cast<double>(partition.size()) / config.alpha;
+        //     if (config.search == pthash_search_type::xor_displacement &&
+        //         ((table_size & (table_size - 1)) == 0)) {
+        //         table_size += 1;
+        //     }
+        //     m_table_size += table_size;
+        //     m_offsets[i] = cumulative_size;
+        //     if (config.dense_partitioning) {
+        //         cumulative_size += table_size;
+        //     } else {
+        //         cumulative_size += config.minimal ? partition.size() : table_size;
+        //     }
+        // }
+        // m_offsets[num_partitions] = cumulative_size;
+
+        // allocate avg_partition_size) / alpha slots per partition
+        uint64_t table_size_per_partition =
+            std::ceil(static_cast<double>(avg_partition_size) / config.alpha);
+        if (largest_partition_size > table_size_per_partition) {
+            table_size_per_partition = largest_partition_size;
         }
 
-        uint64_t cumulative_size = 0;
-        for (uint64_t i = 0; i != num_partitions; ++i) {
-            auto const& partition = partitions[i];
-            uint64_t table_size = static_cast<double>(partition.size()) / config.alpha;
-            if (config.search == pthash_search_type::xor_displacement &&
-                ((table_size & (table_size - 1)) == 0)) {
-                table_size += 1;
-            }
-            m_table_size += table_size;
-            m_offsets[i] = cumulative_size;
-            if (config.dense_partitioning) {
-                cumulative_size += table_size;
-            } else {
-                cumulative_size += config.minimal ? partition.size() : table_size;
-            }
-        }
-        m_offsets[num_partitions] = cumulative_size;
+        // just saturate to largest partition size
+        // uint64_t table_size_per_partition = largest_partition_size;
+        // if (config.search == pthash_search_type::xor_displacement &&
+        //     ((table_size_per_partition & (table_size_per_partition - 1)) == 0)) {
+        //     table_size_per_partition += 1;
+        // }
+
+        m_table_size_per_partition = table_size_per_partition;
+        m_table_size = table_size_per_partition * num_partitions;
 
         auto partition_config = config;
         partition_config.seed = m_seed;
         partition_config.num_buckets = m_num_buckets_per_partition;
+        partition_config.table_size = table_size_per_partition;
         if (config.verbose) {
+            std::cout << "table_size_per_partition = " << table_size_per_partition << std::endl;
+            std::cout << "(largest_partition_size = " << largest_partition_size << ")" << std::endl;
             std::cout << "num_buckets_per_partition = " << partition_config.num_buckets
                       << std::endl;
         }
@@ -236,6 +266,10 @@ struct internal_memory_builder_partitioned_phf {
         return m_num_buckets_per_partition;
     }
 
+    uint64_t table_size_per_partition() const {
+        return m_table_size_per_partition;
+    }
+
     range_bucketer bucketer() const {
         return m_bucketer;
     }
@@ -384,6 +418,7 @@ private:
     uint64_t m_table_size;
     uint64_t m_num_partitions;
     uint64_t m_num_buckets_per_partition;
+    uint64_t m_table_size_per_partition;
     range_bucketer m_bucketer;
     std::vector<uint64_t> m_offsets;
     std::vector<uint64_t> m_free_slots;  // for dense partitioning

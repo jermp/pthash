@@ -62,11 +62,16 @@ struct internal_memory_builder_single_phf {
         build_timings time;
 
         uint64_t table_size = static_cast<double>(num_keys) / config.alpha;
-        if (config.search == pthash_search_type::xor_displacement and
-            (table_size & (table_size - 1)) == 0)  //
-        {
-            table_size += 1;
+        if (config.table_size == constants::invalid_table_size) {
+            if (config.search == pthash_search_type::xor_displacement and
+                (table_size & (table_size - 1)) == 0)  //
+            {
+                table_size += 1;
+            }
+        } else {
+            table_size = config.table_size;
         }
+
         const uint64_t num_buckets = (config.num_buckets == constants::invalid_num_buckets)
                                          ? compute_num_buckets(num_keys, config.lambda)
                                          : config.num_buckets;
@@ -75,10 +80,10 @@ struct internal_memory_builder_single_phf {
         m_num_keys = num_keys;
         m_table_size = table_size;
         m_num_buckets = num_buckets;
-        m_bucketer.init(m_num_buckets, config.lambda,
-                        // why not  table_size here??
-                        static_cast<double>(m_num_buckets) * config.lambda / config.alpha,
-                        config.alpha);
+        m_bucketer.init(m_num_buckets, config.lambda, table_size,  //
+                        config.alpha  // TODO: in case we specify a custom table_size, then alpha =
+                                      // num_keys / table_size
+        );
 
         if (config.verbose) {
             std::cout << "lambda (avg. bucket size) = " << config.lambda << std::endl;
@@ -86,6 +91,7 @@ struct internal_memory_builder_single_phf {
             std::cout << "num_keys = " << num_keys << std::endl;
             std::cout << "table_size = " << table_size << std::endl;
             std::cout << "num_buckets = " << num_buckets << std::endl;
+            assert(table_size >= num_keys);
         }
 
         buckets_t buckets;
