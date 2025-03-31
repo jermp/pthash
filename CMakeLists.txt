@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5...3.31)
+cmake_minimum_required(VERSION 3.5...4.0)
 project(PTHASH)
 
 if (NOT CMAKE_BUILD_TYPE)
