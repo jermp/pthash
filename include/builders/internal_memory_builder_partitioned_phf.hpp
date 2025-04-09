@@ -24,8 +24,8 @@ struct internal_memory_builder_partitioned_phf {
         auto start = clock_type::now();
 
         if (config.verbose) {
-            std::cout << "num_partitions " << num_partitions << std::endl;
-            std::cout << "avg_partition_size " << avg_partition_size << std::endl;
+            std::cout << "num_partitions = " << num_partitions << std::endl;
+            std::cout << "avg_partition_size = " << avg_partition_size << std::endl;
         }
 
         build_timings timings;
@@ -40,31 +40,40 @@ struct internal_memory_builder_partitioned_phf {
         m_num_buckets_per_partition = compute_num_buckets(avg_partition_size, config.lambda);
 
         std::vector<std::vector<typename hasher_type::hash_type>> partitions(num_partitions);
-        for (auto& partition : partitions) partition.reserve(1.1 * avg_partition_size);
+        {
+            /*
+            This bound is by Raab and Steger: "Balls into Bins" — A Simple and Tight Analysis,
+            (Thm. 1, with alpha = 1).
+            */
+            const uint64_t largest_partition_size_estimate =
+                avg_partition_size + sqrt(2 * avg_partition_size * log(num_partitions));
+            if (config.verbose) {
+                std::cout << "largest_partition_size_estimate " << largest_partition_size_estimate
+                          << std::endl;
+            }
+            for (auto& partition : partitions) partition.reserve(largest_partition_size_estimate);
+        }
 
-        uint64_t largest_partition_size = 0;
-        // if constexpr (std::is_same_v<typename Iterator::iterator_category,
-        //                              std::random_access_iterator_tag>)  //
-        // {
-        // // is there a bug? largest_partition_size is not correct...
-        //     parallel_hash_and_partition(keys, partitions, num_keys, config.num_threads, m_seed,
-        //                                 num_partitions, m_bucketer);
-        //     for (auto const& partition : partitions) {
-        //         if (partitions.size() > largest_partition_size) {
-        //             largest_partition_size = partition.size();
-        //         }
-        //     }
-        // } else {
-        for (uint64_t i = 0; i != num_keys; ++i, ++keys) {
-            auto const& key = *keys;
-            auto hash = hasher_type::hash(key, m_seed);
-            auto b = m_bucketer.bucket(hash.mix());
-            partitions[b].push_back(hash);
-            if (partitions[b].size() > largest_partition_size) {
-                largest_partition_size = partitions[b].size();
+        if constexpr (std::is_same_v<typename Iterator::iterator_category,
+                                     std::random_access_iterator_tag>)  //
+        {
+            parallel_hash_and_partition(keys, partitions, num_keys, config.num_threads, m_seed,
+                                        num_partitions, m_bucketer);
+        } else {
+            for (uint64_t i = 0; i != num_keys; ++i, ++keys) {
+                auto const& key = *keys;
+                auto hash = hasher_type::hash(key, m_seed);
+                auto b = m_bucketer.bucket(hash.mix());
+                partitions[b].push_back(hash);
             }
         }
-        // }
+
+        uint64_t largest_partition_size = 0;
+        for (auto const& partition : partitions) {
+            if (partition.size() > largest_partition_size) {
+                largest_partition_size = partition.size();
+            }
+        }
 
         // uint64_t cumulative_size = 0;
         // for (uint64_t i = 0; i != num_partitions; ++i) {
@@ -84,7 +93,7 @@ struct internal_memory_builder_partitioned_phf {
         // }
         // m_offsets[num_partitions] = cumulative_size;
 
-        // allocate avg_partition_size) / alpha slots per partition
+        // allocate avg_partition_size / alpha slots per partition
         uint64_t table_size_per_partition =
             std::ceil(static_cast<double>(avg_partition_size) / config.alpha);
         if (largest_partition_size > table_size_per_partition) {

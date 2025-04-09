@@ -165,6 +165,8 @@ struct skew_bucketer {
         return (hash < T) ? fastmod::fastmod_u64(hash, m_M_num_dense_buckets, m_num_dense_buckets)
                           : m_num_dense_buckets + fastmod::fastmod_u64(hash, m_M_num_sparse_buckets,
                                                                        m_num_sparse_buckets);
+        // return (hash < T) ? remap128(hash, m_num_dense_buckets)
+        //                   : m_num_dense_buckets + remap128(hash, m_num_sparse_buckets);
     }
 
     uint64_t num_buckets() const {
@@ -204,6 +206,12 @@ private:
 
     uint64_t m_num_dense_buckets, m_num_sparse_buckets;
     __uint128_t m_M_num_dense_buckets, m_M_num_sparse_buckets;
+
+    static inline uint64_t remap128(uint64_t x, uint64_t n) {
+        uint64_t ret = (uint64_t)(((__uint128_t)x * (__uint128_t)n) >> 64);
+        assert(ret < n);
+        return ret;
+    }
 };
 
 struct range_bucketer {
