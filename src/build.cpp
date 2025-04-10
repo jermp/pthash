@@ -81,10 +81,11 @@ void build_benchmark(Builder& builder, build_timings const& timings,
         if (config.verbose) essentials::logger("measuring lookup time...");
         if (params.external_memory) {
             std::vector<typename Iterator::value_type> queries;
-            uint64_t remaining = params.num_queries, batch_size = 100 * 1000000;
+            const uint64_t batch_size = 100 * 1000000;
+            uint64_t remaining = std::min<uint64_t>(f.num_keys(), params.num_queries);
             Iterator query = params.keys;
             while (remaining > 0) {
-                auto cur_batch_size = std::min<uint64_t>(remaining, batch_size);
+                uint64_t cur_batch_size = std::min<uint64_t>(remaining, batch_size);
                 queries.reserve(cur_batch_size);
                 for (uint64_t i = 0; i != cur_batch_size; ++i, ++query) queries.push_back(*query);
                 nanosec_per_key += perf(queries.begin(), cur_batch_size, f) * cur_batch_size;
