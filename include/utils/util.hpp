@@ -23,10 +23,10 @@ static const uint64_t max_partition_size = 5000;
 
 static const std::string default_tmp_dirname(".");
 
-/* p1=n*a keys are placed in p2=m*b buckets */
+/* For a skew_becketer: a*n keys are placed in b*m buckets */
 constexpr float a = 0.6;
 constexpr float b = 0.3;
-/****************************************/
+/***********************************************************/
 
 }  // namespace constants
 

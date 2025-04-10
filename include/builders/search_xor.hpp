@@ -15,7 +15,6 @@ void search_sequential_xor(const uint64_t num_keys, const uint64_t num_buckets,
 {
     const uint64_t max_bucket_size = (*buckets).size();
     const uint64_t table_size = taken.num_bits();
-    const __uint128_t M = fastmod::computeM_u64(table_size);
 
     std::vector<uint64_t> positions;
     positions.reserve(max_bucket_size);
@@ -43,7 +42,7 @@ void search_sequential_xor(const uint64_t num_keys, const uint64_t num_buckets,
             auto bucket_begin = bucket.begin(), bucket_end = bucket.end();
             for (; bucket_begin != bucket_end; ++bucket_begin) {
                 uint64_t hash = *bucket_begin;
-                uint64_t p = fastmod::fastmod_u64(hash ^ hashed_pilot, M, table_size);
+                uint64_t p = remap128(hash ^ hashed_pilot, table_size);
                 if (taken.get(p)) break;
                 positions.push_back(p);
             }
@@ -78,7 +77,6 @@ void search_parallel_xor(const uint64_t num_keys, const uint64_t num_buckets,
 {
     const uint64_t max_bucket_size = (*buckets).size();
     const uint64_t table_size = taken.num_bits();
-    const __uint128_t M = fastmod::computeM_u64(table_size);
     const uint64_t num_threads = config.num_threads;
 
     std::vector<uint64_t> hashed_pilots_cache(search_cache_size);
@@ -114,7 +112,7 @@ void search_parallel_xor(const uint64_t num_keys, const uint64_t num_buckets,
                         auto bucket_begin = bucket.begin(), bucket_end = bucket.end();
                         for (; bucket_begin != bucket_end; ++bucket_begin) {
                             uint64_t hash = *bucket_begin;
-                            uint64_t p = fastmod::fastmod_u64(hash ^ hashed_pilot, M, table_size);
+                            uint64_t p = remap128(hash ^ hashed_pilot, table_size);
                             if (taken.get(p)) break;
                             positions.push_back(p);
                         }

@@ -67,12 +67,9 @@ struct dense_partitioned_phf  //
 
         m_partitioner = builder.bucketer();
 
-        // auto const& offsets = builder.offsets();
         auto const& builders = builder.builders();
         m_bucketer = builders.front().bucketer();
 
-        // const uint64_t increment = m_table_size / num_partitions;
-        // m_offsets.encode(offsets.begin(), offsets.size(), increment);
         m_pilots.encode(builder.interleaving_pilots_iterator_begin(), num_partitions,
                         num_buckets_per_partition, config.num_threads);
 
@@ -91,8 +88,6 @@ struct dense_partitioned_phf  //
     {
         auto hash = Hasher::hash(key, m_seed);
         const uint64_t partition = m_partitioner.bucket(hash.mix());
-        // const uint64_t partition_offset = m_offsets.access(partition);
-        // const uint64_t partition_size = m_offsets.access(partition + 1) - partition_offset;
         const uint64_t partition_offset = partition * m_table_size_per_partition;
         const uint64_t p = partition_offset + position(hash, partition);
         if constexpr (Minimal) {
@@ -109,13 +104,10 @@ struct dense_partitioned_phf  //
         const uint64_t pilot = m_pilots.access(partition, bucket);
         if constexpr (Search == pthash_search_type::xor_displacement) {
             /* xor displacement */
-            // const __uint128_t M = fastmod::computeM_u64(m_table_size_per_partition);
             const uint64_t hashed_pilot = default_hash64(pilot, m_seed);
-            return fastmod::fastmod_u64(hash.second() ^ hashed_pilot, m_M_128,
-                                        m_table_size_per_partition);
+            return remap128(hash.second() ^ hashed_pilot, m_table_size_per_partition);
         }
         /* additive displacement */
-        // const uint64_t M = fastmod::computeM_u32(m_table_size_per_partition);
         const uint64_t s = fastmod::fastdiv_u32(pilot, m_M_64);
         return fastmod::fastmod_u32(((hash64(hash.second() + s).mix()) >> 33) + pilot, m_M_64,
                                     m_table_size_per_partition);
@@ -207,7 +199,6 @@ private:
     Bucketer m_bucketer;
     Encoder m_pilots;
 
-    // diff<compact> m_offsets;
     bits::elias_fano<false, false> m_free_slots;
 };
 

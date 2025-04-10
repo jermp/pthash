@@ -84,7 +84,7 @@ struct single_phf  //
         if constexpr (Search == pthash_search_type::xor_displacement) {
             /* xor displacement */
             const uint64_t hashed_pilot = default_hash64(pilot, m_seed);
-            p = fastmod::fastmod_u64(hash.second() ^ hashed_pilot, m_M_128, m_table_size);
+            p = remap128(hash.second() ^ hashed_pilot, m_table_size);
         } else {
             /* additive displacement */
             const uint64_t s = fastmod::fastdiv_u32(pilot, m_M_64);

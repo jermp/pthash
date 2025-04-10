@@ -165,8 +165,6 @@ struct skew_bucketer {
         return (hash < T) ? fastmod::fastmod_u64(hash, m_M_num_dense_buckets, m_num_dense_buckets)
                           : m_num_dense_buckets + fastmod::fastmod_u64(hash, m_M_num_sparse_buckets,
                                                                        m_num_sparse_buckets);
-        // return (hash < T) ? remap128(hash, m_num_dense_buckets)
-        //                   : m_num_dense_buckets + remap128(hash, m_num_sparse_buckets);
     }
 
     uint64_t num_buckets() const {
@@ -206,23 +204,17 @@ private:
 
     uint64_t m_num_dense_buckets, m_num_sparse_buckets;
     __uint128_t m_M_num_dense_buckets, m_M_num_sparse_buckets;
-
-    static inline uint64_t remap128(uint64_t x, uint64_t n) {
-        uint64_t ret = (uint64_t)(((__uint128_t)x * (__uint128_t)n) >> 64);
-        assert(ret < n);
-        return ret;
-    }
 };
 
 struct range_bucketer {
-    range_bucketer() : m_num_buckets(0), m_M_num_buckets(0) {}
+    range_bucketer() : m_num_buckets(0) {}
 
     void init(const uint64_t num_buckets) {
         m_num_buckets = num_buckets;
     }
 
     inline uint64_t bucket(const uint64_t hash) const {
-        return ((hash >> 32U) * m_num_buckets) >> 32U;
+        return ((hash >> 32) * m_num_buckets) >> 32;
     }
 
     uint64_t num_buckets() const {
@@ -230,12 +222,11 @@ struct range_bucketer {
     }
 
     size_t num_bits() const {
-        return 8 * (sizeof(m_num_buckets) + sizeof(m_M_num_buckets));
+        return 8 * sizeof(m_num_buckets);
     }
 
     void swap(range_bucketer& other) {
         std::swap(m_num_buckets, other.m_num_buckets);
-        std::swap(m_M_num_buckets, other.m_M_num_buckets);
     }
 
     template <typename Visitor>
@@ -252,11 +243,9 @@ private:
     template <typename Visitor, typename T>
     static void visit_impl(Visitor& visitor, T&& t) {
         visitor.visit(t.m_num_buckets);
-        visitor.visit(t.m_M_num_buckets);
     }
 
     uint64_t m_num_buckets;
-    __uint128_t m_M_num_buckets;
 };
 
 struct uniform_bucketer {
