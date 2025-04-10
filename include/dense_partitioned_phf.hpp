@@ -62,7 +62,6 @@ struct dense_partitioned_phf  //
         m_num_keys = builder.num_keys();
         m_table_size = builder.table_size();
         m_table_size_per_partition = builder.table_size_per_partition();
-        m_M_128 = fastmod::computeM_u64(m_table_size_per_partition);
         m_M_64 = fastmod::computeM_u32(m_table_size_per_partition);
 
         m_partitioner = builder.bucketer();
@@ -115,13 +114,12 @@ struct dense_partitioned_phf  //
 
     uint64_t num_bits_for_pilots() const {
         return 8 * (sizeof(m_seed) + sizeof(m_num_keys) + sizeof(m_table_size) +
-                    sizeof(m_table_size_per_partition) + sizeof(m_M_64) + sizeof(m_M_128)) +
+                    sizeof(m_table_size_per_partition) + sizeof(m_M_64)) +
                m_pilots.num_bits();
     }
 
     uint64_t num_bits_for_mapper() const {
-        return m_partitioner.num_bits() + m_bucketer.num_bits() +  // m_offsets.num_bits() +
-               m_free_slots.num_bytes() * 8;
+        return m_partitioner.num_bits() + m_bucketer.num_bits() + m_free_slots.num_bytes() * 8;
     }
 
     uint64_t num_bits() const {
@@ -157,12 +155,10 @@ private:
         visitor.visit(t.m_num_keys);
         visitor.visit(t.m_table_size);
         visitor.visit(t.m_table_size_per_partition);
-        visitor.visit(t.m_M_128);
         visitor.visit(t.m_M_64);
         visitor.visit(t.m_partitioner);
         visitor.visit(t.m_bucketer);
         visitor.visit(t.m_pilots);
-        // visitor.visit(t.m_offsets);
         visitor.visit(t.m_free_slots);
     }
 
@@ -192,7 +188,6 @@ private:
     uint64_t m_num_keys;
     uint64_t m_table_size;
     uint64_t m_table_size_per_partition;
-    __uint128_t m_M_128;
     uint64_t m_M_64;
 
     range_bucketer m_partitioner;

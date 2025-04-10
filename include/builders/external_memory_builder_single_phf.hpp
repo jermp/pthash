@@ -55,7 +55,7 @@ struct external_memory_builder_single_phf {
             throw std::runtime_error(
                 "using too many buckets: recompile the library with 'cmake .. "
                 "-D PTHASH_ENABLE_LARGE_BUCKET_ID_TYPE=On' to change bucket_id_type to uint64_t or "
-                "use a smaller c");
+                "use a smaller lambda");
         }
 #endif
 

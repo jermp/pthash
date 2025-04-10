@@ -71,6 +71,7 @@ struct internal_memory_builder_single_phf {
         } else {
             table_size = config.table_size;
         }
+        assert(table_size >= num_keys);
 
         const uint64_t num_buckets = (config.num_buckets == constants::invalid_num_buckets)
                                          ? compute_num_buckets(num_keys, config.lambda)
@@ -80,10 +81,7 @@ struct internal_memory_builder_single_phf {
         m_num_keys = num_keys;
         m_table_size = table_size;
         m_num_buckets = num_buckets;
-        m_bucketer.init(m_num_buckets, config.lambda, table_size,  //
-                        config.alpha  // TODO: in case we specify a custom table_size, then alpha =
-                                      // num_keys / table_size
-        );
+        m_bucketer.init(m_num_buckets, config.lambda, table_size, config.alpha);
 
         if (config.verbose) {
             std::cout << "lambda (avg. bucket size) = " << config.lambda << std::endl;
@@ -91,7 +89,6 @@ struct internal_memory_builder_single_phf {
             std::cout << "num_keys = " << num_keys << std::endl;
             std::cout << "table_size = " << table_size << std::endl;
             std::cout << "num_buckets = " << num_buckets << std::endl;
-            assert(table_size >= num_keys);
         }
 
         buckets_t buckets;
@@ -353,8 +350,7 @@ private:
 
     template <typename RandomAccessIterator>
     void map_sequential(RandomAccessIterator hashes, uint64_t num_keys,
-                        std::vector<pairs_t>& pairs_blocks,
-                        build_configuration const& config) const {
+                        std::vector<pairs_t>& pairs_blocks) const {
         pairs_t pairs(num_keys);
         RandomAccessIterator begin = hashes;
         for (uint64_t i = 0; i != num_keys; ++i, ++begin) {
@@ -362,11 +358,7 @@ private:
             auto bucket_id = m_bucketer.bucket(hash.first());
             pairs[i] = {static_cast<bucket_id_type>(bucket_id), hash.second()};
         }
-        std::sort(pairs.begin(), pairs.end(), [&](auto const& x, auto const& y) {
-            return (config.secondary_sort ? x.bucket_id > y.bucket_id
-                                          : x.bucket_id < y.bucket_id) or
-                   (x.bucket_id == y.bucket_id and x.payload < y.payload);
-        });
+        std::sort(pairs.begin(), pairs.end());
         pairs_blocks.resize(1);
         pairs_blocks.front().swap(pairs);
     }
@@ -384,17 +376,12 @@ private:
                                           ? num_keys_per_thread
                                           : (num_keys - tid * num_keys_per_thread);
             local_pairs.resize(local_num_keys);
-
             for (uint64_t local_i = 0; local_i != local_num_keys; ++local_i, ++begin) {
                 auto hash = *begin;
                 auto bucket_id = m_bucketer.bucket(hash.first());
                 local_pairs[local_i] = {static_cast<bucket_id_type>(bucket_id), hash.second()};
             }
-            std::sort(local_pairs.begin(), local_pairs.end(), [&](auto const& x, auto const& y) {
-                return (config.secondary_sort ? x.bucket_id > y.bucket_id
-                                              : x.bucket_id < y.bucket_id) or
-                       (x.bucket_id == y.bucket_id and x.payload < y.payload);
-            });
+            std::sort(local_pairs.begin(), local_pairs.end());
         };
 
         std::vector<std::thread> threads(config.num_threads);
@@ -410,7 +397,7 @@ private:
         if (config.num_threads > 1 and num_keys >= config.num_threads) {
             map_parallel(hashes, num_keys, pairs_blocks, config);
         } else {
-            map_sequential(hashes, num_keys, pairs_blocks, config);
+            map_sequential(hashes, num_keys, pairs_blocks);
         }
     }
 };

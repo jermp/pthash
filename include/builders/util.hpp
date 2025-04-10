@@ -58,7 +58,6 @@ struct build_configuration {
         , num_threads(1)
         , ram(static_cast<double>(constants::available_ram) * 0.75)
         , tmp_dir(constants::default_tmp_dirname)
-        , secondary_sort(false)
         , dense_partitioning(false)
         , minimal(true)
         , verbose(true) {}
@@ -73,7 +72,6 @@ struct build_configuration {
     uint64_t num_threads;
     uint64_t ram;
     std::string tmp_dir;
-    bool secondary_sort;
     bool dense_partitioning;
     bool minimal;
     bool verbose;
@@ -132,7 +130,7 @@ struct bucket_payload_pair {
         : bucket_id(bucket_id), payload(payload) {}
 
     bool operator<(bucket_payload_pair const& other) const {
-        return (bucket_id < other.bucket_id) or
+        return (bucket_id > other.bucket_id) or
                (bucket_id == other.bucket_id and payload < other.payload);
     }
 };

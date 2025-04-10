@@ -8,6 +8,8 @@ namespace pthash {
 
 template <typename Bucketer>
 struct table_bucketer {
+    static const uint64_t FULCS = 2048;
+
     table_bucketer() : m_base(Bucketer()), m_fulcrums() {}
 
     void init(const uint64_t num_buckets, const double lambda, const uint64_t table_size,
@@ -64,7 +66,6 @@ private:
     }
 
     Bucketer m_base;
-    static const uint64_t FULCS = 2048;
     std::array<uint64_t, FULCS> m_fulcrums;
 };
 

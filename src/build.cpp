@@ -110,7 +110,6 @@ void build_benchmark(Builder& builder, build_timings const& timings,
     result.add("search_type",
                Function::search == pthash_search_type::xor_displacement ? "XOR" : "ADD");
     result.add("bucketer_type", params.bucketer_type.c_str());
-    result.add("secondary_sort", config.secondary_sort);
     result.add("avg_partition_size", config.avg_partition_size);
     result.add("num_partitions",
                config.avg_partition_size > 0
@@ -527,7 +526,6 @@ void build(cmd_line_parser::parser const& parser, Iterator keys, uint64_t num_ke
         return;
     }
 
-    config.secondary_sort = true;  // parser.get<bool>("secondary_sort");
     config.minimal = parser.get<bool>("minimal");
     config.verbose = parser.get<bool>("verbose");
 

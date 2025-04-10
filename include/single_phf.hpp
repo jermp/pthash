@@ -57,7 +57,6 @@ struct single_phf  //
         m_seed = builder.seed();
         m_num_keys = builder.num_keys();
         m_table_size = builder.table_size();
-        m_M_128 = fastmod::computeM_u64(m_table_size);
         m_M_64 = fastmod::computeM_u32(m_table_size);
         m_bucketer = builder.bucketer();
         m_pilots.encode(builder.pilots().data(), m_bucketer.num_buckets());
@@ -101,8 +100,7 @@ struct single_phf  //
     }
 
     uint64_t num_bits_for_pilots() const {
-        return 8 * (sizeof(m_seed) + sizeof(m_num_keys) + sizeof(m_table_size) + sizeof(m_M_64) +
-                    sizeof(m_M_128)) +
+        return 8 * (sizeof(m_seed) + sizeof(m_num_keys) + sizeof(m_table_size) + sizeof(m_M_64)) +
                m_pilots.num_bits();
     }
 
@@ -142,7 +140,6 @@ private:
         visitor.visit(t.m_seed);
         visitor.visit(t.m_num_keys);
         visitor.visit(t.m_table_size);
-        visitor.visit(t.m_M_128);
         visitor.visit(t.m_M_64);
         visitor.visit(t.m_bucketer);
         visitor.visit(t.m_pilots);
@@ -168,7 +165,6 @@ private:
     uint64_t m_seed;
     uint64_t m_num_keys;
     uint64_t m_table_size;
-    __uint128_t m_M_128;
     uint64_t m_M_64;
     Bucketer m_bucketer;
     Encoder m_pilots;
