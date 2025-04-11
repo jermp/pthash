@@ -4,12 +4,6 @@ namespace pthash {
 
 constexpr uint64_t search_cache_size = 1000;
 
-static inline uint64_t remap128(uint64_t x, uint64_t n) {
-    uint64_t ret = (uint64_t)(((__uint128_t)x * (__uint128_t)n) >> 64);
-    assert(ret < n);
-    return ret;
-}
-
 struct search_logger {
     search_logger(uint64_t num_keys, uint64_t num_buckets)
         : m_num_keys(num_keys)

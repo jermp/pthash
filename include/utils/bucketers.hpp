@@ -145,27 +145,19 @@ private:
 };
 
 struct skew_bucketer {
-    skew_bucketer()
-        : m_num_dense_buckets(0)
-        , m_num_sparse_buckets(0)
-        , m_M_num_dense_buckets(0)
-        , m_M_num_sparse_buckets(0) {}
+    skew_bucketer() : m_num_dense_buckets(0), m_num_sparse_buckets(0) {}
 
     void init(const uint64_t num_buckets, const double /* lambda */,
               const uint64_t /* table_size */, const double /* alpha */) {
         m_num_dense_buckets = constants::b * num_buckets;
         m_num_sparse_buckets = num_buckets - m_num_dense_buckets;
-        m_M_num_dense_buckets =
-            m_num_dense_buckets > 0 ? fastmod::computeM_u64(m_num_dense_buckets) : 0;
-        m_M_num_sparse_buckets =
-            m_num_sparse_buckets > 0 ? fastmod::computeM_u64(m_num_sparse_buckets) : 0;
     }
 
     inline uint64_t bucket(uint64_t hash) const {
         static const uint64_t T = constants::a * static_cast<double>(UINT64_MAX);
-        return (hash < T) ? fastmod::fastmod_u64(hash, m_M_num_dense_buckets, m_num_dense_buckets)
-                          : m_num_dense_buckets + fastmod::fastmod_u64(hash, m_M_num_sparse_buckets,
-                                                                       m_num_sparse_buckets);
+        uint64_t mixed_hash = mix(hash);
+        return (hash < T) ? remap128(mixed_hash, m_num_dense_buckets)
+                          : m_num_dense_buckets + remap128(mixed_hash, m_num_sparse_buckets);
     }
 
     uint64_t num_buckets() const {
@@ -173,15 +165,12 @@ struct skew_bucketer {
     }
 
     size_t num_bits() const {
-        return 8 * (sizeof(m_num_dense_buckets) + sizeof(m_num_sparse_buckets) +
-                    sizeof(m_M_num_dense_buckets) + sizeof(m_M_num_sparse_buckets));
+        return 8 * (sizeof(m_num_dense_buckets) + sizeof(m_num_sparse_buckets));
     }
 
     void swap(skew_bucketer& other) {
         std::swap(m_num_dense_buckets, other.m_num_dense_buckets);
         std::swap(m_num_sparse_buckets, other.m_num_sparse_buckets);
-        std::swap(m_M_num_dense_buckets, other.m_M_num_dense_buckets);
-        std::swap(m_M_num_sparse_buckets, other.m_M_num_sparse_buckets);
     }
 
     template <typename Visitor>
@@ -199,12 +188,9 @@ private:
     static void visit_impl(Visitor& visitor, T&& t) {
         visitor.visit(t.m_num_dense_buckets);
         visitor.visit(t.m_num_sparse_buckets);
-        visitor.visit(t.m_M_num_dense_buckets);
-        visitor.visit(t.m_M_num_sparse_buckets);
     }
 
     uint64_t m_num_dense_buckets, m_num_sparse_buckets;
-    __uint128_t m_M_num_dense_buckets, m_M_num_sparse_buckets;
 };
 
 struct range_bucketer {

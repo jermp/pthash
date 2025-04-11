@@ -5,6 +5,7 @@
 
 #include "essentials.hpp"
 #include "fastmod.h"
+#include "hasher.hpp"
 
 #define PTHASH_LIKELY(expr) __builtin_expect((bool)(expr), true)
 
@@ -29,6 +30,12 @@ constexpr float b = 0.3;
 /***********************************************************/
 
 }  // namespace constants
+
+static inline uint64_t remap128(uint64_t x, uint64_t n) {
+    uint64_t ret = (uint64_t)(((__uint128_t)x * (__uint128_t)n) >> 64);
+    assert(ret < n);
+    return ret;
+}
 
 static inline uint64_t random_value() {
     unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
