@@ -6,7 +6,7 @@ if (NOT CMAKE_BUILD_TYPE)
 endif ()
 MESSAGE(STATUS "CMAKE_BUILD_TYPE: " ${CMAKE_BUILD_TYPE})
 
-if(NOT TARGET PTHASH)
+if (NOT TARGET PTHASH)
   add_library(PTHASH INTERFACE)
   target_include_directories(PTHASH INTERFACE include)
   target_include_directories(PTHASH SYSTEM INTERFACE external/fastmod)
@@ -20,6 +20,11 @@ if(NOT TARGET PTHASH)
     MESSAGE(STATUS "Compiling with flags: -march=native -mbmi2 -msse4.2")
     target_compile_options(PTHASH INTERFACE -march=native)
     target_compile_options(PTHASH INTERFACE -mbmi2 -msse4.2) # for hardware popcount and pdep
+  endif()
+
+  if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+  MESSAGE(STATUS "Compiling with flags: -O0")
+    target_compile_options(PTHASH INTERFACE -O0)
   endif()
 
   if (PTHASH_ENABLE_ALL_ENCODERS)
@@ -46,7 +51,7 @@ endif()
 
 # Only add benchmarks and tests when compiling PTHash itself, not when added as a dependency
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
-  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
   target_compile_options(PTHASH INTERFACE -Werror -Wall -Wextra -Wno-missing-braces -Wno-unknown-attributes -Wno-unused-function -ggdb)
   add_subdirectory(external/cmd_line_parser)
 

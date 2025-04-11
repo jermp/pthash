@@ -8,7 +8,7 @@ void test_encoder(Builder& builder, build_configuration const& config, Iterator 
                   uint64_t num_keys) {
     dense_partitioned_phf<typename Builder::hasher_type, bucketer_type, Encoder,
                           true,  // minimal
-                          pthash_search_type::add_displacement>
+                          pthash_search_type::xor_displacement>
         f;
     f.build(builder, config);
     testing::require_equal(f.num_keys(), num_keys);
@@ -19,11 +19,11 @@ template <typename Iterator>
 void test_internal_memory_dense_partitioned_mphf(Iterator keys, uint64_t num_keys) {
     std::cout << "testing on " << num_keys << " keys..." << std::endl;
 
-    internal_memory_builder_partitioned_phf<murmurhash2_64, bucketer_type> builder_64;
-    internal_memory_builder_partitioned_phf<murmurhash2_128, bucketer_type> builder_128;
+    internal_memory_builder_partitioned_phf<xxhash_64, bucketer_type> builder_64;
+    internal_memory_builder_partitioned_phf<xxhash_128, bucketer_type> builder_128;
 
     build_configuration config;
-    config.search = pthash_search_type::add_displacement;
+    config.search = pthash_search_type::xor_displacement;
     config.minimal = true;
     config.verbose = false;
     config.dense_partitioning = true;

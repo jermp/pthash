@@ -9,7 +9,7 @@ namespace pthash {
 
 template <typename BucketsIterator, typename PilotsBuffer>
 void search_sequential_xor(const uint64_t num_keys, const uint64_t num_buckets,
-                           const uint64_t num_non_empty_buckets, const uint64_t seed,
+                           const uint64_t num_non_empty_buckets, const uint64_t /*seed*/,
                            build_configuration const& config, BucketsIterator& buckets,
                            bits::bit_vector::builder& taken, PilotsBuffer& pilots)  //
 {
@@ -21,7 +21,7 @@ void search_sequential_xor(const uint64_t num_keys, const uint64_t num_buckets,
 
     std::vector<uint64_t> hashed_pilots_cache(search_cache_size);
     for (uint64_t pilot = 0; pilot != search_cache_size; ++pilot) {
-        hashed_pilots_cache[pilot] = default_hash64(pilot, seed);
+        hashed_pilots_cache[pilot] = mix(pilot);
     }
 
     search_logger log(num_keys, num_buckets);
@@ -33,16 +33,15 @@ void search_sequential_xor(const uint64_t num_keys, const uint64_t num_buckets,
         assert(bucket.size() > 0);
 
         for (uint64_t pilot = 0; true; ++pilot) {
-            uint64_t hashed_pilot = PTHASH_LIKELY(pilot < search_cache_size)
-                                        ? hashed_pilots_cache[pilot]
-                                        : default_hash64(pilot, seed);
+            uint64_t hashed_pilot =
+                PTHASH_LIKELY(pilot < search_cache_size) ? hashed_pilots_cache[pilot] : mix(pilot);
 
             positions.clear();
 
             auto bucket_begin = bucket.begin(), bucket_end = bucket.end();
             for (; bucket_begin != bucket_end; ++bucket_begin) {
                 uint64_t hash = *bucket_begin;
-                uint64_t p = remap128(hash ^ hashed_pilot, table_size);
+                uint64_t p = remap128(mix(hash ^ hashed_pilot), table_size);
                 if (taken.get(p)) break;
                 positions.push_back(p);
             }
@@ -71,7 +70,7 @@ void search_sequential_xor(const uint64_t num_keys, const uint64_t num_buckets,
 
 template <typename BucketsIterator, typename PilotsBuffer>
 void search_parallel_xor(const uint64_t num_keys, const uint64_t num_buckets,
-                         const uint64_t num_non_empty_buckets, const uint64_t seed,
+                         const uint64_t num_non_empty_buckets, const uint64_t /*seed*/,
                          build_configuration const& config, BucketsIterator& buckets,
                          bits::bit_vector::builder& taken, PilotsBuffer& pilots)  //
 {
@@ -81,7 +80,7 @@ void search_parallel_xor(const uint64_t num_keys, const uint64_t num_buckets,
 
     std::vector<uint64_t> hashed_pilots_cache(search_cache_size);
     for (uint64_t pilot = 0; pilot != search_cache_size; ++pilot) {
-        hashed_pilots_cache[pilot] = default_hash64(pilot, seed);
+        hashed_pilots_cache[pilot] = mix(pilot);
     }
 
     search_logger log(num_keys, num_buckets);
@@ -105,14 +104,14 @@ void search_parallel_xor(const uint64_t num_keys, const uint64_t num_buckets,
                     if (PTHASH_LIKELY(!pilot_checked)) {
                         uint64_t hashed_pilot = PTHASH_LIKELY(pilot < search_cache_size)
                                                     ? hashed_pilots_cache[pilot]
-                                                    : default_hash64(pilot, seed);
+                                                    : mix(pilot);
 
                         positions.clear();
 
                         auto bucket_begin = bucket.begin(), bucket_end = bucket.end();
                         for (; bucket_begin != bucket_end; ++bucket_begin) {
                             uint64_t hash = *bucket_begin;
-                            uint64_t p = remap128(hash ^ hashed_pilot, table_size);
+                            uint64_t p = remap128(mix(hash ^ hashed_pilot), table_size);
                             if (taken.get(p)) break;
                             positions.push_back(p);
                         }

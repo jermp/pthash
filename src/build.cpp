@@ -570,7 +570,7 @@ void build(cmd_line_parser::parser const& parser, Iterator keys, uint64_t num_ke
         config.ram = ram;
     }
 
-    choose_bucketer<xxhash128>(params, config);
+    choose_bucketer<xxhash_128>(params, config);
 }
 
 int main(int argc, char** argv) {
@@ -690,9 +690,8 @@ int main(int argc, char** argv) {
             std::cout << "Warning: external memory construction with in-memory input" << std::endl;
         }
 
-        /* ensure that if we specify the seed for the construction, we work on the same input */
         const uint64_t random_input_seed =
-            default_hash64(0, parser.parsed("seed") ? parser.get<uint64_t>("seed") : 0);
+            mix(parser.parsed("seed") ? parser.get<uint64_t>("seed") : 82935257);
 
         // build(parser, distinct_strings(num_keys, random_input_seed).begin(), num_keys);
         build(parser, distinct_uints<uint64_t>(num_keys, random_input_seed).begin(), num_keys);

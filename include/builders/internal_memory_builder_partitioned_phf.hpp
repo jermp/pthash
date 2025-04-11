@@ -371,7 +371,6 @@ struct internal_memory_builder_partitioned_phf {
                     m_curr_offset += m_taken->m_builders[m_curr_partition].taken().num_bits();
                     m_curr_partition += 1;
                 }
-                assert(m_curr_partition < m_taken->m_builders.size());
             }
 
             bool operator*() {

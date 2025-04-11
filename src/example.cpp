@@ -25,7 +25,7 @@ int main() {
 
     /* Declare the PTHash function type. */
 
-    // typedef single_phf<xxhash128,                            // base hasher
+    // typedef single_phf<xxhash_128,                           // base hasher
     //                    skew_bucketer,                        // bucketer type
     //                    dictionary_dictionary,                // encoder type
     //                    true,                                 // minimal
@@ -33,7 +33,7 @@ int main() {
     //                    >
     //     pthash_type;
 
-    // typedef partitioned_phf<xxhash128,                            // base hasher
+    // typedef partitioned_phf<xxhash_128,                           // base hasher
     //                         opt_bucketer,                         // bucketer
     //                         dictionary_dictionary,                // encoder type
     //                         true,                                 // minimal
@@ -41,7 +41,7 @@ int main() {
     //                         >
     //     pthash_type;
 
-    typedef phobic<xxhash128> pthash_type;
+    typedef phobic<xxhash_128> pthash_type;
 
     pthash_type f;
 
