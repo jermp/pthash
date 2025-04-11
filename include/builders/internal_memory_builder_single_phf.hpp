@@ -191,11 +191,6 @@ struct internal_memory_builder_single_phf {
     static uint64_t estimate_num_bytes_for_construction(const uint64_t num_keys,
                                                         build_configuration const& config) {
         uint64_t table_size = static_cast<double>(num_keys) / config.alpha;
-        if (config.search == pthash_search_type::xor_displacement and
-            (table_size & (table_size - 1)) == 0)  //
-        {
-            table_size += 1;
-        }
         const uint64_t num_buckets = (config.num_buckets == constants::invalid_num_buckets)
                                          ? compute_num_buckets(num_keys, config.lambda)
                                          : config.num_buckets;

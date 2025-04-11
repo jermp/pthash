@@ -90,10 +90,6 @@ struct internal_memory_builder_partitioned_phf {
             for (uint64_t i = 0; i != num_partitions; ++i) {
                 auto const& partition = partitions[i];
                 uint64_t table_size = static_cast<double>(partition.size()) / config.alpha;
-                if (config.search == pthash_search_type::xor_displacement &&
-                    ((table_size & (table_size - 1)) == 0)) {
-                    table_size += 1;
-                }
                 m_table_size += table_size;
                 m_offsets[i] = cumulative_size;
                 if (config.dense_partitioning) {

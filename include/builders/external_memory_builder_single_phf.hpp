@@ -41,11 +41,6 @@ struct external_memory_builder_single_phf {
 
         build_timings time;
         uint64_t table_size = static_cast<double>(num_keys) / config.alpha;
-        if (config.search == pthash_search_type::xor_displacement and
-            (table_size & (table_size - 1)) == 0)  //
-        {
-            table_size += 1;
-        }
         const uint64_t num_buckets = (config.num_buckets == constants::invalid_num_buckets)
                                          ? compute_num_buckets(num_keys, config.lambda)
                                          : config.num_buckets;
@@ -487,8 +482,7 @@ private:
     private:
         inline void emplace_back_and_fill(bucket_id_type bucket_id, uint64_t pilot) {
             assert(m_next_bucket_id <= bucket_id);
-
-            while (m_next_bucket_id++ < bucket_id) { m_buffer.emplace_back(0); }
+            while (m_next_bucket_id++ < bucket_id) m_buffer.emplace_back(0);
             m_buffer.emplace_back(pilot);
         }
 
