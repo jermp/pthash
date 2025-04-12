@@ -156,7 +156,7 @@ struct skew_bucketer {
     inline uint64_t bucket(uint64_t hash) const {
         static const uint64_t T = constants::a * static_cast<double>(UINT64_MAX);
         uint64_t H = hash << 32;
-        // uint64_t mixed_hash = mix(hash);
+        // uint64_t H = mix(hash);
         return (hash < T) ? remap128(H, m_num_dense_buckets)
                           : m_num_dense_buckets + remap128(H, m_num_sparse_buckets);
     }
