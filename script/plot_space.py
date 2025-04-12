@@ -20,7 +20,7 @@ def main(json_file, pdf_filename, alpha):
 
     # Convert relevant columns to numeric types
     df['lambda'] = pd.to_numeric(df['lambda'])
-    df['nanosec_per_key'] = pd.to_numeric(df['nanosec_per_key'])
+    df['bits_per_key'] = pd.to_numeric(df['bits_per_key'])
     df['alpha'] = pd.to_numeric(df['alpha'])
 
     # Define configurations for filtering
@@ -52,15 +52,17 @@ def main(json_file, pdf_filename, alpha):
             'search_type', 'bucketer_type', 'avg_partition_size',
             'num_partitions', 'dense_partitioning', 'seed', 'num_threads',
             'external_memory', 'encoder_type'
-        ])['nanosec_per_key'].mean().reset_index()
+        ])['bits_per_key'].mean().reset_index()
 
         # Store the grouped data for later use to calculate y limits
         grouped_data.append((grouped_avg, title))
-        all_y_values.extend(grouped_avg['nanosec_per_key'].tolist())  # Gather all y values
+        all_y_values.extend(grouped_avg['bits_per_key'].tolist())  # Gather all y values
 
     # Determine global min and max for Y-axis
     min_y = min(all_y_values)
     max_y = max(all_y_values)
+    if max_y > 5.0:
+        max_y = 5.0 # saturate to 5 bits/key (that's enough!)
 
     # Define different marker symbols for each encoder_type
     # marker_symbols = ['o', 'v', '^', '<', '>', '8', 's', 'p', '*', 'h', 'H', 'D', 'd', 'P', 'X']
@@ -85,7 +87,7 @@ def main(json_file, pdf_filename, alpha):
                 for alpha_value in sorted(grouped_avg['alpha'].unique(), reverse=True):
                     subset = grouped_avg[(grouped_avg['alpha'] == alpha_value) & (grouped_avg['encoder_type'] == encoder_type)]
 
-                    ax.plot(subset['lambda'], subset['nanosec_per_key'],
+                    ax.plot(subset['lambda'], subset['bits_per_key'],
                             marker='o', # marker_symbols[i],
                             markersize=6, color=encoder_color)
 
@@ -102,7 +104,7 @@ def main(json_file, pdf_filename, alpha):
 
             # Set plot labels and title with LaTeX formatting
             ax.set_xlabel(r'$\lambda$', fontsize=14)
-            ax.set_ylabel('Query time (avg. ns per query)', fontsize=14)
+            ax.set_ylabel('Bits/key', fontsize=14)
             ax.set_title(title, fontsize=16)
             ax.set_ylim(min_y, max_y)
 

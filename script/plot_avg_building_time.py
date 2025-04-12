@@ -1,9 +1,10 @@
 import json
 import pandas as pd
 import matplotlib.pyplot as plt
-import numpy as np  # Import numpy for linspace
+import numpy as np
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.ticker import FuncFormatter
+import matplotlib.gridspec as gridspec
 import sys
 
 def format_ticks(x, pos):
@@ -62,22 +63,36 @@ def main(json_file, pdf_filename):
     # Determine global min and max for Y-axis
     min_y = min(all_y_values)
     max_y = max(all_y_values)
+    colors = plt.get_cmap('tab20', 12)  # Use 'tab20'
+    alpha_handles = []
 
     # Create a new PDF file to save plots
     with PdfPages(pdf_filename) as pdf:
         # Create a single row of subplots
-        fig, axs = plt.subplots(1, 3, figsize=(18, 6))
+        # fig, axs = plt.subplots(1, 3, figsize=(18, 6))
+
+        fig = plt.figure(figsize=(20, 8))
+        gs = gridspec.GridSpec(1, 4, width_ratios=[3, 3, 3, 1])
+        axs = [fig.add_subplot(gs[i]) for i in range(3)]
 
         for ax, (grouped_avg, title) in zip(axs, grouped_data):
             # Scatter plot for each unique alpha value
-            for alpha_value in sorted(grouped_avg['alpha'].unique(), reverse=True):
+            for i, alpha_value in enumerate(sorted(grouped_avg['alpha'].unique(), reverse=True)):
                 subset = grouped_avg[grouped_avg['alpha'] == alpha_value]
-                ax.plot(subset['lambda'], subset['total_seconds'], label=rf'$\alpha$ = {float(alpha_value):.2f}', marker='o')
+                # ax.plot(subset['lambda'], subset['total_seconds'], label=rf'$\alpha$ = {float(alpha_value):.2f}', marker='o')
+
+                label = rf'$\alpha$ = {float(alpha_value):.2f}'
+                if not any(label in l.get_label() for l in alpha_handles):
+                    alpha_handles.append(ax.plot([], [], label=label, color=colors(i))[0])
+
+                ax.plot(subset['lambda'], subset['total_seconds'],
+                        marker='o', # marker_symbols[i],
+                        markersize=6, color=colors(i))
 
             # Set plot labels and title with LaTeX formatting
-            ax.set_xlabel(r'$\lambda$')  # LaTeX for lambda
-            ax.set_ylabel(r'Building time (seconds)')  # Y label
-            ax.set_title(title)  # Title for the current configuration
+            ax.set_xlabel(r'$\lambda$', fontsize=14)
+            ax.set_ylabel(r'Building time (seconds)', fontsize=14)
+            ax.set_title(title, fontsize=16)  # Title for the current configuration
             ax.set_ylim(min_y, max_y)  # Set Y-axis limits
 
             # Set the Y-axis ticks to 10 evenly spaced ticks, including min and max
@@ -85,8 +100,22 @@ def main(json_file, pdf_filename):
             ax.set_yticks(ticks)  # Set updated ticks
             # Apply custom formatter to the Y-axis
             ax.yaxis.set_major_formatter(FuncFormatter(format_ticks))  # Format ticks to 2 decimal places
-            ax.legend()
             ax.grid()
+
+        # Create a new axis for the legend at the bottom of the main figure
+        legend_ax = fig.add_subplot(gs[-1, :])  # Use GridSpec to create the legend axis
+        legend_ax.axis('off')
+
+        alpha_labels = [h.get_label() for h in alpha_handles]
+
+        # Adjusting the `bbox_to_anchor` to move legends further to the right
+        alpha_legend = legend_ax.legend(alpha_handles, alpha_labels, loc='upper right'
+            # title='SINGLE and PARTITIONED'
+            )  # Move further right
+        legend_ax.add_artist(alpha_legend)
+
+        # Adjust the layout of the main figure
+        plt.tight_layout()
 
         # Save the current figure to the PDF
         pdf.savefig(fig)  # Save the figure
