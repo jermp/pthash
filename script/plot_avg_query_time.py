@@ -97,7 +97,7 @@ def main(json_file, pdf_filename, alpha):
                 if 'inter' in encoder_type or 'mono' in encoder_type:
                     inter_mono_handles.append(handle)
                 else:
-                    if not any(encoder_type in l.get_label() for l in other_encoder_handles):
+                    if not any(encoder_type == l.get_label() for l in other_encoder_handles):
                         other_encoder_handles.append(handle)
 
             # Set plot labels and title with LaTeX formatting
