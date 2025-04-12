@@ -3,6 +3,8 @@
 #include <vector>
 #include <cassert>
 #include <thread>
+#include <iomanip>
+#include <sstream>
 
 #include "encoders.hpp"
 
@@ -214,8 +216,10 @@ struct dense_dual : dense_encoder {
     }
 
     static std::string name() {
-        return Front::name() + "-" + Back::name() + "-" +
-               std::to_string(static_cast<double>(numerator) / denominator);
+        std::ostringstream oss;
+        oss << Front::name() << "-" << Back::name() << "-" << std::fixed << std::setprecision(2)
+            << static_cast<double>(numerator) / denominator;
+        return oss.str();
     }
 
     size_t num_bits() const {

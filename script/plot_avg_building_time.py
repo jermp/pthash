@@ -70,7 +70,7 @@ def main(json_file, pdf_filename):
 
         for ax, (grouped_avg, title) in zip(axs, grouped_data):
             # Scatter plot for each unique alpha value
-            for alpha_value in grouped_avg['alpha'].unique():
+            for alpha_value in sorted(grouped_avg['alpha'].unique(), reverse=True):
                 subset = grouped_avg[grouped_avg['alpha'] == alpha_value]
                 ax.plot(subset['lambda'], subset['total_seconds'], label=rf'$\alpha$ = {float(alpha_value):.2f}', marker='o')
 
