@@ -454,7 +454,7 @@ void choose_bucketer(build_parameters<Iterator> const& params, build_configurati
     } else if (params.bucketer_type == "skew") {
         choose_builder<Hasher, skew_bucketer>(params, config);
     } else if (params.bucketer_type == "opt") {
-        choose_builder<Hasher, table_bucketer<opt_bucketer>>(params, config);
+        choose_builder<Hasher, opt_bucketer>(params, config);
     } else {
         assert(false);
     }

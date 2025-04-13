@@ -13,9 +13,10 @@ typedef uint64_t bucket_id_type;
 #else
 typedef uint32_t bucket_id_type;
 #endif
+
 typedef uint8_t bucket_size_type;
 
-constexpr bucket_size_type MAX_BUCKET_SIZE = 255;
+constexpr bucket_size_type MAX_BUCKET_SIZE = (1ULL << 8 * sizeof(bucket_size_type)) - 1;
 
 enum pthash_search_type { xor_displacement, add_displacement };
 
@@ -185,7 +186,7 @@ template <typename Pairs, typename Merger>
 void merge_single_block(Pairs const& pairs, Merger& merger, bool verbose) {
     progress_logger logger(pairs.size(), " == merged ", " pairs", verbose);
 
-    bucket_size_type bucket_size = 1;
+    uint64_t bucket_size = 1;
     uint64_t num_pairs = pairs.size();
     logger.log();
     for (uint64_t i = 1; i != num_pairs; ++i) {

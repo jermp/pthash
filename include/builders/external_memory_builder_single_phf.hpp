@@ -58,7 +58,7 @@ struct external_memory_builder_single_phf {
         m_table_size = table_size;
         m_num_buckets = num_buckets;
         m_seed = config.seed == constants::invalid_seed ? random_value() : config.seed;
-        m_bucketer.init(num_buckets, config.lambda, table_size, config.alpha);
+        m_bucketer.init(num_buckets);
 
         uint64_t ram = config.ram;
         uint64_t bitmap_taken_bytes = 8 * ((table_size + 63) / 64);

@@ -31,8 +31,12 @@ constexpr float b = 0.3;
 
 }  // namespace constants
 
-static inline uint64_t remap128(uint64_t x, uint64_t n) {
-    uint64_t ret = (uint64_t)(((__uint128_t)x * (__uint128_t)n) >> 64);
+static inline uint64_t mul_high(const uint64_t x, const uint64_t y) {
+    return (uint64_t)(((__uint128_t)x * (__uint128_t)y) >> 64);
+}
+
+static inline uint64_t remap128(const uint64_t hash, const uint64_t n) {
+    uint64_t ret = mul_high(hash, n);
     assert(ret < n);
     return ret;
 }

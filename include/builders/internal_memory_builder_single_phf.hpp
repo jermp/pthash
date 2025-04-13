@@ -73,7 +73,7 @@ struct internal_memory_builder_single_phf {
         m_num_keys = num_keys;
         m_table_size = table_size;
         m_num_buckets = num_buckets;
-        m_bucketer.init(m_num_buckets, config.lambda, table_size, config.alpha);
+        m_bucketer.init(m_num_buckets);
 
         if (config.verbose) {
             std::cout << "lambda (avg. bucket size) = " << config.lambda << std::endl;
@@ -292,9 +292,10 @@ private:
         buckets_t() : m_buffers(MAX_BUCKET_SIZE), m_num_buckets(0) {}
 
         template <typename HashIterator>
-        void add(bucket_id_type bucket_id, bucket_size_type bucket_size, HashIterator hashes) {
+        void add(bucket_id_type bucket_id, uint64_t bucket_size, HashIterator hashes) {
             assert(bucket_size > 0);
             uint64_t i = bucket_size - 1;
+            assert(i < MAX_BUCKET_SIZE);
             m_buffers[i].push_back(bucket_id);
             for (uint64_t k = 0; k != bucket_size; ++k, ++hashes) m_buffers[i].push_back(*hashes);
             ++m_num_buckets;
