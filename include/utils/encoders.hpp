@@ -428,9 +428,10 @@ struct rice_sequence {
             auto v = *begin;
             if (l > 0) cv_builder_low_bits.set(i, v & low_mask);
             auto unary = v >> l;
-            for (size_t j = 0; j < unary; ++j) { bvb_high_bits.push_back(0); }
+            for (size_t j = 0; j < unary; ++j) bvb_high_bits.push_back(0);
             bvb_high_bits.push_back(1);
         }
+
         bvb_high_bits.build(m_high_bits);
         cv_builder_low_bits.build(m_low_bits);
         m_high_bits_d1.build(m_high_bits);

@@ -229,7 +229,9 @@ One caveat of this approach is that it is **not** possible to use `--check` nor 
 An example benchmark
 -----
 
-The script `script/run_benchmark.sh` runs some trade-off configurations (encoder, $\alpha$, $\lambda$) that have been tested in the papers, on 100M and 1000M keys.
+Giulio on 13/04/2025: Update this section with new benchmarks.
+
+<!-- The script `script/run_benchmark.sh` runs some trade-off configurations (encoder, $\alpha$, $\lambda$) that have been tested in the papers, on 100M and 1000M keys.
 
 Be sure you run the benchmark after compiling with
 
@@ -305,3 +307,4 @@ The code has been compiled with gcc 9.4.0, with flags `-O3` and `-march=native` 
 | inter-D | 0.88 | 2.416 | 9.20 | 19.95 | 8.06 | 17.48 | 17.64 | 38.27 | 46.09 | 4.53 | 126 |
 | inter-EF | 0.99 | 4.429 | 9.19 | 18.81 | 22.12 | 45.28 | 6.41 | 13.13 | 48.86 | 2.23 | 172 |
 | inter-D | 0.94 | 3.796 | 9.21 | 21.50 | 11.69 | 27.31 | 10.83 | 25.29 | 42.81 | 3.17 | 113 |
+ -->

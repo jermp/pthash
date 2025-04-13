@@ -5,6 +5,7 @@ import numpy as np
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.ticker import FuncFormatter
 import matplotlib.gridspec as gridspec
+import argparse
 import sys
 
 def format_ticks(x, pos):
@@ -25,15 +26,16 @@ def main(json_file, pdf_filename, alpha):
 
     # Define configurations for filtering
     configurations = [
+
         ((df['avg_partition_size'] == "0") & (df['num_partitions'] == "0") & (df['dense_partitioning'] == "false")
-                & (df['alpha'] == alpha),
-         "SINGLE"),
+                , "SINGLE"),
+
         ((df['avg_partition_size'] != "0") & (df['num_partitions'] != "0") & (df['dense_partitioning'] == "false")
-                & (df['alpha'] == alpha),
-         "PARTITIONED"),
+                , "PARTITIONED"),
+
         ((df['avg_partition_size'] != "0") & (df['num_partitions'] != "0") & (df['dense_partitioning'] == "true")
-                & (df['alpha'] == alpha),
-         "DENSE-PARTITIONED"),
+                , "DENSE-PARTITIONED")
+
     ]
 
     # Collect all Y values to determine the limits later
@@ -83,11 +85,14 @@ def main(json_file, pdf_filename, alpha):
 
                 encoder_color = colors(i)
                 for alpha_value in sorted(grouped_avg['alpha'].unique(), reverse=True):
-                    subset = grouped_avg[(grouped_avg['alpha'] == alpha_value) & (grouped_avg['encoder_type'] == encoder_type)]
 
-                    ax.plot(subset['lambda'], subset['nanosec_per_key'],
-                            marker='o', # marker_symbols[i],
-                            markersize=6, color=encoder_color)
+                    if alpha_value == alpha: # filter on specific alpha
+
+                        subset = grouped_avg[(grouped_avg['alpha'] == alpha_value) & (grouped_avg['encoder_type'] == encoder_type)]
+
+                        ax.plot(subset['lambda'], subset['nanosec_per_key'],
+                                marker='o', # marker_symbols[i],
+                                markersize=6, color=encoder_color)
 
                 handle = ax.plot([], [], marker='o', # marker_symbols[i],
                                  label=encoder_type,
@@ -106,7 +111,7 @@ def main(json_file, pdf_filename, alpha):
             ax.set_title(title, fontsize=16)
             ax.set_ylim(min_y, max_y)
 
-            ticks = np.linspace(min_y, max_y, 10)
+            ticks = np.linspace(min_y, max_y, 20)
             ax.set_yticks(ticks)
             ax.yaxis.set_major_formatter(FuncFormatter(format_ticks))
             ax.grid(True, linestyle='--', alpha=0.7)
@@ -141,10 +146,16 @@ def main(json_file, pdf_filename, alpha):
     print(f'Saved plots to {pdf_filename}')
 
 if __name__ == "__main__":
-    if len(sys.argv) != 4:
-        print("Usage: python script.py <json_file> <output_pdf_file> <alpha>")
-    else:
-        json_file_path = sys.argv[1]
-        output_pdf_filename = sys.argv[2]
-        alpha = float(sys.argv[3])
-        main(json_file_path, output_pdf_filename, alpha)
+    # Create the parser
+    parser = argparse.ArgumentParser(description="Process input JSON and output PDF files.")
+
+    # Define the expected arguments
+    parser.add_argument('-i', '--input_json_filename', required=True, type=str, help='Path to the input JSON file.')
+    parser.add_argument('-o', '--output_pdf_filename', required=True, type=str, help='Path for the output PDF file.')
+    parser.add_argument('-a', '--alpha', required=True, type=float, help='Value of alpha (a float).')
+
+    # Parse the arguments
+    args = parser.parse_args()
+
+    # Call the main function with parsed arguments
+    main(args.input_json_filename, args.output_pdf_filename, args.alpha)
