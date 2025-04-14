@@ -17,7 +17,9 @@ struct internal_memory_builder_partitioned_phf {
         assert(num_keys > 0);
         util::check_hash_collision_probability<Hasher>(num_keys);
 
-        const uint64_t avg_partition_size = compute_avg_partition_size(num_keys, config);
+        const uint64_t avg_partition_size = config.dense_partitioning
+                                                ? find_avg_partition_size(num_keys)
+                                                : compute_avg_partition_size(num_keys, config);
         const uint64_t num_partitions = compute_num_partitions(num_keys, avg_partition_size);
         assert(num_partitions > 0);
 
@@ -41,22 +43,13 @@ struct internal_memory_builder_partitioned_phf {
 
         std::vector<std::vector<typename hasher_type::hash_type>> partitions(num_partitions);
         {
-            /*
-            This bound is by Raab and Steger: "Balls into Bins" — A Simple and Tight Analysis,
-            (Thm. 1, with alpha = 1).
-            */
-            const uint64_t largest_partition_size_estimate =
-                avg_partition_size + sqrt(2 * avg_partition_size * log(num_partitions));
-            if (config.verbose) {
-                std::cout << "largest_partition_size_estimate " << largest_partition_size_estimate
-                          << std::endl;
-            }
-            for (auto& partition : partitions) partition.reserve(largest_partition_size_estimate);
+            const uint64_t p = max_partition_size_estimate(avg_partition_size, num_partitions);
+            if (config.verbose) std::cout << "largest_partition_size_estimate " << p << std::endl;
+            for (auto& partition : partitions) partition.reserve(p);
         }
 
         if constexpr (std::is_same_v<typename Iterator::iterator_category,
-                                     std::random_access_iterator_tag>)  //
-        {
+                                     std::random_access_iterator_tag>) {
             parallel_hash_and_partition(keys, partitions, num_keys, config.num_threads, m_seed,
                                         num_partitions, m_bucketer);
         } else {
@@ -75,16 +68,11 @@ struct internal_memory_builder_partitioned_phf {
             }
         }
 
-        uint64_t table_size_per_partition = constants::invalid_table_size;
         if (config.dense_partitioning) {
-            // allocate avg_partition_size / alpha slots per partition
-            table_size_per_partition =
-                std::ceil(static_cast<double>(avg_partition_size) / config.alpha);
-            if (largest_partition_size > table_size_per_partition) {
-                table_size_per_partition = largest_partition_size;
+            if (config.alpha < 1.0 and config.verbose) {
+                std::cout << "alpha defaulting to 1.0 for --dense" << std::endl;
             }
-            m_table_size_per_partition = table_size_per_partition;
-            m_table_size = table_size_per_partition * num_partitions;
+            m_table_size = constants::table_size_per_partition * num_partitions;
         } else {
             uint64_t cumulative_size = 0;
             for (uint64_t i = 0; i != num_partitions; ++i) {
@@ -104,10 +92,13 @@ struct internal_memory_builder_partitioned_phf {
         auto partition_config = config;
         partition_config.seed = m_seed;
         partition_config.num_buckets = m_num_buckets_per_partition;
-        if (config.dense_partitioning) partition_config.table_size = table_size_per_partition;
+        if (config.dense_partitioning) {
+            partition_config.table_size = constants::table_size_per_partition;
+        }
         if (config.verbose) {
             if (config.dense_partitioning) {
-                std::cout << "table_size_per_partition = " << table_size_per_partition << std::endl;
+                std::cout << "table_size_per_partition = " << partition_config.table_size
+                          << std::endl;
             }
             std::cout << "(largest_partition_size = " << largest_partition_size << ")" << std::endl;
             std::cout << "num_buckets_per_partition = " << partition_config.num_buckets
@@ -268,10 +259,6 @@ struct internal_memory_builder_partitioned_phf {
         return m_num_buckets_per_partition;
     }
 
-    uint64_t table_size_per_partition() const {
-        return m_table_size_per_partition;
-    }
-
     range_bucketer bucketer() const {
         return m_bucketer;
     }
@@ -419,7 +406,6 @@ private:
     uint64_t m_table_size;
     uint64_t m_num_partitions;
     uint64_t m_num_buckets_per_partition;
-    uint64_t m_table_size_per_partition;
     range_bucketer m_bucketer;
     std::vector<uint64_t> m_offsets;
     std::vector<uint64_t> m_free_slots;  // for dense partitioning

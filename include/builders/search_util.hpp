@@ -40,15 +40,15 @@ private:
     uint64_t m_bucket;
     uint64_t m_placed_keys;
 
-    essentials::timer<std::chrono::high_resolution_clock, std::chrono::seconds> m_timer;
+    essentials::timer<std::chrono::high_resolution_clock, std::chrono::milliseconds> m_timer;
 
     void print(uint64_t bucket) {
         m_timer.stop();
         std::stringbuf buffer;
         std::ostream os(&buffer);
-        os << m_step << " buckets done in " << m_timer.elapsed() << " seconds ("
-           << (m_placed_keys * 100.0) / m_num_keys << "% of keys, "
-           << (bucket * 100.0) / m_num_buckets << "% of buckets)";
+        os << m_step << " buckets done in " << std::fixed << std::setprecision(2)
+           << m_timer.elapsed() / 1000 << " seconds (" << (m_placed_keys * 100.0) / m_num_keys
+           << "% of keys, " << (bucket * 100.0) / m_num_buckets << "% of buckets)";
         essentials::logger(buffer.str());
         m_bucket = bucket;
         m_timer.reset();

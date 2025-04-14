@@ -61,8 +61,7 @@ struct dense_partitioned_phf  //
         m_seed = builder.seed();
         m_num_keys = builder.num_keys();
         m_table_size = builder.table_size();
-        m_table_size_per_partition = builder.table_size_per_partition();
-        m_M_64 = fastmod::computeM_u32(m_table_size_per_partition);
+        m_M_64 = fastmod::computeM_u32(constants::table_size_per_partition);
 
         m_partitioner = builder.bucketer();
 
@@ -87,7 +86,7 @@ struct dense_partitioned_phf  //
     {
         auto hash = Hasher::hash(key, m_seed);
         const uint64_t partition = m_partitioner.bucket(hash.mix());
-        const uint64_t partition_offset = partition * m_table_size_per_partition;
+        const uint64_t partition_offset = partition << constants::log2_table_size_per_partition;
         const uint64_t p = partition_offset + position(hash, partition);
         if constexpr (Minimal) {
             if (PTHASH_LIKELY(p < num_keys())) return p;
@@ -104,17 +103,16 @@ struct dense_partitioned_phf  //
         if constexpr (Search == pthash_search_type::xor_displacement) {
             /* xor displacement */
             const uint64_t hashed_pilot = mix(pilot);
-            return remap128(mix(hash.second() ^ hashed_pilot), m_table_size_per_partition);
+            return remap128(mix(hash.second() ^ hashed_pilot), constants::table_size_per_partition);
         }
         /* additive displacement */
         const uint64_t s = fastmod::fastdiv_u32(pilot, m_M_64);
         return fastmod::fastmod_u32(((hash64(hash.second() + s).mix()) >> 33) + pilot, m_M_64,
-                                    m_table_size_per_partition);
+                                    constants::table_size_per_partition);
     }
 
     uint64_t num_bits_for_pilots() const {
-        return 8 * (sizeof(m_seed) + sizeof(m_num_keys) + sizeof(m_table_size) +
-                    sizeof(m_table_size_per_partition) + sizeof(m_M_64)) +
+        return 8 * (sizeof(m_seed) + sizeof(m_num_keys) + sizeof(m_table_size) + sizeof(m_M_64)) +
                m_pilots.num_bits();
     }
 
@@ -154,7 +152,6 @@ private:
         visitor.visit(t.m_seed);
         visitor.visit(t.m_num_keys);
         visitor.visit(t.m_table_size);
-        visitor.visit(t.m_table_size_per_partition);
         visitor.visit(t.m_M_64);
         visitor.visit(t.m_partitioner);
         visitor.visit(t.m_bucketer);
@@ -187,7 +184,6 @@ private:
     uint64_t m_seed;
     uint64_t m_num_keys;
     uint64_t m_table_size;
-    uint64_t m_table_size_per_partition;
     uint64_t m_M_64;
 
     range_bucketer m_partitioner;
