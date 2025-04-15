@@ -4,7 +4,6 @@
 #include "compact_vector.hpp"
 #include "elias_fano.hpp"
 #include "ranked_sequence.hpp"
-#include "sdc_sequence.hpp"
 #include "rice_sequence.hpp"
 
 #include <vector>
@@ -240,53 +239,6 @@ private:
     bits::rice_sequence<> m_values;
 };
 
-struct sdc {
-    template <typename Iterator>
-    void encode(Iterator begin, const uint64_t n) {
-        if (n == 0) return;
-        auto [ranks, dict] = bits::compute_ranks_and_dictionary(begin, n);
-        m_ranks.encode(ranks.begin(), ranks.size());
-        m_dict.build(dict.begin(), dict.size());
-    }
-
-    static std::string name() {
-        return "SDC";
-    }
-
-    uint64_t size() const {
-        return m_ranks.size();
-    }
-
-    uint64_t num_bits() const {
-        return (m_ranks.num_bytes() + m_dict.num_bytes()) * 8;
-    }
-
-    uint64_t access(uint64_t i) const {
-        uint64_t rank = m_ranks.access(i);
-        return m_dict.access(rank);
-    }
-
-    template <typename Visitor>
-    void visit(Visitor& visitor) const {
-        visit_impl(visitor, *this);
-    }
-
-    template <typename Visitor>
-    void visit(Visitor& visitor) {
-        visit_impl(visitor, *this);
-    }
-
-private:
-    template <typename Visitor, typename T>
-    static void visit_impl(Visitor& visitor, T&& t) {
-        visitor.visit(t.m_ranks);
-        visitor.visit(t.m_dict);
-    }
-
-    bits::sdc_sequence<> m_ranks;
-    bits::compact_vector m_dict;
-};
-
 template <typename Front, typename Back>
 struct dual {
     template <typename Iterator>
@@ -335,6 +287,5 @@ private:
 typedef dual<rice, rice> rice_rice;
 typedef dual<compact, compact> compact_compact;
 typedef dual<dictionary, dictionary> dictionary_dictionary;
-typedef dual<dictionary, elias_fano> dictionary_elias_fano;
 
 }  // namespace pthash

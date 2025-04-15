@@ -12,7 +12,14 @@ struct opt_bucketer {
     }
 
     inline uint64_t bucket(uint64_t hash) const {
-        // x * x * (1 + x)/2 * 255/256 + x/256
+        /*
+            This
+                x * x * (1 + x)/2 * 255/256 + x/256
+            is a fast approximation of the optimal bucketing function
+            introduced by PHOBIC. The approximation is described in
+            "PtrHash: Minimal Perfect Hashing at RAM Throughput",
+            https://arxiv.org/abs/2502.15539. Ragnar Groot Koerkamp. 2025.
+        */
         uint64_t H =
             mul_high(mul_high(hash, hash), (hash >> 1) | (1ULL << 63)) / 256 * 255 + hash / 256;
         return remap128(H, m_num_buckets);
@@ -138,52 +145,6 @@ private:
     }
 
     uint64_t m_num_buckets;
-};
-
-struct uniform_bucketer {
-    uniform_bucketer() : m_num_buckets(0), m_M_num_buckets(0) {}
-
-    void init(const uint64_t num_buckets) {
-        m_num_buckets = num_buckets;
-        m_M_num_buckets = fastmod::computeM_u64(m_num_buckets);
-    }
-
-    inline uint64_t bucket(const uint64_t hash) const {
-        return fastmod::fastmod_u64(hash, m_M_num_buckets, m_num_buckets);
-    }
-
-    uint64_t num_buckets() const {
-        return m_num_buckets;
-    }
-
-    uint64_t num_bits() const {
-        return 8 * (sizeof(m_num_buckets) + sizeof(m_M_num_buckets));
-    }
-
-    void swap(uniform_bucketer& other) {
-        std::swap(m_num_buckets, other.m_num_buckets);
-        std::swap(m_M_num_buckets, other.m_M_num_buckets);
-    }
-
-    template <typename Visitor>
-    void visit(Visitor& visitor) const {
-        visit_impl(visitor, *this);
-    }
-
-    template <typename Visitor>
-    void visit(Visitor& visitor) {
-        visit_impl(visitor, *this);
-    }
-
-private:
-    template <typename Visitor, typename T>
-    static void visit_impl(Visitor& visitor, T&& t) {
-        visitor.visit(t.m_num_buckets);
-        visitor.visit(t.m_M_num_buckets);
-    }
-
-    uint64_t m_num_buckets;
-    __uint128_t m_M_num_buckets;
 };
 
 }  // namespace pthash

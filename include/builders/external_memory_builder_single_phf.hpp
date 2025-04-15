@@ -142,8 +142,8 @@ struct external_memory_builder_single_phf {
                 auto pilots =
                     tfm.get_multifile_pairs_writer(num_non_empty_buckets, ram_for_pilots, 1, 0);
 
-                search(m_num_keys, m_num_buckets, num_non_empty_buckets, m_seed, config,
-                       buckets_iterator, taken_bvb, pilots);
+                search(m_num_keys, m_num_buckets, num_non_empty_buckets,  //
+                       config, buckets_iterator, taken_bvb, pilots);
 
                 pilots.flush();
                 buckets_iterator.close();
@@ -199,6 +199,14 @@ struct external_memory_builder_single_phf {
         return m_table_size;
     }
 
+    uint64_t num_partitions() const {
+        return 0;
+    }
+
+    uint64_t avg_partition_size() const {
+        return 0;
+    }
+
     Bucketer bucketer() const {
         return m_bucketer;
     }
@@ -216,7 +224,9 @@ private:
     uint64_t m_num_keys;
     uint64_t m_table_size;
     uint64_t m_num_buckets;
+
     Bucketer m_bucketer;
+
     std::string m_pilots_filename;
     std::string m_free_slots_filename;
 

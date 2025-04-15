@@ -11,8 +11,7 @@ namespace pthash {
 template <typename Hasher,    //
           typename Bucketer,  //
           typename Encoder,   //
-          bool Minimal,       //
-          pthash_search_type Search>
+          bool Minimal>
 struct partitioned_phf  //
 {
     static_assert(
@@ -32,7 +31,7 @@ private:
         }
 
         uint64_t offset;
-        single_phf<Hasher, Bucketer, Encoder, Minimal, Search> f;
+        single_phf<Hasher, Bucketer, Encoder, Minimal> f;
 
     private:
         template <typename Visitor, typename T>
@@ -51,10 +50,6 @@ private:
             }
             build_config.minimal = Minimal;
         }
-        if (config.search != Search) {
-            if (config.verbose) { std::cout << "setting config.search = " << Search << std::endl; }
-            build_config.search = Search;
-        }
         if (config.dense_partitioning == true) {
             if (config.verbose) {
                 std::cout << "setting config.dense_partitioning = false" << std::endl;
@@ -66,7 +61,6 @@ private:
 
 public:
     typedef Encoder encoder_type;
-    static constexpr pthash_search_type search = Search;
     static constexpr bool minimal = Minimal;
 
     template <typename Iterator>
@@ -96,10 +90,6 @@ public:
         if (Minimal != config.minimal) {
             throw std::runtime_error(  //
                 "template parameter 'Minimal' must be equal to config.minimal");
-        }
-        if (Search != config.search) {
-            throw std::runtime_error(  //
-                "template parameter 'Search' must be equal to config.search");
         }
 
         uint64_t num_partitions = builder.num_partitions();

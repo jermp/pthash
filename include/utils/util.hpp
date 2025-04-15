@@ -4,7 +4,6 @@
 #include <string>
 
 #include "essentials.hpp"
-#include "fastmod.h"
 #include "hasher.hpp"
 
 #define PTHASH_LIKELY(expr) __builtin_expect((bool)(expr), true)

@@ -51,7 +51,6 @@ def main(json_file, pdf_filename, alpha=None):
         # Group by the specified fields and calculate the mean 'total_microseconds'
         grouped_avg = filtered_df.groupby([
             'n', 'lambda', 'alpha', 'minimal',
-            'search_type',
             'bucketer_type', 'avg_partition_size',
             'num_partitions', 'dense_partitioning',
             'seed', 'num_threads', 'external_memory'

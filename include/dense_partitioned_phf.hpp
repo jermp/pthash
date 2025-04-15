@@ -4,25 +4,16 @@
 
 namespace pthash {
 
-/*
- *   PTHash with dense partitioning.
- *   To configure PHOBIC, use:
- *     - Bucketer = opt_bucketer
- *     - Encoder = inter_C_inter_R
- *     - Search = pthash_search_type::add_displacement
- */
 template <typename Hasher,    //
           typename Bucketer,  //
           typename Encoder,   //
-          bool Minimal,       //
-          pthash_search_type Search>
+          bool Minimal>
 struct dense_partitioned_phf  //
 {
     static_assert(
         std::is_base_of<dense_encoder, Encoder>::value,
         "A dense encoder must be specified for dense_partitioned_phf. Select another encoder.");
     typedef Encoder encoder_type;
-    static constexpr pthash_search_type search = Search;
     static constexpr bool minimal = Minimal;
 
     template <typename Iterator>
@@ -50,10 +41,6 @@ struct dense_partitioned_phf  //
             throw std::runtime_error(  //
                 "template parameter 'Minimal' must be equal to config.minimal");
         }
-        if (Search != config.search) {
-            throw std::runtime_error(  //
-                "template parameter 'Search' must be equal to config.search");
-        }
 
         const uint64_t num_partitions = builder.num_partitions();
         const uint64_t num_buckets_per_partition = builder.num_buckets_per_partition();
@@ -61,8 +48,6 @@ struct dense_partitioned_phf  //
         m_seed = builder.seed();
         m_num_keys = builder.num_keys();
         m_table_size = builder.table_size();
-        m_M_64 = fastmod::computeM_u32(constants::table_size_per_partition);
-
         m_partitioner = builder.bucketer();
 
         auto const& builders = builder.builders();
@@ -100,19 +85,12 @@ struct dense_partitioned_phf  //
     {
         const uint64_t bucket = m_bucketer.bucket(hash.first());
         const uint64_t pilot = m_pilots.access(partition, bucket);
-        if constexpr (Search == pthash_search_type::xor_displacement) {
-            /* xor displacement */
-            const uint64_t hashed_pilot = mix(pilot);
-            return remap128(mix(hash.second() ^ hashed_pilot), constants::table_size_per_partition);
-        }
-        /* additive displacement */
-        const uint64_t s = fastmod::fastdiv_u32(pilot, m_M_64);
-        return fastmod::fastmod_u32(((hash64(hash.second() + s).mix()) >> 33) + pilot, m_M_64,
-                                    constants::table_size_per_partition);
+        const uint64_t hashed_pilot = mix(pilot);
+        return remap128(mix(hash.second() ^ hashed_pilot), constants::table_size_per_partition);
     }
 
     uint64_t num_bits_for_pilots() const {
-        return 8 * (sizeof(m_seed) + sizeof(m_num_keys) + sizeof(m_table_size) + sizeof(m_M_64)) +
+        return 8 * (sizeof(m_seed) + sizeof(m_num_keys) + sizeof(m_table_size)) +
                m_pilots.num_bits();
     }
 
@@ -152,7 +130,6 @@ private:
         visitor.visit(t.m_seed);
         visitor.visit(t.m_num_keys);
         visitor.visit(t.m_table_size);
-        visitor.visit(t.m_M_64);
         visitor.visit(t.m_partitioner);
         visitor.visit(t.m_bucketer);
         visitor.visit(t.m_pilots);
@@ -168,10 +145,6 @@ private:
             }
             build_config.minimal = Minimal;
         }
-        if (config.search != Search) {
-            if (config.verbose) { std::cout << "setting config.search = " << Search << std::endl; }
-            build_config.search = Search;
-        }
         if (config.dense_partitioning == false) {
             if (config.verbose) {
                 std::cout << "setting config.dense_partitioning = true" << std::endl;
@@ -184,7 +157,6 @@ private:
     uint64_t m_seed;
     uint64_t m_num_keys;
     uint64_t m_table_size;
-    uint64_t m_M_64;
 
     range_bucketer m_partitioner;
     Bucketer m_bucketer;
@@ -194,10 +166,6 @@ private:
 };
 
 template <typename Hasher>
-using phobic = dense_partitioned_phf<Hasher,
-                                     opt_bucketer,     //
-                                     inter_C_inter_R,  //
-                                     true,             //
-                                     pthash_search_type::add_displacement>;
+using phobic = dense_partitioned_phf<Hasher, opt_bucketer, inter_C_inter_R, true>;
 
 }  // namespace pthash

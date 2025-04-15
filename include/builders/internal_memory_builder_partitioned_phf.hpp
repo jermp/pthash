@@ -20,6 +20,7 @@ struct internal_memory_builder_partitioned_phf {
         const uint64_t avg_partition_size = config.dense_partitioning
                                                 ? find_avg_partition_size(num_keys)
                                                 : compute_avg_partition_size(num_keys, config);
+        m_avg_partition_size = avg_partition_size;
         const uint64_t num_partitions = compute_num_partitions(num_keys, avg_partition_size);
         assert(num_partitions > 0);
 
@@ -255,6 +256,10 @@ struct internal_memory_builder_partitioned_phf {
         return m_num_partitions;
     }
 
+    uint64_t avg_partition_size() const {
+        return m_avg_partition_size;
+    }
+
     uint64_t num_buckets_per_partition() const {
         return m_num_buckets_per_partition;
     }
@@ -405,8 +410,11 @@ private:
     uint64_t m_num_keys;
     uint64_t m_table_size;
     uint64_t m_num_partitions;
+    uint64_t m_avg_partition_size;
     uint64_t m_num_buckets_per_partition;
+
     range_bucketer m_bucketer;
+
     std::vector<uint64_t> m_offsets;
     std::vector<uint64_t> m_free_slots;  // for dense partitioning
     std::vector<internal_memory_builder_single_phf<hasher_type, bucketer_type>> m_builders;

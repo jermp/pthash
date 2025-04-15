@@ -1,6 +1,8 @@
 #pragma once
 
 #include <array>
+#include <sstream>  // for std::stringbuf
+#include <iomanip>  // for std::setprecision
 
 namespace pthash {
 

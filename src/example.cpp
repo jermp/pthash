@@ -19,29 +19,29 @@ int main() {
     config.lambda = 5;
     config.alpha = 0.97;
     config.verbose = true;
-    config.avg_partition_size = 2000;
+    config.avg_partition_size = 100000;
     config.num_threads = 4;
     config.dense_partitioning = true;
 
     /* Declare the PTHash function type. */
 
-    // typedef single_phf<xxhash_128,                           // base hasher
-    //                    skew_bucketer,                        // bucketer type
-    //                    dictionary_dictionary,                // encoder type
-    //                    true,                                 // minimal
-    //                    pthash_search_type::xor_displacement  // xor displacement
-    //                    >
+    // typedef single_phf<xxhash_128,             // base hasher
+    //                    skew_bucketer,          // bucketer type
+    //                    dictionary_dictionary,  // encoder type
+    //                    true>                    // minimal
     //     pthash_type;
 
-    // typedef partitioned_phf<xxhash_128,                           // base hasher
-    //                         opt_bucketer,                         // bucketer
-    //                         dictionary_dictionary,                // encoder type
-    //                         true,                                 // minimal
-    //                         pthash_search_type::add_displacement  // additive displacement
-    //                         >
+    // typedef partitioned_phf<xxhash_128,             // base hasher
+    //                         skew_bucketer,          // bucketer
+    //                         dictionary_dictionary,  // encoder type
+    //                         true>                   // minimal
     //     pthash_type;
 
-    typedef phobic<xxhash_128> pthash_type;
+    typedef dense_partitioned_phf<xxhash_128,     // base hasher
+                                  skew_bucketer,  // bucketer
+                                  inter_R,        // encoder type
+                                  true>           // minimal
+        pthash_type;
 
     pthash_type f;
 

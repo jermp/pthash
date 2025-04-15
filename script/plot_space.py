@@ -50,7 +50,7 @@ def main(json_file, pdf_filename, alpha):
         # Group by the specified fields
         grouped_avg = filtered_df.groupby([
             'n', 'lambda', 'alpha', 'minimal',
-            'search_type', 'bucketer_type', 'avg_partition_size',
+            'bucketer_type', 'avg_partition_size',
             'num_partitions', 'dense_partitioning', 'seed', 'num_threads',
             'external_memory', 'encoder_type'
         ])['bits_per_key'].mean().reset_index()

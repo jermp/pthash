@@ -117,8 +117,8 @@ struct internal_memory_builder_single_phf {
             bits::bit_vector::builder taken_bvb(m_table_size);
             uint64_t num_non_empty_buckets = buckets.num_buckets();
             pilots_wrapper_t pilots_wrapper(m_pilots);
-            search(m_num_keys, m_num_buckets, num_non_empty_buckets, m_seed, config,
-                   buckets_iterator, taken_bvb, pilots_wrapper);
+            search(m_num_keys, m_num_buckets, num_non_empty_buckets,  //
+                   config, buckets_iterator, taken_bvb, pilots_wrapper);
             taken_bvb.build(m_taken);
             if (config.minimal) {
                 m_free_slots.clear();
@@ -150,6 +150,14 @@ struct internal_memory_builder_single_phf {
 
     uint64_t table_size() const {
         return m_table_size;
+    }
+
+    uint64_t num_partitions() const {
+        return 0;
+    }
+
+    uint64_t avg_partition_size() const {
+        return 0;
     }
 
     Bucketer bucketer() const {
@@ -224,7 +232,9 @@ private:
     uint64_t m_num_keys;
     uint64_t m_num_buckets;
     uint64_t m_table_size;
+
     Bucketer m_bucketer;
+
     bits::bit_vector m_taken;
     std::vector<uint64_t> m_pilots;
     std::vector<uint64_t> m_free_slots;

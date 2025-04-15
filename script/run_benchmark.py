@@ -26,9 +26,6 @@ num_threads = 8
 # avg_partition_size is calculated as n / (num_threads * num_partitions_per_thread)
 num_partitions_per_thread = 4
 
-# for dense partitioning:
-avg_partition_size_dense_partitioning = 3500
-
 def run_cmd(type, l, a, cmd, log_file, results_file):
     for run_id in range(1, 4): # Repeat each run 3 times
         run_desc = f"{type}: [l={l:.2f}, a={a:.2f}, run={run_id}]"
@@ -64,7 +61,6 @@ def run_build(n, base_filename=None):
                 "-l", f"{l:.2f}",
                 "-a", f"{a:.2f}",
                 "-e", "all",
-                "-r", "xor",
                 "-b", "skew",
                 "-s", "0",
                 "-q", str(n),
@@ -79,8 +75,7 @@ def run_build(n, base_filename=None):
             avg_partition_size = n / (num_threads * num_partitions_per_thread)
             run_cmd("PARTITIONED", l, a, cmd + ["-p", str(avg_partition_size)], log_file, results_file)
 
-            avg_partition_size = avg_partition_size_dense_partitioning
-            run_cmd("DENSE-PARTITIONED", l, a, cmd + ["-p", str(avg_partition_size), "--dense"], log_file, results_file)
+            run_cmd("DENSE-PARTITIONED", l, a, cmd + ["--dense"], log_file, results_file)
 
     log_file.close()
     results_file.close()
@@ -89,7 +84,7 @@ def run_build(n, base_filename=None):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run build command with parameter sweep.")
-    parser.add_argument("-n", type=int, required=True, help="Number of keys for benchmark")
+    parser.add_argument("-n", type=int, required=True, help="Number of keys for benchmark. It must be > 4096.")
     parser.add_argument("-o", "--output", type=str, required=False, help="Base output filename (no extension). If omitted, a timestamp is used.")
 
     args = parser.parse_args()

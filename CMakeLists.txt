@@ -9,7 +9,6 @@ MESSAGE(STATUS "CMAKE_BUILD_TYPE: " ${CMAKE_BUILD_TYPE})
 if (NOT TARGET PTHASH)
   add_library(PTHASH INTERFACE)
   target_include_directories(PTHASH INTERFACE include)
-  target_include_directories(PTHASH SYSTEM INTERFACE external/fastmod)
   target_include_directories(PTHASH SYSTEM INTERFACE external/mm_file/include)
   target_include_directories(PTHASH SYSTEM INTERFACE external/xxHash)
 
