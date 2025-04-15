@@ -1,7 +1,5 @@
 #pragma once
 
-// See also https://github.com/jermp/bench_hash_functions
-
 #include <xxh3.h>
 
 namespace pthash {
@@ -40,7 +38,7 @@ static inline void check_hash_collision_probability(uint64_t size) {
 
 }  // namespace util
 
-inline uint64_t mix(const uint64_t val) {
+constexpr inline uint64_t mix(const uint64_t val) {
     return val * 0x517cc1b727220a95;
 }
 

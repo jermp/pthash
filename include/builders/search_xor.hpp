@@ -19,11 +19,6 @@ void search_sequential_xor(const uint64_t num_keys, const uint64_t num_buckets,
     std::vector<uint64_t> positions;
     positions.reserve(max_bucket_size);
 
-    std::vector<uint64_t> hashed_pilots_cache(search_cache_size);
-    for (uint64_t pilot = 0; pilot != search_cache_size; ++pilot) {
-        hashed_pilots_cache[pilot] = mix(pilot);
-    }
-
     search_logger log(num_keys, num_buckets);
     if (config.verbose) log.init();
 
@@ -77,11 +72,6 @@ void search_parallel_xor(const uint64_t num_keys, const uint64_t num_buckets,
     const uint64_t max_bucket_size = (*buckets).size();
     const uint64_t table_size = taken.num_bits();
     const uint64_t num_threads = config.num_threads;
-
-    std::vector<uint64_t> hashed_pilots_cache(search_cache_size);
-    for (uint64_t pilot = 0; pilot != search_cache_size; ++pilot) {
-        hashed_pilots_cache[pilot] = mix(pilot);
-    }
 
     search_logger log(num_keys, num_buckets);
     if (config.verbose) log.init();
