@@ -62,13 +62,6 @@ struct internal_memory_builder_partitioned_phf {
             }
         }
 
-        uint64_t largest_partition_size = 0;
-        for (auto const& partition : partitions) {
-            if (partition.size() > largest_partition_size) {
-                largest_partition_size = partition.size();
-            }
-        }
-
         if (config.dense_partitioning) {
             if (config.alpha < 1.0 and config.verbose) {
                 std::cout << "alpha defaulting to 1.0 for --dense" << std::endl;
@@ -101,6 +94,12 @@ struct internal_memory_builder_partitioned_phf {
                 std::cout << "table_size_per_partition = " << partition_config.table_size
                           << std::endl;
             }
+            uint64_t largest_partition_size = 0;
+            for (auto const& partition : partitions) {
+                if (partition.size() > largest_partition_size) {
+                    largest_partition_size = partition.size();
+                }
+            }
             std::cout << "(largest_partition_size = " << largest_partition_size << ")" << std::endl;
             std::cout << "num_buckets_per_partition = " << partition_config.num_buckets
                       << std::endl;
@@ -114,6 +113,11 @@ struct internal_memory_builder_partitioned_phf {
                                   config.num_threads, num_partitions);
         timings.mapping_ordering_microseconds = t.mapping_ordering_microseconds;
         timings.searching_microseconds = t.searching_microseconds;
+
+        // for each partition, compute the empirical entropy of the pilots
+        // for (auto const& b : m_builders) {
+        //     std::cout << compute_empirical_entropy(b.pilots()) << std::endl;
+        // }
 
         if (config.minimal) {
             auto start = clock_type::now();

@@ -2,6 +2,8 @@
 
 #include "utils/util.hpp"
 
+// #include <cmath>  // for log
+
 namespace pthash {
 
 struct opt_bucketer {
@@ -12,16 +14,28 @@ struct opt_bucketer {
     }
 
     inline uint64_t bucket(uint64_t hash) const {
+        // /*
+        //     This is the optimal bucketing function introduced
+        //     in PHOBIC: b(x) := x + (1-x)*ln(1-x), although in practice
+        //     (e.g., to prevent too-large buckets) we use an eps-perturbation:
+        //         b(x,eps) := eps*x + (1-eps)*b(x) = x + (1-eps)*(1-x)*ln(1-x).
+        // */
+        // double x = double(hash) / double(~0ul);
+        // double normalized_bucket = x + (1 - x) * log(1 - x);  // opt
+        // const double eps = 0.125;                             // 1/8
+        // double normalized_bucket = x + (1 - eps) * (1 - x) * log(1 - x); // approx
+        // assert(normalized_bucket < 1.0);
+        // return normalized_bucket * m_num_buckets;
+
         /*
             This
-                x * x * (1 + x)/2 * 255/256 + x/256
-            is a fast approximation of the optimal bucketing function
-            introduced by PHOBIC. The approximation is described in
+                x*x * (1+x)/2*(1-eps) + x*eps
+            is a fast approximation of b(x,eps). The approximation is described in
             "PtrHash: Minimal Perfect Hashing at RAM Throughput",
             https://arxiv.org/abs/2502.15539. Ragnar Groot Koerkamp. 2025.
         */
-        uint64_t H =
-            mul_high(mul_high(hash, hash), (hash >> 1) | (1ULL << 63)) / 256 * 255 + hash / 256;
+        // we use eps=1/8 here, the above paper uses eps=1/256
+        uint64_t H = mul_high(mul_high(hash, hash), (hash >> 1) | (1ULL << 63)) / 8 * 7 + hash / 8;
         return remap128(H, m_num_buckets);
     }
 

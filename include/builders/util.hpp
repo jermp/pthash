@@ -377,4 +377,24 @@ private:
     uint64_t m_seed;
 };
 
+double compute_empirical_entropy(std::vector<uint64_t> const& values) {
+    if (values.empty()) return 0.0;
+    std::unordered_map<uint64_t, uint64_t> frequency_map;
+    // uint64_t large_values = 0;
+    // const uint64_t T = 255;
+    for (auto v : values) {
+        // if (v > T) large_values += 1;
+        frequency_map[v]++;
+    }
+    // std::cout << (large_values * 100.0) / values.size() << "% of values are larger than " << T
+    //           << std::endl;
+    double entropy = 0.0;
+    const uint64_t total_count = values.size();
+    for (auto p : frequency_map) {
+        double probability = static_cast<double>(p.second) / total_count;
+        entropy -= probability * log2(probability);
+    }
+    return entropy;
+}
+
 }  // namespace pthash
