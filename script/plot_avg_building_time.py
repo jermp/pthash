@@ -11,7 +11,7 @@ import sys
 def format_ticks(x, pos):
     return f'{x:.2f}'
 
-def main(json_file, pdf_filename, alpha=None):
+def main(json_file, pdf_filename, bucketer, alpha=None):
     # Load the data from the provided JSON file
     with open(json_file, 'r') as f:
         records = [json.loads(line) for line in f]  # Read each line as a separate JSON object
@@ -27,13 +27,13 @@ def main(json_file, pdf_filename, alpha=None):
     # Define configurations for filtering
     configurations = [
 
-        ((df['avg_partition_size'] == "0") & (df['num_partitions'] == "0") & (df['dense_partitioning'] == "false")
+        ((df['avg_partition_size'] == "0") & (df['num_partitions'] == "0") & (df['dense_partitioning'] == "false") & (df['bucketer_type'] == bucketer)
                 , "SINGLE"),
 
-        ((df['avg_partition_size'] != "0") & (df['num_partitions'] != "0") & (df['dense_partitioning'] == "false")
+        ((df['avg_partition_size'] != "0") & (df['num_partitions'] != "0") & (df['dense_partitioning'] == "false") & (df['bucketer_type'] == bucketer)
                 , "PARTITIONED"),
 
-        ((df['avg_partition_size'] != "0") & (df['num_partitions'] != "0") & (df['dense_partitioning'] == "true")
+        ((df['avg_partition_size'] != "0") & (df['num_partitions'] != "0") & (df['dense_partitioning'] == "true") & (df['bucketer_type'] == bucketer)
                 , "DENSE-PARTITIONED")
 
     ]
@@ -67,8 +67,8 @@ def main(json_file, pdf_filename, alpha=None):
     min_y = min(all_y_values)
     max_y = max(all_y_values)
 
-    colors = plt.get_cmap('tab20', 12)  # Use 'tab20'
     alpha_handles = []
+    alpha_color_map = {}
 
     # Create a new PDF file to save plots
     with PdfPages(pdf_filename) as pdf:
@@ -78,21 +78,31 @@ def main(json_file, pdf_filename, alpha=None):
         gs = gridspec.GridSpec(1, 4, width_ratios=[3, 3, 3, 1])
         axs = [fig.add_subplot(gs[i]) for i in range(3)]
 
+        i = 0
+        for (grouped_avg, _) in grouped_data:
+            for alpha_value in sorted(grouped_avg['alpha'].unique(), reverse=True):
+                if alpha_value not in alpha_color_map.keys():
+                    alpha_color_map[alpha_value] = i
+                    i += 1
+
+        colors = plt.get_cmap('tab20', len(alpha_color_map))  # Use 'tab20'
+
         for ax, (grouped_avg, title) in zip(axs, grouped_data):
             # Scatter plot for each unique alpha value
-            for i, alpha_value in enumerate(sorted(grouped_avg['alpha'].unique(), reverse=True)):
+            for alpha_value in sorted(grouped_avg['alpha'].unique(), reverse=True):
 
                 if alpha == None or alpha_value == alpha: # filter on specific alpha
 
+                    color_alpha = colors(alpha_color_map[alpha_value])
                     subset = grouped_avg[grouped_avg['alpha'] == alpha_value]
 
                     label = rf'$\alpha$ = {float(alpha_value):.2f}'
                     if not any(label in l.get_label() for l in alpha_handles):
-                        alpha_handles.append(ax.plot([], [], label=label, color=colors(i))[0])
+                        alpha_handles.append(ax.plot([], [], label=label, color=color_alpha)[0])
 
                     ax.plot(subset['lambda'], subset['total_seconds'],
                             marker='o', # marker_symbols[i],
-                            markersize=6, color=colors(i))
+                            markersize=6, color=color_alpha)
 
             # Set plot labels and title with LaTeX formatting
             ax.set_xlabel(r'$\lambda$', fontsize=14)
@@ -112,10 +122,7 @@ def main(json_file, pdf_filename, alpha=None):
         legend_ax.axis('off')
 
         alpha_labels = [h.get_label() for h in alpha_handles]
-
-        # Adjusting the `bbox_to_anchor` to move legends further to the right
-        alpha_legend = legend_ax.legend(alpha_handles, alpha_labels, loc='upper right')
-        legend_ax.add_artist(alpha_legend)
+        plt.legend(alpha_handles, alpha_labels, loc='upper right', fontsize=14)
 
         # Adjust the layout of the main figure
         plt.tight_layout()
@@ -133,10 +140,11 @@ if __name__ == "__main__":
     # Define the expected arguments
     parser.add_argument('-i', '--input_json_filename', required=True, type=str, help='Path to the input JSON file.')
     parser.add_argument('-o', '--output_pdf_filename', required=True, type=str, help='Path for the output PDF file.')
+    parser.add_argument('-b', '--bucketer', required=True, type=str, help='Bucketer type: values are "skew" or "opt".')
     parser.add_argument('-a', '--alpha', required=False, type=float, help='Value of alpha (a float).')
 
     # Parse the arguments
     args = parser.parse_args()
 
     # Call the main function with parsed arguments
-    main(args.input_json_filename, args.output_pdf_filename, args.alpha)
+    main(args.input_json_filename, args.output_pdf_filename, args.bucketer, args.alpha)

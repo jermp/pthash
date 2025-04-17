@@ -50,9 +50,9 @@ def main(json_file, pdf_filename, alpha, bucketer):
         # Group by the specified fields
         grouped_avg = filtered_df.groupby([
             'n', 'lambda', 'alpha', 'minimal',
-            'bucketer_type',
-            'avg_partition_size',
-            'num_partitions', 'dense_partitioning', 'seed', 'num_threads',
+            'bucketer_type', 'avg_partition_size',
+            'num_partitions', 'dense_partitioning',
+            'seed', 'num_threads',
             'external_memory', 'encoder_type'
         ])['bits_per_key'].mean().reset_index()
 
@@ -66,13 +66,10 @@ def main(json_file, pdf_filename, alpha, bucketer):
     if max_y > 5.0:
         max_y = 5.0 # saturate to 5 bits/key (that's enough!)
 
-    # Define different marker symbols for each encoder_type
-    # marker_symbols = ['o', 'v', '^', '<', '>', '8', 's', 'p', '*', 'h', 'H', 'D', 'd', 'P', 'X']
-    colors = plt.get_cmap('tab20', 12)  # Use 'tab20'
     # Create a new PDF file to save plots
     with PdfPages(pdf_filename) as pdf:
         fig = plt.figure(figsize=(20, 8))
-        gs = gridspec.GridSpec(1, 4, width_ratios=[3, 3, 3, 1])
+        gs = gridspec.GridSpec(1, 4, width_ratios=[3, 3, 3, 0.3])
         axs = [fig.add_subplot(gs[i]) for i in range(3)]
 
         encoder_handles = []
@@ -83,6 +80,8 @@ def main(json_file, pdf_filename, alpha, bucketer):
                 if e not in encoder_color_map.keys():
                     encoder_color_map[e] = i
                     i += 1
+
+        colors = plt.get_cmap('tab20', len(encoder_color_map))  # Use 'tab20'
 
         for ax, (grouped_avg, title) in zip(axs, grouped_data):
 
@@ -129,12 +128,7 @@ def main(json_file, pdf_filename, alpha, bucketer):
         legend_ax.axis('off')
 
         # Adjusting the `bbox_to_anchor` to move legends further to the right
-        other_legend = legend_ax.legend(encoder_handles, encoder_labels, loc='upper right',
-            title='Encoders')  # Move further right
-
-        # Add the legends to the axis
-        legend_ax.add_artist(other_legend)
-        # legend_ax.add_artist(inter_mono_legend)
+        plt.legend(encoder_handles, encoder_labels, loc='upper right', fontsize=14)
 
         # Adjust the layout of the main figure
         plt.tight_layout()
