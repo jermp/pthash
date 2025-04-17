@@ -100,16 +100,6 @@ For a testing environment, use the following instead:
 
 (NOTE: Beware that the software will result in a much slower execution when running in debug mode and using sanitizers. Use this only for debug purposes, not to run performance tests.)
 
-### Enable All Encoders
-
-By default, you can choose between three encoders to compress the PTHash
-data structure (see the output of `./build --help` for suggestions).
-
-If you want to test all the encoders we tested in the papers,
-compile again with
-
-	cmake .. -D PTHASH_ENABLE_ALL_ENCODERS=On
-
 ### Enable Large Bucket-Id Type
 
 By default, PTHash assumes there are less than $2^{32}$ buckets, hence 32-bit integers are used
@@ -232,10 +222,6 @@ An example benchmark
 Giulio on 13/04/2025: Update this section with new benchmarks.
 
 <!-- The script `script/run_benchmark.sh` runs some trade-off configurations (encoder, $\alpha$, $\lambda$) that have been tested in the papers, on 100M and 1000M keys.
-
-Be sure you run the benchmark after compiling with
-
-	cmake .. -D PTHASH_ENABLE_ALL_ENCODERS=On
 
 From within the directory where the code has been compiled, just run
 

@@ -37,10 +37,10 @@ int main() {
     //                         true>                   // minimal
     //     pthash_type;
 
-    typedef dense_partitioned_phf<xxhash_128,     // base hasher
-                                  skew_bucketer,  // bucketer
-                                  inter_R,        // encoder type
-                                  true>           // minimal
+    typedef dense_partitioned_phf<xxhash_128,    // base hasher
+                                  opt_bucketer,  // bucketer
+                                  R_int,         // encoder type
+                                  true>          // minimal
         pthash_type;
 
     pthash_type f;

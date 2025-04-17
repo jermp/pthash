@@ -166,6 +166,6 @@ private:
 };
 
 template <typename Hasher>
-using phobic = dense_partitioned_phf<Hasher, opt_bucketer, inter_C_inter_R, true>;
+using phobic = dense_partitioned_phf<Hasher, opt_bucketer, R_int, true>;
 
 }  // namespace pthash

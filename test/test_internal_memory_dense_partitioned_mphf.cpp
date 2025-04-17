@@ -32,32 +32,22 @@ void test_internal_memory_dense_partitioned_mphf(Iterator keys, uint64_t num_key
         std::cout << "testing with (lambda=" << lambda << ")..." << std::endl;
 
         builder_64.build_from_keys(keys, num_keys, config);
-        test_encoder<mono_R>(builder_64, config, keys, num_keys);           // monoR
-        test_encoder<inter_R>(builder_64, config, keys, num_keys);          // interR
-        test_encoder<mono_C>(builder_64, config, keys, num_keys);           // monoC
-        test_encoder<inter_C>(builder_64, config, keys, num_keys);          // interC
-        test_encoder<mono_D>(builder_64, config, keys, num_keys);           // monoD
-        test_encoder<inter_D>(builder_64, config, keys, num_keys);          // interD
-        test_encoder<mono_EF>(builder_64, config, keys, num_keys);          // monoEF
-        test_encoder<inter_EF>(builder_64, config, keys, num_keys);         // interEF
-        test_encoder<mono_C_mono_R>(builder_64, config, keys, num_keys);    // monoC-monoR
-        test_encoder<inter_C_inter_R>(builder_64, config, keys, num_keys);  // interC-interR
-        test_encoder<mono_D_mono_R>(builder_64, config, keys, num_keys);    // monoD-monoR
-        test_encoder<inter_D_inter_R>(builder_64, config, keys, num_keys);  // interD-interR
+        test_encoder<C_mono>(builder_64, config, keys, num_keys);
+        test_encoder<C_int>(builder_64, config, keys, num_keys);
+        test_encoder<D_mono>(builder_64, config, keys, num_keys);
+        test_encoder<D_int>(builder_64, config, keys, num_keys);
+        test_encoder<R_mono>(builder_64, config, keys, num_keys);
+        test_encoder<R_int>(builder_64, config, keys, num_keys);
+        test_encoder<EF_mono>(builder_64, config, keys, num_keys);
 
         builder_128.build_from_keys(keys, num_keys, config);
-        test_encoder<mono_R>(builder_128, config, keys, num_keys);
-        test_encoder<inter_R>(builder_128, config, keys, num_keys);
-        test_encoder<mono_C>(builder_128, config, keys, num_keys);
-        test_encoder<inter_C>(builder_128, config, keys, num_keys);
-        test_encoder<mono_D>(builder_128, config, keys, num_keys);
-        test_encoder<inter_D>(builder_128, config, keys, num_keys);
-        test_encoder<mono_EF>(builder_128, config, keys, num_keys);
-        test_encoder<inter_EF>(builder_128, config, keys, num_keys);
-        test_encoder<mono_C_mono_R>(builder_128, config, keys, num_keys);
-        test_encoder<inter_C_inter_R>(builder_128, config, keys, num_keys);
-        test_encoder<mono_D_mono_R>(builder_128, config, keys, num_keys);
-        test_encoder<inter_D_inter_R>(builder_128, config, keys, num_keys);
+        test_encoder<R_mono>(builder_128, config, keys, num_keys);
+        test_encoder<R_int>(builder_128, config, keys, num_keys);
+        test_encoder<C_mono>(builder_128, config, keys, num_keys);
+        test_encoder<C_int>(builder_128, config, keys, num_keys);
+        test_encoder<D_mono>(builder_128, config, keys, num_keys);
+        test_encoder<D_int>(builder_128, config, keys, num_keys);
+        test_encoder<EF_mono>(builder_128, config, keys, num_keys);
     }
 }
 

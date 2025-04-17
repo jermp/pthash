@@ -54,28 +54,29 @@ def run_build(n, base_filename=None):
 
     for l in lambda_values:
         for a in alpha_values:
+            for b in ["skew", "opt"]:
+                cmd = [
+                    "./build",
+                    "-n", str(n),
+                    "-l", str(l),
+                    "-a", str(a),
+                    "-e", "all",
+                    "-b", b,
+                    "-s", "0",
+                    "-q", str(n),
+                    "-t", str(num_threads),
+                    "--minimal",
+                    "--check",
+                    "--verbose"
+                ]
 
-            cmd = [
-                "./build",
-                "-n", str(n),
-                "-l", f"{l:.2f}",
-                "-a", f"{a:.2f}",
-                "-e", "all",
-                "-b", "skew",
-                "-s", "0",
-                "-q", str(n),
-                "-t", str(num_threads),
-                "--minimal",
-                "--check",
-                "--verbose"
-            ]
+                run_cmd("SINGLE", l, a, cmd, log_file, results_file)
 
-            run_cmd("SINGLE", l, a, cmd, log_file, results_file)
+                avg_partition_size = n / (num_threads * num_partitions_per_thread)
+                run_cmd("PARTITIONED", l, a, cmd + ["-p", str(avg_partition_size)], log_file, results_file)
 
-            avg_partition_size = n / (num_threads * num_partitions_per_thread)
-            run_cmd("PARTITIONED", l, a, cmd + ["-p", str(avg_partition_size)], log_file, results_file)
-
-            run_cmd("DENSE-PARTITIONED", l, a, cmd + ["--dense"], log_file, results_file)
+                if a == 1.0:
+                    run_cmd("DENSE-PARTITIONED", l, a, cmd + ["--dense"], log_file, results_file)
 
     log_file.close()
     results_file.close()
