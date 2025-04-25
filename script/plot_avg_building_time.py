@@ -24,6 +24,9 @@ def main(json_file, pdf_filename, bucketer, alpha=None):
     df['lambda'] = pd.to_numeric(df['lambda'])
     df['alpha'] = pd.to_numeric(df['alpha'])
 
+    min_y = min(df['total_microseconds']) / 1_000_000
+    max_y = max(df['total_microseconds']) / 1_000_000
+
     # Define configurations for filtering
     configurations = [
 
@@ -37,9 +40,6 @@ def main(json_file, pdf_filename, bucketer, alpha=None):
                 , "DENSE-PARTITIONED")
 
     ]
-
-    # Collect all Y values to determine the limits later
-    all_y_values = []
 
     # Create list to hold grouped data
     grouped_data = []
@@ -61,11 +61,6 @@ def main(json_file, pdf_filename, bucketer, alpha=None):
 
         # Store the grouped data for later use to calculate y limits
         grouped_data.append((grouped_avg, title))
-        all_y_values.extend(grouped_avg['total_seconds'].tolist())  # Gather all y values
-
-    # Determine global min and max for Y-axis
-    min_y = min(all_y_values)
-    max_y = max(all_y_values)
 
     alpha_handles = []
     alpha_color_map = {}

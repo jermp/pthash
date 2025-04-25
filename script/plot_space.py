@@ -24,6 +24,11 @@ def main(json_file, pdf_filename, alpha, bucketer):
     df['bits_per_key'] = pd.to_numeric(df['bits_per_key'])
     df['alpha'] = pd.to_numeric(df['alpha'])
 
+    min_y = min(df['bits_per_key'])
+    max_y = max(df['bits_per_key'])
+    if max_y > 5.0:
+        max_y = 5.0 # saturate to 5 bits/key (that's enough!)
+
     # Define configurations for filtering
     configurations = [
 
@@ -58,13 +63,6 @@ def main(json_file, pdf_filename, alpha, bucketer):
 
         # Store the grouped data for later use to calculate y limits
         grouped_data.append((grouped_avg, title))
-        all_y_values.extend(grouped_avg['bits_per_key'].tolist())  # Gather all y values
-
-    # Determine global min and max for Y-axis
-    min_y = min(all_y_values)
-    max_y = max(all_y_values)
-    if max_y > 5.0:
-        max_y = 5.0 # saturate to 5 bits/key (that's enough!)
 
     # Create a new PDF file to save plots
     with PdfPages(pdf_filename) as pdf:
