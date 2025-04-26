@@ -14,15 +14,19 @@ typedef std::chrono::high_resolution_clock clock_type;
 
 namespace constants {
 
+static const std::string default_tmp_dirname(".");
+
 static const uint64_t available_ram = sysconf(_SC_PAGESIZE) * sysconf(_SC_PHYS_PAGES);
 static const uint64_t invalid_seed = uint64_t(-1);
 static const uint64_t invalid_num_buckets = uint64_t(-1);
 static const uint64_t invalid_table_size = uint64_t(-1);
-static const uint64_t min_partition_size = 100000;
-static const uint64_t table_size_per_partition = 4096;
-static const uint64_t log2_table_size_per_partition = 12;
 
-static const std::string default_tmp_dirname(".");
+/* for partitioned_phf */
+static const uint64_t min_partition_size = 100000;
+
+/* for dense_partitioned_phf */
+static const uint64_t log2_table_size_per_partition = 12;
+static const uint64_t table_size_per_partition = 1ULL << log2_table_size_per_partition;
 
 /* For skew_bucketer: a*n keys are placed in b*m buckets */
 constexpr float a = 0.6;
