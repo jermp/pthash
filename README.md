@@ -1,10 +1,12 @@
 [![Build](https://github.com/jermp/pthash/actions/workflows/build.yml/badge.svg)](https://github.com/jermp/pthash/actions/workflows/build.yml)
 [![CodeQL](https://github.com/jermp/pthash/actions/workflows/codeql.yml/badge.svg)](https://github.com/jermp/pthash/actions/workflows/codeql.yml)
 
-PTHash / PHOBIC
----------------
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="img/pthash_on_dark.png">
+  <img src="img/pthash.png" width="350" alt="Logo">
+</picture>
 
-PTHash is a C++ library implementing fast and compact minimal perfect hash functions as described in the following research papers:
+**PTHash** is a C++ library implementing fast and compact minimal perfect hash functions as described in the following research papers:
 
 - [*PTHash: Revisiting FCH Minimal Perfect Hashing*](https://dl.acm.org/doi/10.1145/3404835.3462849) (SIGIR 2021),
 - [*Parallel and External-Memory Construction of Minimal Perfect Hash Functions with PTHash*](https://ieeexplore.ieee.org/document/10210677) (TKDE 2023),
