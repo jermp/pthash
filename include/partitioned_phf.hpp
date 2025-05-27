@@ -149,10 +149,10 @@ public:
     }
 
     uint64_t num_bits_for_pilots() const {
-        uint64_t bits =
-            8 * (sizeof(m_seed) + sizeof(m_num_keys) + sizeof(uint64_t)  // for std::vector::size
-                 ) +
-            m_partitioner.num_bits();
+        uint64_t bits = 8 * (sizeof(m_seed) + sizeof(m_num_keys) + sizeof(m_table_size) +
+                             sizeof(uint64_t)  // for std::vector::size
+                             ) +
+                        m_partitioner.num_bits();
         for (auto const& p : m_partitions) bits += 8 * sizeof(p.offset) + p.f.num_bits_for_pilots();
         return bits;
     }
