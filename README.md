@@ -12,12 +12,14 @@
 - [*Parallel and External-Memory Construction of Minimal Perfect Hash Functions with PTHash*](https://ieeexplore.ieee.org/document/10210677) (TKDE 2023),
 - [*PHOBIC: Perfect Hashing with Optimized Bucket Sizes and Interleaved Coding*](https://drops.dagstuhl.de/entities/document/10.4230/LIPIcs.ESA.2024.69) (ESA 2024).
 
-**Please, cite these papers if you use PTHash or PHOBIC.**
+**Please, cite these papers if you use PTHash.**
+
+**Rust**: if you use the Rust programming language, we recommend the [PtrHash](https://github.com/RagnarGrootKoerkamp/PtrHash) library.
 
 ### Development note
 
 The description of PTHash in the SIGIR and TKDE papers uses the `c` parameter
-to control the number of buckets used during the search.
+to control the number of buckets for the search phase of the algorithm.
 You can get a version of the library using the `c` parameter [here](https://github.com/jermp/pthash/releases/tag/v2.0.0) (Release v2).
 The current library
 uses instead a parameter called "lambda", as described in the ESA paper.
@@ -58,7 +60,7 @@ Integrating PTHash in your own project is very simple.
 If you use `git`, the easiest way to add PTHash is via `git add submodule` as follows.
 
 	git submodule add https://github.com/jermp/pthash.git
-    git submodule update --recursive --init
+	git submodule update --recursive --init
 
 Then include the following in your `CMakeLists.txt`, which takes care of
 setting up the include paths and compiler flags of PTHash and its dependencies:
@@ -69,7 +71,7 @@ setting up the include paths and compiler flags of PTHash and its dependencies:
 To construct a perfect hash function, include `pthash.hpp` and create an instance of `pthash::single_phf<...>` (PTHash),
 `pthash::partitioned_phf<...>` (PTHash-HEM), or `pthash::dense_partitioned_phf<...>` (PHOBIC).
 For convenience, we also give `pthash::phobic<...>` which includes the configuration options for
-optimized bucket assignment function (OB) and interleaved coding (IC). Refer to `src/example.cpp` for an example.
+optimized bucket assignment function and interleaved coding. Refer to `src/example.cpp` for an example.
 
 Compiling the Benchmark and Example Code
 -----
@@ -100,7 +102,7 @@ For a testing environment, use the following instead:
     cmake .. -D CMAKE_BUILD_TYPE=Debug -D PTHASH_USE_SANITIZERS=On
     make
 
-(NOTE: Beware that the software will result in a much slower execution when running in debug mode and using sanitizers. Use this only for debug purposes, not to run performance tests.)
+**NOTE**: Beware that the software will result in a much slower execution when running in debug mode and using sanitizers. Use this only for debug purposes, not to run performance tests.)
 
 ### Enable Large Bucket-Id Type
 
@@ -116,7 +118,7 @@ Quick Start
 
 For a quick start, see the source file `src/example.cpp`.
 The example shows how to setup a simple build configuration
-for PTHash (parameters, base hasher, search type, and encoder).
+for PTHash (parameters, base hasher, bucketer, and encoder types).
 
 After compilation, run this example with
 
@@ -138,28 +140,29 @@ shows the usage of the driver program. In the following, we illustrate some exam
 
 The command
 
-	./build -n 10000000 -l 4.3 -a 0.99 -r xor -e D-D -b skew -q 3000000 -s 0 -p 2000000 -t 8 --verbose --minimal --check
+	./build -n 10000000 -l 4.3 -a 0.99 -e D-D -b skew -q 3000000 -s 0 -p 2000000 -t 8 --verbose --minimal --check
 
-builds a MPHF over 10M random 64-bit integers, using
+builds a minimal (option `--minimal`) PHF over 10M random 64-bit integers, using
 
-- avg. bucket size of 4.3 (`-l = 4.3`);
+- avg. bucket size, "lambda", of 4.3 (`-l = 4.3`);
 - load factor of 0.99 (`-a 0.99`);
-- xor-type search (`-r xor`);
 - the encoder `D-D` to compress the data structure;
 - the `skew` bucketer type (`-b skew`);
 - seed 0 (`-s 0`);
-- avg. partition size 2,000,000 (`-p 2000000`);
+- avg. partition size 2M (`-p 2000000`);
 - 8 parallel threads (`-t 8`).
 
-Also, it performs 3M queries (`-q 3000000`) to benchmark the speed of lookup queries and check the correctness of the function.
+Also, it performs 3M queries (`-q 3000000`) to benchmark the speed of lookup queries and check the correctness of the function (option `--check`).
 
 ### Example 2
 
 For the following example,
 we are going to use the strings from the UK-2005 URLs collection,
 which can be downloaded by clicking
-[here](http://data.law.di.unimi.it/webdata/uk-2005/uk-2005.urls.gz).
-(This is also one of the datasets used in the paper.)
+[here](http://data.law.di.unimi.it/webdata/uk-2005/uk-2005.urls.gz)
+or typing
+
+	wget http://data.law.di.unimi.it/webdata/uk-2005/uk-2005.urls.gz
 
 The file is ~300 MB compressed using gzip (2.86 GB uncompressed).
 
@@ -174,15 +177,13 @@ The file contains one string per line, for a total of 39,459,925 strings.
 
 The command
 
-	./build -n 39459925 -i ~/Downloads/uk-2005.urls -l 3.5 -a 0.94 -e inter-R -r add -b skew -s 0 -q 3000000 -p 2500 -t 8 --dense --minimal --verbose --check
+	./build -n 39459925 -i uk-2005.urls -l 3.5 -e R-int -b skew -s 0 -q 3000000 -t 8 --dense --minimal --verbose --check
 
 builds a MPHF using the strings of the file as input keys, where
 
-- the function is of type *dense partitioned"* because option `--dense` is specified, with an avg. partition size of 2500 (`-p 2500`);
+- the function is of type *dense partitioned"* because option `--dense` is specified;
 - the avg. number of buckets is set to 3.5 (`-l 3.5`);
-- the load factor is set to 0.94 (`-a 0.94`);
-- the data structure is compressed using interleaved Rice codes (`-e inter-R`);
-- the search algorithm is additive displacement (`-r add`);
+- the data structure is compressed using interleaved Rice codes (`-e R-int`);
 - the type of bucketer used is `skew`;
 - the seed used for the construction is 0 (`-s 0`);
 - the number of threads used for the construction are 8 (`-t 8`);
@@ -192,9 +193,10 @@ builds a MPHF using the strings of the file as input keys, where
 
 The command
 
-	./build -n 39459925 -i ~/Downloads/uk-2005.urls -l 3.5 -a 0.94 -e PC -r add -b skew -s 0 -q 3000000 -p 2500000 -t 8 -m 1 --minimal --verbose --check --external
+	./build -n 39459925 -i uk-2005.urls -l 3.5 -a 0.94 -e PC -b skew -s 0 -q 3000000 -p 2500000 -t 8 -m 1 --minimal --verbose --check --external
 
-builds a MPHF using most of the parameters used in Example 2 but the function is built in external memory (option `--external`) using 1 GB of RAM (option `-m 1`), and with avg. partition size of 2.5M and compressing the data structure with a partitioned compact encoding (`-e PC`).
+builds a MPHF using most of the parameters used in Example 2 but the function is built in external memory (option `--external`) using 1 GB of RAM (option `-m 1`), with avg. partition size of 2.5M,
+and compressing the data structure with a partitioned compact encoding (`-e PC`).
 
 Reading Keys from Standard Input
 -----
@@ -205,14 +207,14 @@ in combination with option `-i -`. This is very useful when building keys from c
 Some examples below.
 
 	for i in $(seq 1 1000000) ; do echo $i ; done > foo.txt
-	cat foo.txt | ./build --minimal -l 3.4 -a 0.94 -e R-R -r add -b skew -n 1000000 -q 0 -m 1 -i - -o foo.mph --verbose --external
+	cat foo.txt | ./build --minimal -l 3.4 -a 0.94 -e R-R -b skew -n 1000000 -q 0 -m 1 -i - -o foo.mph --verbose --external
 
 	gzip foo.txt
-	zcat foo.txt.gz | ./build --minimal -l 3.4 -a 0.94 -e R-R -r add -b skew -n 1000000 -q 0 -m 1 -i - -o foo.mph --verbose --external
+	zcat foo.txt.gz | ./build --minimal -l 3.4 -a 0.94 -e R-R -b skew -n 1000000 -q 0 -m 1 -i - -o foo.mph --verbose --external
 
 	gunzip foo.txt.gz
 	zstd foo.txt
-	zstdcat foo.txt.zst | ./build --minimal -l 3.4 -a 0.94 -e R-R -r add -b skew -n 1000000 -q 0 -m 1 -i - -o foo.mph --verbose --external
+	zstdcat foo.txt.zst | ./build --minimal -l 3.4 -a 0.94 -e R-R -b skew -n 1000000 -q 0 -m 1 -i - -o foo.mph --verbose --external
 
 **Note**: you may need to write `zcat < foo.txt.gz | (...)` on Mac OSX.
 

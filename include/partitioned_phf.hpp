@@ -8,10 +8,7 @@
 
 namespace pthash {
 
-template <typename Hasher,    //
-          typename Bucketer,  //
-          typename Encoder,   //
-          bool Minimal>
+template <typename Hasher, typename Bucketer, typename Encoder, bool Minimal>
 struct partitioned_phf  //
 {
     static_assert(

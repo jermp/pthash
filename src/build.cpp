@@ -104,7 +104,7 @@ void build_benchmark(Builder& builder, build_timings const& timings,
 
     result.add("n", params.num_keys);
     result.add("lambda", config.lambda);
-    result.add("alpha", config.alpha);
+    if (!config.dense_partitioning) result.add("alpha", config.alpha);
     result.add("minimal", config.minimal ? "true" : "false");
     result.add("encoder_type", Function::encoder_type::name().c_str());
     result.add("bucketer_type", params.bucketer_type.c_str());
@@ -391,9 +391,10 @@ void build(cmd_line_parser::parser const& parser, Iterator keys, uint64_t num_ke
     }
 
     config.lambda = parser.get<double>("lambda");
-    config.alpha = parser.get<double>("alpha");
     config.minimal = parser.get<bool>("minimal");
     config.verbose = parser.get<bool>("verbose");
+
+    if (parser.parsed("alpha")) config.alpha = parser.get<double>("alpha");
 
     config.avg_partition_size = 0;
     if (parser.parsed("avg_partition_size")) {
@@ -449,9 +450,6 @@ int main(int argc, char** argv) {
                "A constant that trades construction speed for space effectiveness. "
                "A reasonable value lies between 3.0 and 10.0.",
                "-l", REQUIRED);
-    parser.add("alpha", "The table load factor. It must be a quantity > 0 and <= 1.", "-a",
-               REQUIRED);
-
     parser.add("encoder_type",
                "The encoder type. Possibile values are: "
                "'C', 'C-C', 'D', 'D-D', 'R', 'R-R', 'EF', 'PC' for single and partitioned PHFs; "
@@ -459,7 +457,6 @@ int main(int argc, char** argv) {
                "Specifying 'all' as type will just benchmark all encoders. (Useful for "
                "benchmarking purposes.)",
                "-e", REQUIRED);
-
     parser.add("bucketer_type", "The bucketer type. Possible values are: 'uniform', 'skew', 'opt'.",
                "-b", REQUIRED);
     parser.add("num_queries", "Number of queries for benchmarking or 0 for no benchmarking.", "-q",
@@ -467,6 +464,10 @@ int main(int argc, char** argv) {
 
     /* Optional arguments. */
     constexpr bool OPTIONAL = !REQUIRED;
+    parser.add("alpha",
+               "The table load factor. It must be a quantity > 0 and <= 1 (Defaults is " +
+                   std::to_string(constants::default_alpha) + ").",
+               "-a", OPTIONAL);
     parser.add("avg_partition_size", "Average partition size for HEM.", "-p", OPTIONAL);
     parser.add("seed", "Seed to use for construction.", "-s", OPTIONAL);
     parser.add("num_threads", "Number of threads to use for construction.", "-t", OPTIONAL);
@@ -485,7 +486,7 @@ int main(int argc, char** argv) {
                "-m", OPTIONAL);
 
     constexpr bool BOOLEAN = true;
-    parser.add("minimal", "Build a minimal PHF.", "--minimal", OPTIONAL, BOOLEAN);
+    parser.add("minimal", "Build a minimal PHF (MPHF).", "--minimal", OPTIONAL, BOOLEAN);
     parser.add("dense_partitioning", "Activate dense partitioning.", "--dense", OPTIONAL, BOOLEAN);
     parser.add("external_memory", "Build the function in external memory.", "--external", OPTIONAL,
                BOOLEAN);

@@ -39,7 +39,7 @@ struct build_timings {
 struct build_configuration {
     build_configuration()
         : lambda(4.5)
-        , alpha(1.0)
+        , alpha(constants::default_alpha)
         , avg_partition_size(0)
         , num_buckets(constants::invalid_num_buckets)
         , table_size(constants::invalid_table_size)

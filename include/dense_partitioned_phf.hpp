@@ -4,10 +4,7 @@
 
 namespace pthash {
 
-template <typename Hasher,    //
-          typename Bucketer,  //
-          typename Encoder,   //
-          bool Minimal>
+template <typename Hasher, typename Bucketer, typename Encoder, bool Minimal>
 struct dense_partitioned_phf  //
 {
     static_assert(

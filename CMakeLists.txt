@@ -4,7 +4,8 @@ project(PTHASH)
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release")
 endif ()
-MESSAGE(STATUS "CMAKE_BUILD_TYPE: " ${CMAKE_BUILD_TYPE})
+
+MESSAGE(STATUS "Build type: " ${CMAKE_BUILD_TYPE})
 
 if (NOT TARGET PTHASH)
   add_library(PTHASH INTERFACE)
@@ -15,6 +16,7 @@ if (NOT TARGET PTHASH)
   target_compile_features(PTHASH INTERFACE cxx_std_17)
 
   MESSAGE(STATUS "Compiling for processor: " ${CMAKE_HOST_SYSTEM_PROCESSOR})
+
   if (UNIX AND (CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "x86_64"))
     MESSAGE(STATUS "Compiling with flags: -march=native -mbmi2 -msse4.2")
     target_compile_options(PTHASH INTERFACE -march=native)
@@ -44,6 +46,7 @@ if (NOT TARGET PTHASH)
     target_compile_options(PTHASH INTERFACE -fsanitize=address -fno-omit-frame-pointer)
   endif()
 
+  MESSAGE(STATUS "Configuring the `bits` library:")
   add_subdirectory(external/bits)
   target_link_libraries(PTHASH INTERFACE BITS)
 endif()

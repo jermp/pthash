@@ -10,7 +10,9 @@ int main() {
     static const uint64_t num_keys = 1000000;
     static const uint64_t seed = 1234567890;
     std::cout << "generating input data..." << std::endl;
-    auto keys = distinct_uints<uint64_t>(num_keys, seed);  // distinct_strings(num_keys, seed);
+    auto keys = distinct_uints<uint64_t>(num_keys, seed);
+    // Can also use:
+    // auto keys = distinct_strings(num_keys, seed);
     assert(keys.size() == num_keys);
 
     /* Set up a build configuration. */
@@ -28,7 +30,7 @@ int main() {
     // typedef single_phf<xxhash_128,             // base hasher
     //                    skew_bucketer,          // bucketer type
     //                    dictionary_dictionary,  // encoder type
-    //                    true>                    // minimal
+    //                    true>                   // minimal
     //     pthash_type;
 
     // typedef partitioned_phf<xxhash_128,             // base hasher

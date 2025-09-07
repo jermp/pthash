@@ -63,9 +63,7 @@ struct internal_memory_builder_partitioned_phf {
         }
 
         if (config.dense_partitioning) {
-            if (config.alpha < 1.0 and config.verbose) {
-                std::cout << "alpha defaulting to 1.0 for --dense" << std::endl;
-            }
+            // if (config.verbose) std::cout << "alpha value ignored for --dense" << std::endl;
             m_table_size = constants::table_size_per_partition * num_partitions;
         } else {
             uint64_t cumulative_size = 0;
@@ -88,6 +86,7 @@ struct internal_memory_builder_partitioned_phf {
         partition_config.num_buckets = m_num_buckets_per_partition;
         if (config.dense_partitioning) {
             partition_config.table_size = constants::table_size_per_partition;
+            partition_config.alpha = 1.0;
         }
         if (config.verbose) {
             if (config.dense_partitioning) {
@@ -95,12 +94,21 @@ struct internal_memory_builder_partitioned_phf {
                           << std::endl;
             }
             uint64_t largest_partition_size = 0;
+            uint64_t smallest_partition_size = uint64_t(-1);
             for (auto const& partition : partitions) {
                 if (partition.size() > largest_partition_size) {
                     largest_partition_size = partition.size();
                 }
+                if (partition.size() < smallest_partition_size) {
+                    smallest_partition_size = partition.size();
+                }
             }
-            std::cout << "(largest_partition_size = " << largest_partition_size << ")" << std::endl;
+            std::cout << "smallest_partition_size = " << smallest_partition_size << std::endl;
+            std::cout << "largest_partition_size = " << largest_partition_size << std::endl;
+            std::cout << "load factor of partitions: "
+                      << (smallest_partition_size * 1.0) / partition_config.table_size
+                      << " <= alpha <= "
+                      << (largest_partition_size * 1.0) / partition_config.table_size << std::endl;
             std::cout << "num_buckets_per_partition = " << partition_config.num_buckets
                       << std::endl;
         }
