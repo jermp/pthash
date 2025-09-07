@@ -48,7 +48,7 @@ def run_build(n, base_filename=None):
     start_timestamp = get_iso_timestamp().replace(":", "-")
 
     if base_filename == None:
-        base_filename = start_timestamp
+        base_filename = start_timestamp + ".n=" + str(n)
 
     log_filename = "results." + base_filename + ".log"
     results_filename = "results." + base_filename + ".json"
@@ -69,15 +69,15 @@ def run_build(n, base_filename=None):
                     "-e", "all",
                     "-b", b,
                     "-s", "0",
-                    "-q", str(n),
+                    "-q", str(n/5),
                     "-t", str(num_threads),
                     "--minimal",
-                    "--check",
+                    # "--check",
                     "--verbose",
                     "--cache-input"
                 ]
 
-                run_cmd("SINGLE", cmd, log_file, results_file)
+                # run_cmd("SINGLE", cmd, log_file, results_file)
 
                 avg_partition_size = n / (num_threads * num_partitions_per_thread)
                 run_cmd("PARTITIONED", cmd + ["-p", str(avg_partition_size)], log_file, results_file)
