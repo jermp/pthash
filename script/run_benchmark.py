@@ -27,7 +27,8 @@ num_threads = 8
 num_partitions_per_thread = 4
 
 def run_cmd(type, cmd, log_file, results_file):
-    for run_id in range(1, 4): # Repeat each run 3 times
+    num_runs = 2
+    for run_id in range(1, num_runs+1):
         run_desc = f"{type}: [run={run_id}]"
         print(f"Running: {run_desc}")
         print(f"Command: {' '.join(cmd)}")
@@ -42,7 +43,7 @@ def run_build(n, base_filename=None):
     max_lambda = 10.0
     min_alpha = 0.94
     max_alpha = 0.97
-    lambda_values = np.arange(min_lambda, max_lambda + 0.1, 0.5)
+    lambda_values = np.arange(min_lambda, max_lambda + 0.1, 1.0)
     alpha_values = np.arange(min_alpha, max_alpha + 0.01, 0.03)
     start_timestamp = get_iso_timestamp().replace(":", "-")
 
