@@ -26,9 +26,9 @@ num_threads = 8
 # avg_partition_size is calculated as n / (num_threads * num_partitions_per_thread)
 num_partitions_per_thread = 4
 
-def run_cmd(type, l, a, cmd, log_file, results_file):
+def run_cmd(type, cmd, log_file, results_file):
     for run_id in range(1, 4): # Repeat each run 3 times
-        run_desc = f"{type}: [l={l:.2f}, a={a:.2f}, run={run_id}]"
+        run_desc = f"{type}: [run={run_id}]"
         print(f"Running: {run_desc}")
         print(f"Command: {' '.join(cmd)}")
         result = subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -38,8 +38,12 @@ def run_cmd(type, l, a, cmd, log_file, results_file):
         results_file.write(f"{results}")
 
 def run_build(n, base_filename=None):
-    lambda_values = np.arange(2.0, 5.1, 0.5)
-    alpha_values = np.arange(0.94, 1.001, 0.02)
+    min_lambda = 2.0
+    max_lambda = 10.0
+    min_alpha = 0.94
+    max_alpha = 0.97
+    lambda_values = np.arange(min_lambda, max_lambda + 0.1, 0.5)
+    alpha_values = np.arange(min_alpha, max_alpha + 0.01, 0.03)
     start_timestamp = get_iso_timestamp().replace(":", "-")
 
     if base_filename == None:
@@ -55,6 +59,7 @@ def run_build(n, base_filename=None):
     for l in lambda_values:
         for a in alpha_values:
             for b in ["skew", "opt"]:
+
                 cmd = [
                     "./build",
                     "-n", str(n),
@@ -67,16 +72,17 @@ def run_build(n, base_filename=None):
                     "-t", str(num_threads),
                     "--minimal",
                     "--check",
-                    "--verbose"
+                    "--verbose",
+                    "--cache-input"
                 ]
 
-                run_cmd("SINGLE", l, a, cmd, log_file, results_file)
+                run_cmd("SINGLE", cmd, log_file, results_file)
 
                 avg_partition_size = n / (num_threads * num_partitions_per_thread)
-                run_cmd("PARTITIONED", l, a, cmd + ["-p", str(avg_partition_size)], log_file, results_file)
+                run_cmd("PARTITIONED", cmd + ["-p", str(avg_partition_size)], log_file, results_file)
 
-                if a == 1.0:
-                    run_cmd("DENSE-PARTITIONED", l, a, cmd + ["--dense"], log_file, results_file)
+                if a == max_alpha:
+                    run_cmd("DENSE-PARTITIONED", cmd + ["--dense"], log_file, results_file)
 
     log_file.close()
     results_file.close()

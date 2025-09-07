@@ -492,6 +492,10 @@ int main(int argc, char** argv) {
                BOOLEAN);
     parser.add("verbose", "Verbose output during construction.", "--verbose", OPTIONAL, BOOLEAN);
     parser.add("check", "Check correctness after construction.", "--check", OPTIONAL, BOOLEAN);
+    parser.add("input-cache",
+               "Write the generated input keys to a binary file for later use. (Useful for "
+               "benchmarking purposes.)",
+               "--cache-input", OPTIONAL, BOOLEAN);
 
     if (!parser.parse()) return 1;
 
@@ -541,8 +545,44 @@ int main(int argc, char** argv) {
         const uint64_t random_input_seed =
             mix(parser.parsed("seed") ? parser.get<uint64_t>("seed") : 82935257);
 
+        const std::string input_cache_filename =
+            "pthash.input-cache.n=" + std::to_string(num_keys) + ".bin";
+        std::vector<uint64_t> keys;
+
+        if (parser.get<bool>("input-cache"))  //
+        {
+            auto generate_and_cache = [&]() {
+                keys = distinct_uints<uint64_t>(num_keys, random_input_seed);
+                std::ofstream out(input_cache_filename, std::ofstream::binary);
+                out.write(reinterpret_cast<char const*>(&random_input_seed), sizeof(uint64_t));
+                out.write(reinterpret_cast<char const*>(keys.data()), num_keys * sizeof(uint64_t));
+                out.close();
+                std::cout << "===> written input keys to '" << input_cache_filename << "'"
+                          << std::endl;
+            };
+
+            std::ifstream input(input_cache_filename, std::ifstream::binary);
+            if (input.good()) {
+                uint64_t seed = 0;
+                input.read(reinterpret_cast<char*>(&seed), sizeof(uint64_t));
+                if (seed == random_input_seed) {
+                    keys.resize(num_keys);
+                    input.read(reinterpret_cast<char*>(keys.data()), num_keys * sizeof(uint64_t));
+                    std::cout << "===> read input keys from '" << input_cache_filename << "'"
+                              << std::endl;
+                } else {
+                    generate_and_cache();
+                }
+                input.close();
+            } else {
+                generate_and_cache();
+            }
+        } else {
+            keys = distinct_uints<uint64_t>(num_keys, random_input_seed);
+        }
+
         // build(parser, distinct_strings(num_keys, random_input_seed).begin(), num_keys);
-        build(parser, distinct_uints<uint64_t>(num_keys, random_input_seed).begin(), num_keys);
+        build(parser, keys.begin(), num_keys);
     }
 
     return 0;
