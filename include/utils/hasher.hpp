@@ -83,17 +83,12 @@ private:
     uint64_t m_first, m_second;
 };
 
-struct byte_range {
-    uint8_t const* begin;
-    uint8_t const* end;
-};
-
 struct xxhash_64 {
     typedef hash64 hash_type;
 
     // generic range of bytes
-    static inline hash64 hash(byte_range const& range, uint64_t seed) {
-        return XXH64(range.begin, range.end - range.begin, seed);
+    static inline hash64 hash(uint8_t const* begin, uint8_t const* end, uint64_t seed) {
+        return XXH64(begin, end - begin, seed);
     }
 
     // specialization for std::string
@@ -111,8 +106,8 @@ struct xxhash_128 {
     typedef hash128 hash_type;
 
     // generic range of bytes
-    static inline hash128 hash(byte_range const& range, uint64_t seed) {
-        return XXH128(range.begin, range.end - range.begin, seed);
+    static inline hash128 hash(uint8_t const* begin, uint8_t const* end, uint64_t seed) {
+        return XXH128(begin, end - begin, seed);
     }
 
     // specialization for std::string
