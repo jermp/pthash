@@ -64,3 +64,13 @@ Overall, the DENSE-PARTITIONED representation with the `C-int` encoder and optim
 Result:
 
     {"n": "100000000", "lambda": "7.000000", "minimal": "true", "encoder_type": "C-int", "bucketer_type": "opt", "avg_partition_size": "3818", "num_partitions": "26192", "dense_partitioning": "true", "seed": "0", "num_threads": "8", "external_memory": "false", "partitioning_microseconds": "611533", "mapping_ordering_microseconds": "759244", "searching_microseconds": "6847463", "encoding_microseconds": "93348", "total_microseconds": "8311588", "pt_bits_per_key": "2.051930", "mapper_bits_per_key": "0.457273", "bits_per_key": "2.509203", "nanosec_per_key": "33.461714"}
+
+We also point out that a similarly-tuned PARTITIONED representation
+
+    ./build -n 100000000 -a 0.94 -l 7 -b opt -e C-C -t 8 -q 10000000 -s 0 -p 3000000 --minimal --cache-input --verbose
+
+can match the above performance:
+
+    {"n": "100000000", "lambda": "7.000000", "alpha": "0.940000", "minimal": "true", "encoder_type": "C-C", "bucketer_type": "opt", "avg_partition_size": "3000000", "num_partitions": "34", "dense_partitioning": "false", "seed": "0", "num_threads": "8", "external_memory": "false", "partitioning_microseconds": "714110", "mapping_ordering_microseconds": "1385032", "searching_microseconds": "8104853", "encoding_microseconds": "26408", "total_microseconds": "10230403", "pt_bits_per_key": "2.083187", "mapper_bits_per_key": "0.416630", "bits_per_key": "2.499817", "nanosec_per_key": "33.747594"}
+
+but needs more parameter tuning ($\alpha$ and avg. partition size, in this example fixed to 3M).

@@ -105,10 +105,13 @@ struct internal_memory_builder_partitioned_phf {
             }
             std::cout << "smallest_partition_size = " << smallest_partition_size << std::endl;
             std::cout << "largest_partition_size = " << largest_partition_size << std::endl;
-            std::cout << "load factor of partitions: "
-                      << (smallest_partition_size * 1.0) / partition_config.table_size
-                      << " <= alpha <= "
-                      << (largest_partition_size * 1.0) / partition_config.table_size << std::endl;
+            if (config.dense_partitioning) {
+                std::cout << "load factor of partitions: "
+                          << (smallest_partition_size * 1.0) / partition_config.table_size
+                          << " <= alpha <= "
+                          << (largest_partition_size * 1.0) / partition_config.table_size
+                          << std::endl;
+            }
             std::cout << "num_buckets_per_partition = " << partition_config.num_buckets
                       << std::endl;
         }
