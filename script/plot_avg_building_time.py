@@ -11,7 +11,7 @@ import sys
 def format_ticks(x, pos):
     return f'{x:.2f}'
 
-def main(json_file, pdf_filename, bucketer, alpha=None):
+def main(json_file, pdf_filename, bucketer):
     # Load the data from the provided JSON file
     with open(json_file, 'r') as f:
         records = [json.loads(line) for line in f]  # Read each line as a separate JSON object
@@ -22,7 +22,12 @@ def main(json_file, pdf_filename, bucketer, alpha=None):
     # Convert relevant columns to numeric types
     df['total_microseconds'] = pd.to_numeric(df['total_microseconds'])
     df['lambda'] = pd.to_numeric(df['lambda'])
-    df['alpha'] = pd.to_numeric(df['alpha'])
+
+    unique_alpha_value_for_dense_partitioning = -1.0
+    df['alpha'] = df.apply(
+        lambda row: pd.to_numeric(row['alpha']) if row['dense_partitioning'] == "false" else unique_alpha_value_for_dense_partitioning,
+        axis=1
+    )
 
     min_y = min(df['total_microseconds']) / 1_000_000
     max_y = max(df['total_microseconds']) / 1_000_000
@@ -30,8 +35,8 @@ def main(json_file, pdf_filename, bucketer, alpha=None):
     # Define configurations for filtering
     configurations = [
 
-        ((df['avg_partition_size'] == "0") & (df['num_partitions'] == "0") & (df['dense_partitioning'] == "false") & (df['bucketer_type'] == bucketer)
-                , "SINGLE"),
+        # ((df['avg_partition_size'] == "0") & (df['num_partitions'] == "0") & (df['dense_partitioning'] == "false") & (df['bucketer_type'] == bucketer)
+        #         , "SINGLE"),
 
         ((df['avg_partition_size'] != "0") & (df['num_partitions'] != "0") & (df['dense_partitioning'] == "false") & (df['bucketer_type'] == bucketer)
                 , "PARTITIONED"),
@@ -69,9 +74,9 @@ def main(json_file, pdf_filename, bucketer, alpha=None):
     with PdfPages(pdf_filename) as pdf:
         # Create a single row of subplots
 
-        fig = plt.figure(figsize=(20, 8))
-        gs = gridspec.GridSpec(1, 4, width_ratios=[3, 3, 3, 1])
-        axs = [fig.add_subplot(gs[i]) for i in range(3)]
+        fig = plt.figure(figsize=(12, 6))
+        gs = gridspec.GridSpec(1, 3, width_ratios=[3, 3, 0.7])
+        axs = [fig.add_subplot(gs[i]) for i in range(2)]
 
         i = 0
         for (grouped_avg, _) in grouped_data:
@@ -80,24 +85,23 @@ def main(json_file, pdf_filename, bucketer, alpha=None):
                     alpha_color_map[alpha_value] = i
                     i += 1
 
-        colors = plt.get_cmap('tab20', len(alpha_color_map))  # Use 'tab20'
+        colors = plt.get_cmap('tab20', len(alpha_color_map))
 
         for ax, (grouped_avg, title) in zip(axs, grouped_data):
             # Scatter plot for each unique alpha value
             for alpha_value in sorted(grouped_avg['alpha'].unique(), reverse=True):
 
-                if alpha == None or alpha_value == alpha: # filter on specific alpha
+                color_alpha = colors(alpha_color_map[alpha_value])
+                subset = grouped_avg[grouped_avg['alpha'] == alpha_value]
 
-                    color_alpha = colors(alpha_color_map[alpha_value])
-                    subset = grouped_avg[grouped_avg['alpha'] == alpha_value]
-
+                if alpha_value != unique_alpha_value_for_dense_partitioning:
                     label = rf'$\alpha$ = {float(alpha_value):.2f}'
                     if not any(label in l.get_label() for l in alpha_handles):
                         alpha_handles.append(ax.plot([], [], label=label, color=color_alpha)[0])
 
-                    ax.plot(subset['lambda'], subset['total_seconds'],
-                            marker='o', # marker_symbols[i],
-                            markersize=6, color=color_alpha)
+                ax.plot(subset['lambda'], subset['total_seconds'],
+                        marker='o', # marker_symbols[i],
+                        markersize=6, color=color_alpha)
 
             # Set plot labels and title with LaTeX formatting
             ax.set_xlabel(r'$\lambda$', fontsize=14)
@@ -136,10 +140,9 @@ if __name__ == "__main__":
     parser.add_argument('-i', '--input_json_filename', required=True, type=str, help='Path to the input JSON file.')
     parser.add_argument('-o', '--output_pdf_filename', required=True, type=str, help='Path for the output PDF file.')
     parser.add_argument('-b', '--bucketer', required=True, type=str, help='Bucketer type: values are "skew" or "opt".')
-    parser.add_argument('-a', '--alpha', required=False, type=float, help='Value of alpha (a float).')
 
     # Parse the arguments
     args = parser.parse_args()
 
     # Call the main function with parsed arguments
-    main(args.input_json_filename, args.output_pdf_filename, args.bucketer, args.alpha)
+    main(args.input_json_filename, args.output_pdf_filename, args.bucketer)
