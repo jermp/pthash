@@ -41,11 +41,6 @@ struct external_memory_builder_single_phf {
 
         build_timings time;
         uint64_t table_size = static_cast<double>(num_keys) / config.alpha;
-        if (config.search == pthash_search_type::xor_displacement and
-            (table_size & (table_size - 1)) == 0)  //
-        {
-            table_size += 1;
-        }
         const uint64_t num_buckets = (config.num_buckets == constants::invalid_num_buckets)
                                          ? compute_num_buckets(num_keys, config.lambda)
                                          : config.num_buckets;
@@ -55,7 +50,7 @@ struct external_memory_builder_single_phf {
             throw std::runtime_error(
                 "using too many buckets: recompile the library with 'cmake .. "
                 "-D PTHASH_ENABLE_LARGE_BUCKET_ID_TYPE=On' to change bucket_id_type to uint64_t or "
-                "use a smaller c");
+                "use a smaller lambda");
         }
 #endif
 
@@ -63,7 +58,7 @@ struct external_memory_builder_single_phf {
         m_table_size = table_size;
         m_num_buckets = num_buckets;
         m_seed = config.seed == constants::invalid_seed ? random_value() : config.seed;
-        m_bucketer.init(num_buckets, config.lambda, table_size, config.alpha);
+        m_bucketer.init(num_buckets);
 
         uint64_t ram = config.ram;
         uint64_t bitmap_taken_bytes = 8 * ((table_size + 63) / 64);
@@ -147,8 +142,8 @@ struct external_memory_builder_single_phf {
                 auto pilots =
                     tfm.get_multifile_pairs_writer(num_non_empty_buckets, ram_for_pilots, 1, 0);
 
-                search(m_num_keys, m_num_buckets, num_non_empty_buckets, m_seed, config,
-                       buckets_iterator, taken_bvb, pilots);
+                search(m_num_keys, m_num_buckets, num_non_empty_buckets,  //
+                       config, buckets_iterator, taken_bvb, pilots);
 
                 pilots.flush();
                 buckets_iterator.close();
@@ -204,6 +199,14 @@ struct external_memory_builder_single_phf {
         return m_table_size;
     }
 
+    uint64_t num_partitions() const {
+        return 0;
+    }
+
+    uint64_t avg_partition_size() const {
+        return 0;
+    }
+
     Bucketer bucketer() const {
         return m_bucketer;
     }
@@ -221,7 +224,9 @@ private:
     uint64_t m_num_keys;
     uint64_t m_table_size;
     uint64_t m_num_buckets;
+
     Bucketer m_bucketer;
+
     std::string m_pilots_filename;
     std::string m_free_slots_filename;
 
@@ -487,8 +492,7 @@ private:
     private:
         inline void emplace_back_and_fill(bucket_id_type bucket_id, uint64_t pilot) {
             assert(m_next_bucket_id <= bucket_id);
-
-            while (m_next_bucket_id++ < bucket_id) { m_buffer.emplace_back(0); }
+            while (m_next_bucket_id++ < bucket_id) m_buffer.emplace_back(0);
             m_buffer.emplace_back(pilot);
         }
 

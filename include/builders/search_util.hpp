@@ -1,8 +1,19 @@
 #pragma once
 
+#include <array>
+#include <sstream>  // for std::stringbuf
+#include <iomanip>  // for std::setprecision
+
 namespace pthash {
 
 constexpr uint64_t search_cache_size = 1000;
+
+template <size_t... Indices>
+constexpr std::array<uint64_t, sizeof...(Indices)> create_cache(std::index_sequence<Indices...>) {
+    return {mix(Indices)...};
+}
+
+constexpr auto hashed_pilots_cache = create_cache(std::make_index_sequence<search_cache_size>{});
 
 struct search_logger {
     search_logger(uint64_t num_keys, uint64_t num_buckets)
@@ -40,15 +51,15 @@ private:
     uint64_t m_bucket;
     uint64_t m_placed_keys;
 
-    essentials::timer<std::chrono::high_resolution_clock, std::chrono::seconds> m_timer;
+    essentials::timer<std::chrono::high_resolution_clock, std::chrono::milliseconds> m_timer;
 
     void print(uint64_t bucket) {
         m_timer.stop();
         std::stringbuf buffer;
         std::ostream os(&buffer);
-        os << m_step << " buckets done in " << m_timer.elapsed() << " seconds ("
-           << (m_placed_keys * 100.0) / m_num_keys << "% of keys, "
-           << (bucket * 100.0) / m_num_buckets << "% of buckets)";
+        os << m_step << " buckets done in " << std::fixed << std::setprecision(2)
+           << m_timer.elapsed() / 1000 << " seconds (" << (m_placed_keys * 100.0) / m_num_keys
+           << "% of keys, " << (bucket * 100.0) / m_num_buckets << "% of buckets)";
         essentials::logger(buffer.str());
         m_bucket = bucket;
         m_timer.reset();

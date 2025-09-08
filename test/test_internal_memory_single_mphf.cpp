@@ -6,10 +6,7 @@ using bucketer_type = skew_bucketer;
 template <typename Encoder, typename Builder, typename Iterator>
 void test_encoder(Builder const& builder, build_configuration const& config, Iterator keys,
                   uint64_t num_keys) {
-    single_phf<typename Builder::hasher_type, bucketer_type, Encoder,
-               true,  // minimal
-               pthash_search_type::add_displacement>
-        f;
+    single_phf<typename Builder::hasher_type, bucketer_type, Encoder, true> f;
     f.build(builder, config);
     testing::require_equal(f.num_keys(), num_keys);
     check(keys, f);
@@ -19,11 +16,10 @@ template <typename Iterator>
 void test_internal_memory_single_mphf(Iterator keys, uint64_t num_keys) {
     std::cout << "testing on " << num_keys << " keys..." << std::endl;
 
-    internal_memory_builder_single_phf<murmurhash2_64, bucketer_type> builder_64;
-    internal_memory_builder_single_phf<murmurhash2_128, bucketer_type> builder_128;
+    internal_memory_builder_single_phf<xxhash_64, bucketer_type> builder_64;
+    internal_memory_builder_single_phf<xxhash_128, bucketer_type> builder_128;
 
     build_configuration config;
-    config.search = pthash_search_type::add_displacement;
     config.minimal = true;
     config.verbose = false;
     config.seed = random_value();
@@ -36,28 +32,24 @@ void test_internal_memory_single_mphf(Iterator keys, uint64_t num_keys) {
             config.alpha = alpha;
 
             builder_64.build_from_keys(keys, num_keys, config);
+            test_encoder<compact>(builder_64, config, keys, num_keys);                // C
+            test_encoder<compact_compact>(builder_64, config, keys, num_keys);        // C-C
+            test_encoder<partitioned_compact>(builder_64, config, keys, num_keys);    // PC
             test_encoder<rice>(builder_64, config, keys, num_keys);                   // R
             test_encoder<rice_rice>(builder_64, config, keys, num_keys);              // R-R
-            test_encoder<compact>(builder_64, config, keys, num_keys);                // C
-            test_encoder<partitioned_compact>(builder_64, config, keys, num_keys);    // PC
-            test_encoder<compact_compact>(builder_64, config, keys, num_keys);        // C-C
             test_encoder<dictionary>(builder_64, config, keys, num_keys);             // D
             test_encoder<dictionary_dictionary>(builder_64, config, keys, num_keys);  // D-D
             test_encoder<elias_fano>(builder_64, config, keys, num_keys);             // EF
-            test_encoder<dictionary_elias_fano>(builder_64, config, keys, num_keys);  // D-EF
-            test_encoder<sdc>(builder_64, config, keys, num_keys);                    // SDC
 
             builder_128.build_from_keys(keys, num_keys, config);
-            test_encoder<rice>(builder_128, config, keys, num_keys);
-            test_encoder<rice_rice>(builder_128, config, keys, num_keys);
-            test_encoder<compact>(builder_128, config, keys, num_keys);
-            test_encoder<partitioned_compact>(builder_128, config, keys, num_keys);
-            test_encoder<compact_compact>(builder_128, config, keys, num_keys);
-            test_encoder<dictionary>(builder_128, config, keys, num_keys);
-            test_encoder<dictionary_dictionary>(builder_128, config, keys, num_keys);
-            test_encoder<elias_fano>(builder_128, config, keys, num_keys);
-            test_encoder<dictionary_elias_fano>(builder_128, config, keys, num_keys);
-            test_encoder<sdc>(builder_128, config, keys, num_keys);
+            test_encoder<compact>(builder_128, config, keys, num_keys);                // C
+            test_encoder<compact_compact>(builder_128, config, keys, num_keys);        // C-C
+            test_encoder<partitioned_compact>(builder_128, config, keys, num_keys);    // PC
+            test_encoder<rice>(builder_128, config, keys, num_keys);                   // R
+            test_encoder<rice_rice>(builder_128, config, keys, num_keys);              // R-R
+            test_encoder<dictionary>(builder_128, config, keys, num_keys);             // D
+            test_encoder<dictionary_dictionary>(builder_128, config, keys, num_keys);  // D-D
+            test_encoder<elias_fano>(builder_128, config, keys, num_keys);             // EF
         }
     }
 }

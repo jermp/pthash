@@ -4,27 +4,28 @@ project(PTHASH)
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release")
 endif ()
-MESSAGE(STATUS "CMAKE_BUILD_TYPE: " ${CMAKE_BUILD_TYPE})
 
-if(NOT TARGET PTHASH)
+MESSAGE(STATUS "Build type: " ${CMAKE_BUILD_TYPE})
+
+if (NOT TARGET PTHASH)
   add_library(PTHASH INTERFACE)
   target_include_directories(PTHASH INTERFACE include)
-  target_include_directories(PTHASH SYSTEM INTERFACE external/fastmod)
   target_include_directories(PTHASH SYSTEM INTERFACE external/mm_file/include)
   target_include_directories(PTHASH SYSTEM INTERFACE external/xxHash)
 
   target_compile_features(PTHASH INTERFACE cxx_std_17)
 
   MESSAGE(STATUS "Compiling for processor: " ${CMAKE_HOST_SYSTEM_PROCESSOR})
+
   if (UNIX AND (CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "x86_64"))
     MESSAGE(STATUS "Compiling with flags: -march=native -mbmi2 -msse4.2")
     target_compile_options(PTHASH INTERFACE -march=native)
     target_compile_options(PTHASH INTERFACE -mbmi2 -msse4.2) # for hardware popcount and pdep
   endif()
 
-  if (PTHASH_ENABLE_ALL_ENCODERS)
-    MESSAGE(STATUS "compiling with all encoders")
-    target_compile_options(PTHASH INTERFACE -DPTHASH_ENABLE_ALL_ENCODERS)
+  if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+  MESSAGE(STATUS "Compiling with flags: -O0")
+    target_compile_options(PTHASH INTERFACE -O0)
   endif()
 
   if (PTHASH_ENABLE_LARGE_BUCKET_ID_TYPE)
@@ -40,13 +41,14 @@ if(NOT TARGET PTHASH)
     target_compile_options(PTHASH INTERFACE -fsanitize=address -fno-omit-frame-pointer)
   endif()
 
+  MESSAGE(STATUS "Configuring the `bits` library:")
   add_subdirectory(external/bits)
   target_link_libraries(PTHASH INTERFACE BITS)
 endif()
 
 # Only add benchmarks and tests when compiling PTHash itself, not when added as a dependency
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
-  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
   target_compile_options(PTHASH INTERFACE -Werror -Wall -Wextra -Wno-missing-braces -Wno-unknown-attributes -Wno-unused-function -ggdb)
   add_subdirectory(external/cmd_line_parser)
 

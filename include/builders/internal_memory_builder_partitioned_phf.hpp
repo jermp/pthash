@@ -17,15 +17,18 @@ struct internal_memory_builder_partitioned_phf {
         assert(num_keys > 0);
         util::check_hash_collision_probability<Hasher>(num_keys);
 
-        const uint64_t avg_partition_size = compute_avg_partition_size(num_keys, config);
+        const uint64_t avg_partition_size = config.dense_partitioning
+                                                ? find_avg_partition_size(num_keys)
+                                                : compute_avg_partition_size(num_keys, config);
+        m_avg_partition_size = avg_partition_size;
         const uint64_t num_partitions = compute_num_partitions(num_keys, avg_partition_size);
         assert(num_partitions > 0);
 
         auto start = clock_type::now();
 
         if (config.verbose) {
-            std::cout << "num_partitions " << num_partitions << std::endl;
-            std::cout << "avg_partition_size " << avg_partition_size << std::endl;
+            std::cout << "num_partitions = " << num_partitions << std::endl;
+            std::cout << "avg_partition_size = " << avg_partition_size << std::endl;
         }
 
         build_timings timings;
@@ -40,11 +43,14 @@ struct internal_memory_builder_partitioned_phf {
         m_num_buckets_per_partition = compute_num_buckets(avg_partition_size, config.lambda);
 
         std::vector<std::vector<typename hasher_type::hash_type>> partitions(num_partitions);
-        for (auto& partition : partitions) partition.reserve(1.1 * avg_partition_size);
+        {
+            const uint64_t p = max_partition_size_estimate(avg_partition_size, num_partitions);
+            if (config.verbose) std::cout << "largest_partition_size_estimate " << p << std::endl;
+            for (auto& partition : partitions) partition.reserve(p);
+        }
 
         if constexpr (std::is_same_v<typename Iterator::iterator_category,
-                                     std::random_access_iterator_tag>)  //
-        {
+                                     std::random_access_iterator_tag>) {
             parallel_hash_and_partition(keys, partitions, num_keys, config.num_threads, m_seed,
                                         num_partitions, m_bucketer);
         } else {
@@ -56,28 +62,56 @@ struct internal_memory_builder_partitioned_phf {
             }
         }
 
-        uint64_t cumulative_size = 0;
-        for (uint64_t i = 0; i != num_partitions; ++i) {
-            auto const& partition = partitions[i];
-            uint64_t table_size = static_cast<double>(partition.size()) / config.alpha;
-            if (config.search == pthash_search_type::xor_displacement &&
-                ((table_size & (table_size - 1)) == 0)) {
-                table_size += 1;
+        if (config.dense_partitioning) {
+            // if (config.verbose) std::cout << "alpha value ignored for --dense" << std::endl;
+            m_table_size = constants::table_size_per_partition * num_partitions;
+        } else {
+            uint64_t cumulative_size = 0;
+            for (uint64_t i = 0; i != num_partitions; ++i) {
+                auto const& partition = partitions[i];
+                uint64_t table_size = static_cast<double>(partition.size()) / config.alpha;
+                m_table_size += table_size;
+                m_offsets[i] = cumulative_size;
+                if (config.dense_partitioning) {
+                    cumulative_size += table_size;
+                } else {
+                    cumulative_size += config.minimal ? partition.size() : table_size;
+                }
             }
-            m_table_size += table_size;
-            m_offsets[i] = cumulative_size;
-            if (config.dense_partitioning) {
-                cumulative_size += table_size;
-            } else {
-                cumulative_size += config.minimal ? partition.size() : table_size;
-            }
+            m_offsets[num_partitions] = cumulative_size;
         }
-        m_offsets[num_partitions] = cumulative_size;
 
         auto partition_config = config;
         partition_config.seed = m_seed;
         partition_config.num_buckets = m_num_buckets_per_partition;
+        if (config.dense_partitioning) {
+            partition_config.table_size = constants::table_size_per_partition;
+            partition_config.alpha = 1.0;
+        }
         if (config.verbose) {
+            if (config.dense_partitioning) {
+                std::cout << "table_size_per_partition = " << partition_config.table_size
+                          << std::endl;
+            }
+            uint64_t largest_partition_size = 0;
+            uint64_t smallest_partition_size = uint64_t(-1);
+            for (auto const& partition : partitions) {
+                if (partition.size() > largest_partition_size) {
+                    largest_partition_size = partition.size();
+                }
+                if (partition.size() < smallest_partition_size) {
+                    smallest_partition_size = partition.size();
+                }
+            }
+            std::cout << "smallest_partition_size = " << smallest_partition_size << std::endl;
+            std::cout << "largest_partition_size = " << largest_partition_size << std::endl;
+            if (config.dense_partitioning) {
+                std::cout << "load factor of partitions: "
+                          << (smallest_partition_size * 1.0) / partition_config.table_size
+                          << " <= alpha <= "
+                          << (largest_partition_size * 1.0) / partition_config.table_size
+                          << std::endl;
+            }
             std::cout << "num_buckets_per_partition = " << partition_config.num_buckets
                       << std::endl;
         }
@@ -90,6 +124,11 @@ struct internal_memory_builder_partitioned_phf {
                                   config.num_threads, num_partitions);
         timings.mapping_ordering_microseconds = t.mapping_ordering_microseconds;
         timings.searching_microseconds = t.searching_microseconds;
+
+        // for each partition, compute the empirical entropy of the pilots
+        // for (auto const& b : m_builders) {
+        //     std::cout << compute_empirical_entropy(b.pilots()) << std::endl;
+        // }
 
         if (config.minimal) {
             auto start = clock_type::now();
@@ -232,6 +271,10 @@ struct internal_memory_builder_partitioned_phf {
         return m_num_partitions;
     }
 
+    uint64_t avg_partition_size() const {
+        return m_avg_partition_size;
+    }
+
     uint64_t num_buckets_per_partition() const {
         return m_num_buckets_per_partition;
     }
@@ -331,7 +374,6 @@ struct internal_memory_builder_partitioned_phf {
                     m_curr_offset += m_taken->m_builders[m_curr_partition].taken().num_bits();
                     m_curr_partition += 1;
                 }
-                assert(m_curr_partition < m_taken->m_builders.size());
             }
 
             bool operator*() {
@@ -383,8 +425,11 @@ private:
     uint64_t m_num_keys;
     uint64_t m_table_size;
     uint64_t m_num_partitions;
+    uint64_t m_avg_partition_size;
     uint64_t m_num_buckets_per_partition;
+
     range_bucketer m_bucketer;
+
     std::vector<uint64_t> m_offsets;
     std::vector<uint64_t> m_free_slots;  // for dense partitioning
     std::vector<internal_memory_builder_single_phf<hasher_type, bucketer_type>> m_builders;

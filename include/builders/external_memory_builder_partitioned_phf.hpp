@@ -21,6 +21,7 @@ struct external_memory_builder_partitioned_phf {
         util::check_hash_collision_probability<Hasher>(num_keys);
 
         const uint64_t avg_partition_size = compute_avg_partition_size(num_keys, config);
+        m_avg_partition_size = avg_partition_size;
         const uint64_t num_partitions = compute_num_partitions(num_keys, avg_partition_size);
         if (num_partitions == 0) throw std::invalid_argument("number of partitions must be > 0");
 
@@ -74,11 +75,8 @@ struct external_memory_builder_partitioned_phf {
         bool failure = false;
         for (uint64_t i = 0, cumulative_size = 0; i != num_partitions; ++i) {
             auto const& partition = partitions[i];
-
             uint64_t table_size = static_cast<double>(partition.size()) / config.alpha;
-            if ((table_size & (table_size - 1)) == 0) table_size += 1;
             m_table_size += table_size;
-
             if (partition.size() < 1) {
                 failure = true;
                 break;
@@ -203,6 +201,10 @@ struct external_memory_builder_partitioned_phf {
         return m_num_partitions;
     }
 
+    uint64_t avg_partition_size() const {
+        return m_avg_partition_size;
+    }
+
     range_bucketer bucketer() const {
         return m_bucketer;
     }
@@ -271,6 +273,8 @@ private:
     uint64_t m_num_keys;
     uint64_t m_table_size;
     uint64_t m_num_partitions;
+    uint64_t m_avg_partition_size;
+
     range_bucketer m_bucketer;
     std::vector<uint64_t> m_offsets;
     builders_files_manager<internal_memory_builder_single_phf<hasher_type, Bucketer>> m_builders;

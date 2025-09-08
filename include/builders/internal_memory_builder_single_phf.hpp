@@ -62,11 +62,9 @@ struct internal_memory_builder_single_phf {
         build_timings time;
 
         uint64_t table_size = static_cast<double>(num_keys) / config.alpha;
-        if (config.search == pthash_search_type::xor_displacement and
-            (table_size & (table_size - 1)) == 0)  //
-        {
-            table_size += 1;
-        }
+        if (config.table_size != constants::invalid_table_size) table_size = config.table_size;
+        assert(table_size >= num_keys);
+
         const uint64_t num_buckets = (config.num_buckets == constants::invalid_num_buckets)
                                          ? compute_num_buckets(num_keys, config.lambda)
                                          : config.num_buckets;
@@ -75,10 +73,7 @@ struct internal_memory_builder_single_phf {
         m_num_keys = num_keys;
         m_table_size = table_size;
         m_num_buckets = num_buckets;
-        m_bucketer.init(m_num_buckets, config.lambda,
-                        // why not  table_size here??
-                        static_cast<double>(m_num_buckets) * config.lambda / config.alpha,
-                        config.alpha);
+        m_bucketer.init(m_num_buckets);
 
         if (config.verbose) {
             std::cout << "lambda (avg. bucket size) = " << config.lambda << std::endl;
@@ -122,8 +117,8 @@ struct internal_memory_builder_single_phf {
             bits::bit_vector::builder taken_bvb(m_table_size);
             uint64_t num_non_empty_buckets = buckets.num_buckets();
             pilots_wrapper_t pilots_wrapper(m_pilots);
-            search(m_num_keys, m_num_buckets, num_non_empty_buckets, m_seed, config,
-                   buckets_iterator, taken_bvb, pilots_wrapper);
+            search(m_num_keys, m_num_buckets, num_non_empty_buckets,  //
+                   config, buckets_iterator, taken_bvb, pilots_wrapper);
             taken_bvb.build(m_taken);
             if (config.minimal) {
                 m_free_slots.clear();
@@ -155,6 +150,14 @@ struct internal_memory_builder_single_phf {
 
     uint64_t table_size() const {
         return m_table_size;
+    }
+
+    uint64_t num_partitions() const {
+        return 0;
+    }
+
+    uint64_t avg_partition_size() const {
+        return 0;
     }
 
     Bucketer bucketer() const {
@@ -196,11 +199,6 @@ struct internal_memory_builder_single_phf {
     static uint64_t estimate_num_bytes_for_construction(const uint64_t num_keys,
                                                         build_configuration const& config) {
         uint64_t table_size = static_cast<double>(num_keys) / config.alpha;
-        if (config.search == pthash_search_type::xor_displacement and
-            (table_size & (table_size - 1)) == 0)  //
-        {
-            table_size += 1;
-        }
         const uint64_t num_buckets = (config.num_buckets == constants::invalid_num_buckets)
                                          ? compute_num_buckets(num_keys, config.lambda)
                                          : config.num_buckets;
@@ -234,7 +232,9 @@ private:
     uint64_t m_num_keys;
     uint64_t m_num_buckets;
     uint64_t m_table_size;
+
     Bucketer m_bucketer;
+
     bits::bit_vector m_taken;
     std::vector<uint64_t> m_pilots;
     std::vector<uint64_t> m_free_slots;
@@ -302,9 +302,10 @@ private:
         buckets_t() : m_buffers(MAX_BUCKET_SIZE), m_num_buckets(0) {}
 
         template <typename HashIterator>
-        void add(bucket_id_type bucket_id, bucket_size_type bucket_size, HashIterator hashes) {
+        void add(bucket_id_type bucket_id, uint64_t bucket_size, HashIterator hashes) {
             assert(bucket_size > 0);
             uint64_t i = bucket_size - 1;
+            assert(i < MAX_BUCKET_SIZE);
             m_buffers[i].push_back(bucket_id);
             for (uint64_t k = 0; k != bucket_size; ++k, ++hashes) m_buffers[i].push_back(*hashes);
             ++m_num_buckets;
@@ -347,8 +348,7 @@ private:
 
     template <typename RandomAccessIterator>
     void map_sequential(RandomAccessIterator hashes, uint64_t num_keys,
-                        std::vector<pairs_t>& pairs_blocks,
-                        build_configuration const& config) const {
+                        std::vector<pairs_t>& pairs_blocks) const {
         pairs_t pairs(num_keys);
         RandomAccessIterator begin = hashes;
         for (uint64_t i = 0; i != num_keys; ++i, ++begin) {
@@ -356,11 +356,7 @@ private:
             auto bucket_id = m_bucketer.bucket(hash.first());
             pairs[i] = {static_cast<bucket_id_type>(bucket_id), hash.second()};
         }
-        std::sort(pairs.begin(), pairs.end(), [&](auto const& x, auto const& y) {
-            return (config.secondary_sort ? x.bucket_id > y.bucket_id
-                                          : x.bucket_id < y.bucket_id) or
-                   (x.bucket_id == y.bucket_id and x.payload < y.payload);
-        });
+        std::sort(pairs.begin(), pairs.end());
         pairs_blocks.resize(1);
         pairs_blocks.front().swap(pairs);
     }
@@ -378,17 +374,12 @@ private:
                                           ? num_keys_per_thread
                                           : (num_keys - tid * num_keys_per_thread);
             local_pairs.resize(local_num_keys);
-
             for (uint64_t local_i = 0; local_i != local_num_keys; ++local_i, ++begin) {
                 auto hash = *begin;
                 auto bucket_id = m_bucketer.bucket(hash.first());
                 local_pairs[local_i] = {static_cast<bucket_id_type>(bucket_id), hash.second()};
             }
-            std::sort(local_pairs.begin(), local_pairs.end(), [&](auto const& x, auto const& y) {
-                return (config.secondary_sort ? x.bucket_id > y.bucket_id
-                                              : x.bucket_id < y.bucket_id) or
-                       (x.bucket_id == y.bucket_id and x.payload < y.payload);
-            });
+            std::sort(local_pairs.begin(), local_pairs.end());
         };
 
         std::vector<std::thread> threads(config.num_threads);
@@ -404,7 +395,7 @@ private:
         if (config.num_threads > 1 and num_keys >= config.num_threads) {
             map_parallel(hashes, num_keys, pairs_blocks, config);
         } else {
-            map_sequential(hashes, num_keys, pairs_blocks, config);
+            map_sequential(hashes, num_keys, pairs_blocks);
         }
     }
 };

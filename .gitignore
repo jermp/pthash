@@ -1,5 +1,2 @@
 build/
-old/
 .DS_Store
-cmake-build*
-.idea
