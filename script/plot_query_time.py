@@ -114,7 +114,6 @@ def main(json_file, pdf_filename, alpha, bucketer):
             ax.set_ylabel('Query time (avg. ns per query)', fontsize=14)
             ax.set_title(title, fontsize=16)
             ax.set_ylim(min_y, max_y)
-
             ticks = np.linspace(min_y, max_y, 20)
             ax.set_yticks(ticks)
             ax.yaxis.set_major_formatter(FuncFormatter(format_ticks))

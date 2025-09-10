@@ -53,7 +53,15 @@ Timings plotted for `P` are for $\alpha=0.94$.
 ##### Optimal bucketer
 ![](results-07-09-25/results.2025-09-07T17-31-42.n=100000000.query_time.opt.a0.94.png)
 
-- Optimal bucketing does not generally introduce any penalty at query time compared to skew bucketing.
+- Optimal bucketing does not generally introduce any serious penalty at query time compared to skew bucketing.
+
+It is also interesting to note the query times are **much faster** on my Apple M1 ARM processor compared to the Intel x86 processor used in these benchmarks. The plots below show the comparison for $\alpha=0.94$ and skew bucketing, for the "fast" encoders only.
+
+##### Intel x86 processor
+![](results-07-09-25/query_time.skew.a0.94.linux.x86.png)
+
+##### Apple M1 ARM processor
+![](results-07-09-25/query_time.skew.a0.94.mac.arm.png)
 
 ### 4. Overall trade-off and recommendation
 

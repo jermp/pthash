@@ -108,7 +108,6 @@ def main(json_file, pdf_filename, bucketer):
             ax.set_ylabel(r'Building time (seconds)', fontsize=14)
             ax.set_title(title, fontsize=16)  # Title for the current configuration
             ax.set_ylim(min_y, max_y)  # Set Y-axis limits
-
             # Set the Y-axis ticks to 10 evenly spaced ticks, including min and max
             ticks = np.linspace(min_y, max_y, 20)  # Create 10 evenly spaced ticks
             ax.set_yticks(ticks)  # Set updated ticks
