@@ -59,7 +59,7 @@ Timings plotted for `P` are for $\alpha=0.94$.
 
 Overall, the DENSE-PARTITIONED representation with the `C-int` encoder and optimal bucketing, using $\lambda = 7$, provides a well-rounded trade-off across the three performance metrics, with a stronger emphasis on query time than on space efficiency:
 
-    ./build -n 100000000 -l 7 -b opt -e C-int -t 8 -q 10000000 -s 0 --minimal --dense --verbose
+    ./build -n 100000000 -l 7 -b opt -e C-int -t 8 -q 10000000 -s 0 --minimal --dense --cache-input --verbose
 
 Result:
 
