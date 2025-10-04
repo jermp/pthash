@@ -65,8 +65,8 @@ struct build_configuration {
     bool verbose;
 };
 
-static uint64_t compute_avg_partition_size(const uint64_t num_keys,
-                                           build_configuration const& config)  //
+static inline uint64_t compute_avg_partition_size(const uint64_t num_keys,
+                                                  build_configuration const& config)  //
 {
     uint64_t avg_partition_size = config.avg_partition_size;
     if (config.dense_partitioning) return avg_partition_size;
@@ -87,12 +87,12 @@ static uint64_t compute_avg_partition_size(const uint64_t num_keys,
     return avg_partition_size;
 }
 
-static uint64_t compute_num_buckets(const uint64_t num_keys, const double avg_bucket_size) {
+static inline uint64_t compute_num_buckets(const uint64_t num_keys, const double avg_bucket_size) {
     assert(avg_bucket_size != 0.0);
     return std::ceil(static_cast<double>(num_keys) / avg_bucket_size);
 }
 
-static uint64_t compute_num_partitions(const uint64_t num_keys, const double avg_partition_size) {
+static inline uint64_t compute_num_partitions(const uint64_t num_keys, const double avg_partition_size) {
     assert(avg_partition_size > 0);
     return std::ceil(static_cast<double>(num_keys) / avg_partition_size);
 }
