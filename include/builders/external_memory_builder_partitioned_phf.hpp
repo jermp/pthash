@@ -282,8 +282,9 @@ private:
     struct meta_partition {
         meta_partition(std::string const& dir_name, uint64_t id)
             : m_filename(dir_name + "/pthash.temp." + std::to_string(id)), m_size(0) {
-            // Truncate the file if it exists from a previous run
-            std::ofstream truncate(m_filename.c_str(), std::ofstream::binary | std::ofstream::trunc);
+            /* Truncate the file if it exists from a previous run */
+            std::ofstream truncate(m_filename.c_str(),
+                                   std::ofstream::binary | std::ofstream::trunc);
             truncate.close();
         }
 
