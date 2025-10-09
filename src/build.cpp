@@ -437,6 +437,7 @@ void build(cmd_line_parser::parser const& parser, Iterator keys, uint64_t num_ke
         config.ram = ram;
     }
 
+    // choose_bucketer<xxhash_64>(params, config);
     choose_bucketer<xxhash_128>(params, config);
 }
 
@@ -542,8 +543,7 @@ int main(int argc, char** argv) {
             std::cout << "Warning: external memory construction with in-memory input" << std::endl;
         }
 
-        const uint64_t random_input_seed =
-            mix(parser.parsed("seed") ? parser.get<uint64_t>("seed") : 82935257);
+        const uint64_t random_input_seed = random_value();
 
         const std::string input_cache_filename =
             "pthash.input-cache.n=" + std::to_string(num_keys) + ".bin";

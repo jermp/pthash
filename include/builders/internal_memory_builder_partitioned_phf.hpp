@@ -27,13 +27,12 @@ struct internal_memory_builder_partitioned_phf {
         auto start = clock_type::now();
 
         if (config.verbose) {
-            std::cout << "num_partitions = " << num_partitions << std::endl;
             std::cout << "avg_partition_size = " << avg_partition_size << std::endl;
+            std::cout << "num_partitions = " << num_partitions << std::endl;
         }
 
         build_timings timings;
 
-        m_seed = config.seed == constants::invalid_seed ? random_value() : config.seed;
         m_num_keys = num_keys;
         m_table_size = 0;
         m_num_partitions = num_partitions;
@@ -49,50 +48,58 @@ struct internal_memory_builder_partitioned_phf {
             for (auto& partition : partitions) partition.reserve(p);
         }
 
-        if constexpr (std::is_same_v<typename Iterator::iterator_category,
-                                     std::random_access_iterator_tag>) {
-            parallel_hash_and_partition(keys, partitions, num_keys, config.num_threads, m_seed,
-                                        num_partitions, m_bucketer);
-        } else {
-            for (uint64_t i = 0; i != num_keys; ++i, ++keys) {
-                auto const& key = *keys;
-                auto hash = hasher_type::hash(key, m_seed);
-                auto b = m_bucketer.bucket(hash.mix());
-                partitions[b].push_back(hash);
-            }
-        }
-
-        if (config.dense_partitioning) {
-            // if (config.verbose) std::cout << "alpha value ignored for --dense" << std::endl;
-            m_table_size = constants::table_size_per_partition * num_partitions;
-        } else {
-            uint64_t cumulative_size = 0;
-            for (uint64_t i = 0; i != num_partitions; ++i) {
-                auto const& partition = partitions[i];
-                uint64_t table_size = static_cast<double>(partition.size()) / config.alpha;
-                m_table_size += table_size;
-                m_offsets[i] = cumulative_size;
-                if (config.dense_partitioning) {
-                    cumulative_size += table_size;
-                } else {
-                    cumulative_size += config.minimal ? partition.size() : table_size;
-                }
-            }
-            m_offsets[num_partitions] = cumulative_size;
-        }
-
         auto partition_config = config;
-        partition_config.seed = m_seed;
         partition_config.num_buckets = m_num_buckets_per_partition;
         if (config.dense_partitioning) {
             partition_config.table_size = constants::table_size_per_partition;
             partition_config.alpha = 1.0;
         }
-        if (config.verbose) {
-            if (config.dense_partitioning) {
-                std::cout << "table_size_per_partition = " << partition_config.table_size
-                          << std::endl;
+        if (config.verbose and config.dense_partitioning) {
+            std::cout << "table_size_per_partition = " << partition_config.table_size << std::endl;
+        }
+
+        const int max_num_attempts = 10;
+        for (int attempt = 0; attempt < max_num_attempts; ++attempt)  //
+        {
+            if (attempt == 0 and config.seed != constants::invalid_seed) {
+                m_seed = config.seed;
+            } else {
+                m_seed = random_value();
             }
+
+            auto it = keys;
+            if constexpr (std::is_same_v<typename Iterator::iterator_category,
+                                         std::random_access_iterator_tag>) {
+                parallel_hash_and_partition(it, partitions, num_keys, config.num_threads, m_seed,
+                                            num_partitions, m_bucketer);
+            } else {
+                for (uint64_t i = 0; i != num_keys; ++i, ++it) {
+                    auto const& key = *it;
+                    auto hash = hasher_type::hash(key, m_seed);
+                    auto b = m_bucketer.bucket(hash.mix());
+                    partitions[b].push_back(hash);
+                }
+            }
+
+            if (config.dense_partitioning) {
+                // if (config.verbose) std::cout << "alpha value ignored for --dense" << std::endl;
+                m_table_size = constants::table_size_per_partition * num_partitions;
+            } else {
+                uint64_t cumulative_size = 0;
+                for (uint64_t i = 0; i != num_partitions; ++i) {
+                    auto const& partition = partitions[i];
+                    uint64_t table_size = static_cast<double>(partition.size()) / config.alpha;
+                    m_table_size += table_size;
+                    m_offsets[i] = cumulative_size;
+                    if (config.dense_partitioning) {
+                        cumulative_size += table_size;
+                    } else {
+                        cumulative_size += config.minimal ? partition.size() : table_size;
+                    }
+                }
+                m_offsets[num_partitions] = cumulative_size;
+            }
+
             uint64_t largest_partition_size = 0;
             uint64_t smallest_partition_size = uint64_t(-1);
             for (auto const& partition : partitions) {
@@ -103,18 +110,34 @@ struct internal_memory_builder_partitioned_phf {
                     smallest_partition_size = partition.size();
                 }
             }
-            std::cout << "smallest_partition_size = " << smallest_partition_size << std::endl;
-            std::cout << "largest_partition_size = " << largest_partition_size << std::endl;
-            if (config.dense_partitioning) {
-                std::cout << "load factor of partitions: "
-                          << (smallest_partition_size * 1.0) / partition_config.table_size
-                          << " <= alpha <= "
-                          << (largest_partition_size * 1.0) / partition_config.table_size
+            if (config.verbose) {
+                std::cout << "smallest_partition_size = " << smallest_partition_size << std::endl;
+                std::cout << "largest_partition_size = " << largest_partition_size << std::endl;
+                std::cout << "num_buckets_per_partition = " << partition_config.num_buckets
                           << std::endl;
             }
-            std::cout << "num_buckets_per_partition = " << partition_config.num_buckets
-                      << std::endl;
+
+            if (largest_partition_size <= partition_config.table_size) {
+                if (config.verbose and config.dense_partitioning) {
+                    std::cout << "load factor of partitions: "
+                              << (smallest_partition_size * 1.0) / partition_config.table_size
+                              << " <= alpha <= "
+                              << (largest_partition_size * 1.0) / partition_config.table_size
+                              << std::endl;
+                }
+                break;
+            } else {
+                if (config.verbose) {
+                    std::cout << "attempt " << attempt + 1 << " with seed " << m_seed
+                              << " failed, trying another seed..." << std::endl;
+                    if (attempt + 1 == max_num_attempts) throw seed_runtime_error();
+                }
+
+                for (auto& partition : partitions) partition.clear();
+            }
         }
+
+        partition_config.seed = m_seed;
         partition_config.verbose = false;
         partition_config.num_threads = 1;
 
