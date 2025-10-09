@@ -30,7 +30,7 @@ struct external_memory_builder_partitioned_phf {
         build_timings timings;
         if (config.verbose) {
             std::cout << "num_partitions " << num_partitions << std::endl;
-            std::cout << "using " << static_cast<double>(config.ram) / 1000000000 << " GB of RAM"
+            std::cout << "using " << static_cast<double>(config.ram) / 1'000'000'000 << " GB of RAM"
                       << std::endl;
         }
 

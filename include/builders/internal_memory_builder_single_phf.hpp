@@ -90,14 +90,15 @@ struct internal_memory_builder_single_phf {
             map(hashes, num_keys, pairs_blocks, config);
             auto elapsed = to_microseconds(clock_type::now() - start);
             if (config.verbose) {
-                std::cout << " == map+sort took: " << elapsed / 1000000 << " seconds" << std::endl;
+                std::cout << " == map+sort took: " << elapsed / 1'000'000 << " seconds"
+                          << std::endl;
             }
 
             start = clock_type::now();
             merge(pairs_blocks, buckets, config.verbose);
             elapsed = to_microseconds(clock_type::now() - start);
             if (config.verbose) {
-                std::cout << " == merge+check took: " << elapsed / 1000000 << " seconds"
+                std::cout << " == merge+check took: " << elapsed / 1'000'000 << " seconds"
                           << std::endl;
             }
         }
@@ -106,7 +107,7 @@ struct internal_memory_builder_single_phf {
         time.mapping_ordering_microseconds = to_microseconds(clock_type::now() - start);
         if (config.verbose) {
             std::cout << " == mapping+ordering took "
-                      << time.mapping_ordering_microseconds / 1000000 << " seconds " << std::endl;
+                      << time.mapping_ordering_microseconds / 1'000'000 << " seconds " << std::endl;
             buckets.print_bucket_size_distribution();
         }
 
@@ -129,7 +130,7 @@ struct internal_memory_builder_single_phf {
         }
         time.searching_microseconds = to_microseconds(clock_type::now() - start);
         if (config.verbose) {
-            std::cout << " == search took " << time.searching_microseconds / 1000000 << " seconds"
+            std::cout << " == search took " << time.searching_microseconds / 1'000'000 << " seconds"
                       << std::endl;
         }
 

@@ -55,7 +55,7 @@ void test_internal_memory_single_mphf(Iterator keys, uint64_t num_keys) {
 }
 
 int main() {
-    static const uint64_t universe = 100000;
+    static const uint64_t universe = 100'000;
     for (int i = 0; i != 5; ++i) {
         uint64_t num_keys = random_value() % universe;
         if (num_keys == 0) num_keys = 1;

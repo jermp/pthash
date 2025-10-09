@@ -7,7 +7,7 @@ int main() {
     using namespace pthash;
 
     /* Generate 1M random 64-bit keys as input data. */
-    static const uint64_t num_keys = 1000000;
+    static const uint64_t num_keys = 1'000'000;
     static const uint64_t seed = 1234567890;
     std::cout << "generating input data..." << std::endl;
     auto keys = distinct_uints<uint64_t>(num_keys, seed);
@@ -21,7 +21,7 @@ int main() {
     config.lambda = 5;
     config.alpha = 0.97;
     config.verbose = true;
-    config.avg_partition_size = 100000;
+    config.avg_partition_size = 100'000;
     config.num_threads = 4;
     config.dense_partitioning = true;
 
@@ -54,9 +54,9 @@ int main() {
     double total_microseconds = timings.partitioning_microseconds +
                                 timings.mapping_ordering_microseconds +
                                 timings.searching_microseconds + timings.encoding_microseconds;
-    std::cout << "function built in " << to_microseconds(clock_type::now() - start) / 1000000
+    std::cout << "function built in " << to_microseconds(clock_type::now() - start) / 1'000'000
               << " seconds" << std::endl;
-    std::cout << "computed: " << total_microseconds / 1000000 << " seconds" << std::endl;
+    std::cout << "computed: " << total_microseconds / 1'000'000 << " seconds" << std::endl;
 
     /* Compute and print the number of bits spent per key. */
     double bits_per_key = static_cast<double>(f.num_bits()) / f.num_keys();

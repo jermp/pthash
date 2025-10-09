@@ -465,7 +465,7 @@ int main(int argc, char** argv) {
     /* Optional arguments. */
     constexpr bool OPTIONAL = !REQUIRED;
     parser.add("alpha",
-               "The table load factor. It must be a quantity > 0 and <= 1 (Defaults is " +
+               "The table load factor. It must be a quantity > 0 and <= 1 (Default is " +
                    std::to_string(constants::default_alpha) + ").",
                "-a", OPTIONAL);
     parser.add("avg_partition_size", "Average partition size for HEM.", "-p", OPTIONAL);

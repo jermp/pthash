@@ -52,7 +52,7 @@ void test_internal_memory_dense_partitioned_mphf(Iterator keys, uint64_t num_key
 }
 
 int main() {
-    static const uint64_t universe = 100000;
+    static const uint64_t universe = 100'000;
     for (int i = 0; i != 5; ++i) {
         uint64_t num_keys = constants::table_size_per_partition + (random_value() % universe);
         std::vector<uint64_t> keys = distinct_uints<uint64_t>(num_keys, random_value());

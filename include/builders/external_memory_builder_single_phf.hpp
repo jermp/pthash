@@ -66,12 +66,12 @@ struct external_memory_builder_single_phf {
         if (bitmap_taken_bytes + hashed_pilots_cache_bytes >= ram) {
             std::stringstream ss;
             ss << "not enough RAM available, the bitmap alone takes "
-               << static_cast<double>(bitmap_taken_bytes) / 1000000000 << " GB of space.";
+               << static_cast<double>(bitmap_taken_bytes) / 1'000'000'000 << " GB of space.";
             throw std::runtime_error(ss.str());
         }
 
         if (config.verbose) {
-            constexpr uint64_t GB = 1000000000;
+            constexpr uint64_t GB = 1'000'000'000;
             uint64_t peak = num_keys * (sizeof(bucket_payload_pair) + sizeof(uint64_t)) +
                             (num_keys + num_buckets) * sizeof(uint64_t);
             std::cout << "lambda (avg. bucket size) = " << config.lambda << std::endl;
@@ -100,7 +100,7 @@ struct external_memory_builder_single_phf {
                 auto stop = clock_type::now();
                 if (config.verbose) {
                     std::cout << " == map+sort " << tfm.get_num_pairs_files()
-                              << " files(s) took: " << to_microseconds(stop - start) / 1000000
+                              << " files(s) took: " << to_microseconds(stop - start) / 1'000'000
                               << " seconds" << std::endl;
                 }
                 start = clock_type::now();
@@ -112,8 +112,9 @@ struct external_memory_builder_single_phf {
                 tfm.remove_all_pairs_files();
                 stop = clock_type::now();
                 if (config.verbose) {
-                    std::cout << " == merge+check took: " << to_microseconds(stop - start) / 1000000
-                              << " seconds" << std::endl;
+                    std::cout << " == merge+check took: "
+                              << to_microseconds(stop - start) / 1'000'000 << " seconds"
+                              << std::endl;
                     std::cout << " == max bucket size = " << int(tfm.max_bucket_size())
                               << std::endl;
                 }

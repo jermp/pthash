@@ -24,7 +24,7 @@ void test_internal_memory_partitioned_mphf(Iterator keys, uint64_t num_keys) {
     config.verbose = false;
     config.seed = random_value();
 
-    std::vector<uint64_t> avg_partition_size{1000, 10000, 100000, 1000000};
+    std::vector<uint64_t> avg_partition_size{1'000, 10'000, 100'000, 1'000'000};
     std::vector<double> L{4.0, 4.5, 5.0, 5.5, 6.0};
     std::vector<double> A{1.0, 0.99, 0.98, 0.97, 0.96};
     for (auto lambda : L) {
