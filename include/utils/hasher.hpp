@@ -98,7 +98,7 @@ struct xxhash_64 {
 
     // specialization for uint64_t
     static inline hash64 hash(uint64_t const& val, uint64_t seed) {
-        return XXH64(reinterpret_cast<char const*>(&val), sizeof(val), seed);
+        return XXH64(&val, sizeof(val), seed);
     }
 };
 
