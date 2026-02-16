@@ -113,7 +113,7 @@ static uint64_t max_partition_size_estimate(const uint64_t avg_partition_size,
     so that the max. partition size is (almost)
     never above c.
 */
-static uint64_t find_avg_partition_size(const uint64_t n) {
+static inline uint64_t find_avg_partition_size(const uint64_t n) {
     const uint64_t c = constants::table_size_per_partition;
     if (n < c) throw std::runtime_error("n is too small for --dense; does not use this option");
     static_assert(c > 500);
