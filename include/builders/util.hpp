@@ -378,7 +378,7 @@ private:
     uint64_t m_seed;
 };
 
-double compute_empirical_entropy(std::vector<uint64_t> const& values) {
+inline double compute_empirical_entropy(std::vector<uint64_t> const& values) {
     if (values.empty()) return 0.0;
     std::unordered_map<uint64_t, uint64_t> frequency_map;
     // uint64_t large_values = 0;
