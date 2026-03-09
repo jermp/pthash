@@ -58,8 +58,9 @@ struct partitioned_compact {
         uint64_t num_partitions = (n + partition_size - 1) / partition_size;
         bits::bit_vector::builder bvb;
         bvb.reserve(32 * n);
-        m_bits_per_value.reserve(num_partitions + 1);
-        m_bits_per_value.push_back(0);
+        std::vector<uint32_t> bits_per_value;
+        bits_per_value.reserve(num_partitions + 1);
+        bits_per_value.push_back(0);
         for (uint64_t i = 0, begin_partition = 0; i != num_partitions; ++i) {
             uint64_t end_partition = begin_partition + partition_size;
             if (end_partition > n) end_partition = n;
@@ -76,10 +77,11 @@ struct partitioned_compact {
             for (uint64_t k = begin_partition; k != end_partition; ++k) {
                 bvb.append_bits(*(begin + k), num_bits);
             }
-            assert(m_bits_per_value.back() + num_bits < (1ULL << 32));
-            m_bits_per_value.push_back(m_bits_per_value.back() + num_bits);
+            assert(bits_per_value.back() + num_bits < (1ULL << 32));
+            bits_per_value.push_back(bits_per_value.back() + num_bits);
             begin_partition = end_partition;
         }
+        m_bits_per_value = std::move(bits_per_value);
         bvb.build(m_values);
     }
 
@@ -123,7 +125,7 @@ private:
     }
 
     uint64_t m_size;
-    std::vector<uint32_t> m_bits_per_value;
+    essentials::owning_span<uint32_t> m_bits_per_value;
     bits::bit_vector m_values;
 };
 

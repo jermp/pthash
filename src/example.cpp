@@ -8,7 +8,7 @@ int main() {
 
     /* Generate 1M random 64-bit keys as input data. */
     static const uint64_t num_keys = 1'000'000;
-    static const uint64_t seed = 1234567890;
+    static const uint64_t seed = essentials::get_random_seed();
     std::cout << "generating input data..." << std::endl;
     auto keys = distinct_uints<uint64_t>(num_keys, seed);
     // Can also use:
@@ -78,8 +78,23 @@ int main() {
 
     {
         /* Now reload from disk and query. */
+        std::cout << "loading the function from disk..." << std::endl;
         pthash_type other;
         essentials::load(other, output_filename.c_str());
+        if (check(keys.begin(), other)) std::cout << "EVERYTHING OK!" << std::endl;
+        const uint64_t n = std::min<uint64_t>(10, keys.size());
+        for (uint64_t i = 0; i != n; ++i) {
+            std::cout << "f(" << keys[i] << ") = " << other(keys[i]) << '\n';
+            assert(f(keys[i]) == other(keys[i]));
+        }
+    }
+
+    {
+        /* Now mmap from disk and query. */
+        std::cout << "mapping the function from disk..." << std::endl;
+        pthash_type other;
+        essentials::mmap(other, output_filename.c_str());
+        if (check(keys.begin(), other)) std::cout << "EVERYTHING OK!" << std::endl;
         const uint64_t n = std::min<uint64_t>(10, keys.size());
         for (uint64_t i = 0; i != n; ++i) {
             std::cout << "f(" << keys[i] << ") = " << other(keys[i]) << '\n';
