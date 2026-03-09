@@ -68,16 +68,17 @@ struct dense_interleaved : dense_encoder {
                 const uint64_t num_partitions,                                         //
                 const uint64_t num_buckets_per_partition, const uint64_t num_threads)  //
     {
-        m_encoders.resize(num_buckets_per_partition);
+        std::vector<Encoder> encoders;
+        encoders.resize(num_buckets_per_partition);
         if (num_threads == 1) {
             for (uint64_t i = 0; i != num_buckets_per_partition; ++i) {
-                m_encoders[i].encode(begin + i * num_partitions, num_partitions);
+                encoders[i].encode(begin + i * num_partitions, num_partitions);
             }
         } else {
             auto exe = [&](uint64_t beginEncoder, uint64_t endEncoder) {
                 for (; beginEncoder != endEncoder; ++beginEncoder) {
-                    m_encoders[beginEncoder].encode(begin + beginEncoder * num_partitions,
-                                                    num_partitions);
+                    encoders[beginEncoder].encode(begin + beginEncoder * num_partitions,
+                                                  num_partitions);
                 }
             };
 
@@ -97,6 +98,7 @@ struct dense_interleaved : dense_encoder {
                 if (t.joinable()) t.join();
             }
         }
+        m_encoders = std::move(encoders);
     }
 
     static std::string name() {
@@ -109,7 +111,7 @@ struct dense_interleaved : dense_encoder {
     }
 
     uint64_t num_bits() const {
-        uint64_t sum = 8 * sizeof(uint64_t);  // for std::vector size
+        uint64_t sum = 8 * sizeof(uint64_t);  // for span' size
         for (auto const& e : m_encoders) sum += e.num_bits();
         return sum;
     }
@@ -130,7 +132,7 @@ private:
         visitor.visit(t.m_encoders);
     }
 
-    std::vector<Encoder> m_encoders;
+    essentials::owning_span<Encoder> m_encoders;
 };
 
 typedef dense_mono<compact> C_mono;

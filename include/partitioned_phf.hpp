@@ -94,7 +94,8 @@ public:
         m_num_keys = builder.num_keys();
         m_table_size = builder.table_size();
         m_partitioner = builder.bucketer();
-        m_partitions.resize(num_partitions);
+        std::vector<partition> partitions;
+        partitions.resize(num_partitions);
 
         auto const& offsets = builder.offsets();
         auto const& builders = builder.builders();
@@ -104,8 +105,8 @@ public:
             std::vector<std::thread> threads(num_threads);
             auto exe = [&](uint64_t begin, uint64_t end) {
                 for (; begin != end; ++begin) {
-                    m_partitions[begin].offset = offsets[begin];
-                    m_partitions[begin].f.build(builders[begin], config);
+                    partitions[begin].offset = offsets[begin];
+                    partitions[begin].f.build(builders[begin], config);
                 }
             };
 
@@ -123,10 +124,12 @@ public:
             }
         } else {
             for (uint64_t i = 0; i != num_partitions; ++i) {
-                m_partitions[i].offset = offsets[i];
-                m_partitions[i].f.build(builders[i], config);
+                partitions[i].offset = offsets[i];
+                partitions[i].f.build(builders[i], config);
             }
         }
+
+        m_partitions = std::move(partitions);
 
         auto stop = clock_type::now();
 
@@ -147,7 +150,7 @@ public:
 
     uint64_t num_bits_for_pilots() const {
         uint64_t bits = 8 * (sizeof(m_seed) + sizeof(m_num_keys) + sizeof(m_table_size) +
-                             sizeof(uint64_t)  // for std::vector::size
+                             sizeof(uint64_t)  // for span's size
                              ) +
                         m_partitioner.num_bits();
         for (auto const& p : m_partitions) bits += 8 * sizeof(p.offset) + p.f.num_bits_for_pilots();
@@ -200,7 +203,7 @@ private:
     uint64_t m_num_keys;
     uint64_t m_table_size;
     range_bucketer m_partitioner;
-    std::vector<partition> m_partitions;
+    essentials::owning_span<partition> m_partitions;
 };
 
 }  // namespace pthash
