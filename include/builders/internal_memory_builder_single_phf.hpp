@@ -211,10 +211,10 @@ struct internal_memory_builder_single_phf {
             num_buckets * sizeof(uint64_t)                                       // pilots
             + num_buckets * sizeof(uint64_t)                                     // buckets
             + (config.minimal ? (table_size - num_keys) * sizeof(uint64_t) : 0)  // free_slots
-            + num_keys * sizeof(uint64_t)                                        // hashes
             + table_size / 8;                                                    // bitmap taken
 
-        return std::max<uint64_t>(num_bytes_for_map, num_bytes_for_search);
+        return std::max<uint64_t>(num_bytes_for_map, num_bytes_for_search) +
+               num_keys * sizeof(typename hasher_type::hash_type);
     }
 
 private:
