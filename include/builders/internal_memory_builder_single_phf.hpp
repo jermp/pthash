@@ -214,7 +214,13 @@ struct internal_memory_builder_single_phf {
             + num_keys * sizeof(uint64_t)                                        // hashes
             + table_size / 8;                                                    // bitmap taken
 
-        return std::max<uint64_t>(num_bytes_for_map, num_bytes_for_search);
+        // The input hash vector lives across both the map and search phases,
+        // so its footprint must be added outside the max, not folded into it.
+        uint64_t num_bytes_for_input_hashes =
+            num_keys * sizeof(typename hasher_type::hash_type);
+
+        return std::max<uint64_t>(num_bytes_for_map, num_bytes_for_search) +
+               num_bytes_for_input_hashes;
     }
 
 private:
