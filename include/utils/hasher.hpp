@@ -96,6 +96,11 @@ struct xxhash_64 {
         return XXH64(val.data(), val.size(), seed);
     }
 
+    // specialization for std::string_view
+    static inline hash64 hash(std::string_view const& val, uint64_t seed) {
+        return XXH64(val.data(), val.size(), seed);
+    }
+
     // specialization for uint64_t
     static inline hash64 hash(uint64_t const& val, uint64_t seed) {
         return XXH64(&val, sizeof(val), seed);
@@ -112,6 +117,11 @@ struct xxhash_128 {
 
     // specialization for std::string
     static inline hash128 hash(std::string const& val, uint64_t seed) {
+        return XXH128(val.data(), val.size(), seed);
+    }
+
+    // specialization for std::string_view
+    static inline hash128 hash(std::string_view const& val, uint64_t seed) {
         return XXH128(val.data(), val.size(), seed);
     }
 
