@@ -23,6 +23,18 @@ struct dense_partitioned_phf  //
         return timings;
     }
 
+    template <typename Iterator, typename Mapper>
+    build_timings build_in_internal_memory(Iterator keys, const uint64_t num_keys,
+                                           build_configuration const& config,
+                                           Mapper const& mapper) {
+        build_configuration build_config = set_build_configuration(config);
+        internal_memory_builder_partitioned_phf<Hasher, Bucketer> builder;
+        key_mapping_iterator<Iterator, Mapper> mapped_keys(keys, mapper);
+        auto timings = builder.build_from_keys(mapped_keys, num_keys, build_config);
+        timings.encoding_microseconds = build(builder, build_config);
+        return timings;
+    }
+
     // template <typename Iterator>
     // build_timings build_in_external_memory(Iterator keys, const uint64_t num_keys,
     //                                        build_configuration const& config) {

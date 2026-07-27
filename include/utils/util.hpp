@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <iterator>
 #include <string>
 
 #include "essentials.hpp"
@@ -56,5 +57,32 @@ template <typename DurationType>
 double to_microseconds(DurationType const& d) {
     return static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(d).count());
 }
+
+template <typename Iterator, typename Mapper>
+struct key_mapping_iterator {
+    using iterator_category = typename std::iterator_traits<Iterator>::iterator_category;
+    using value_type = typename std::iterator_traits<Iterator>::value_type;
+    using difference_type = typename std::iterator_traits<Iterator>::difference_type;
+    using pointer = typename std::iterator_traits<Iterator>::pointer;
+    using reference = typename std::iterator_traits<Iterator>::reference;
+
+    key_mapping_iterator(Iterator it, Mapper const& mapper) : m_it(it), m_mapper(&mapper) {}
+    inline auto operator*() const {
+        return (*m_mapper)(*m_it);
+    }
+    inline void operator++() {
+        ++m_it;
+    }
+    inline key_mapping_iterator operator+(uint64_t offset) const {
+        return key_mapping_iterator(m_it + offset, *m_mapper);
+    }
+    inline auto operator[](uint64_t offset) const {
+        return (*m_mapper)(m_it[offset]);
+    }
+
+private:
+    Iterator m_it;
+    Mapper const* m_mapper;
+};
 
 }  // namespace pthash
